@@ -1,21 +1,22 @@
 import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<'user' | 'admin'>('user');
+  const [userType, setUserType] = useState<'user' | 'delivery'>('user');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
   const { login: adminLogin } = useAdmin();
+  const { showToast } = useToast();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -28,14 +29,15 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please enter your email and password');
+      showToast('Please enter your email and password', 'error');
+      // setError('Please enter your email and password');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
+      showToast('Please enter a valid email address', 'error');
       return;
     }
 
@@ -43,27 +45,29 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      if (userType === 'admin') {
-        // Admin login using API
+      if (userType === 'delivery') {
+        // Delivery Partner login (using Admin API for now)
         await adminLogin(email, password);
+        showToast('Welcome back, Partner!', 'success');
         router.replace('/admin/dashboard');
       } else {
         // User login (existing mock logic)
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        
+
         if (password === '123456' || password.length >= 6) {
           const success = await login(email, '123456'); // Mock OTP for compatibility
           if (success) {
+            showToast('Login Successful!', 'success');
             router.replace('/(tabs)');
           } else {
-            setError('Invalid credentials. Please try again.');
+            showToast('Invalid credentials. Please try again.', 'error');
           }
         } else {
-          setError('Invalid credentials. Please try again.');
+          showToast('Invalid credentials. Please try again.', 'error');
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      showToast(err.message || 'Login failed', 'error');
     } finally {
       setLoading(false);
     }
@@ -82,103 +86,15 @@ export default function LoginScreen() {
         >
           <Animated.View style={{ opacity: fadeAnim }}>
             {/* Header Section */}
-            <View style={{ alignItems: 'center', marginBottom: 48 }}>
-              <View style={{
-                backgroundColor: Colors.primary,
-                borderRadius: 20,
-                padding: 16,
-                marginBottom: 20,
-                shadowColor: Colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
-              }}>
-                <Icon name="shopping-cart" size={40} color={Colors.textWhite} library="material" />
-              </View>
-              <Text style={{ 
-                fontSize: 32, 
-                fontWeight: '800', 
-                color: Colors.primary,
-                marginBottom: 12,
-                letterSpacing: 1,
-              }}>
-                GrocMed
-              </Text>
-              <Text style={{ 
-                fontSize: 28, 
-                fontWeight: '700', 
-                color: Colors.textPrimary,
-                marginBottom: 8,
-                letterSpacing: -0.5,
-              }}>
-                Welcome Back
-              </Text>
-              <Text style={{ 
-                fontSize: 15, 
-                color: Colors.textSecondary,
-                fontWeight: '400',
-              }}>
-                Sign in to continue shopping
-              </Text>
+            <View style={{ alignItems: 'center', marginBottom: 40 }}>
+              <Image
+                source={require('@/assets/images/logo-removebg-preview.png')}
+                style={{ width: 220, height: 80 }}
+                resizeMode="contain"
+              />
             </View>
 
-            {/* User Type Toggle */}
-            <View style={{
-              flexDirection: 'row',
-              backgroundColor: Colors.surface,
-              borderRadius: 12,
-              padding: 4,
-              marginBottom: 32,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
-            }}>
-              <TouchableOpacity
-                onPress={() => setUserType('user')}
-                activeOpacity={0.7}
-                style={{
-                  flex: 1,
-                  backgroundColor: userType === 'user' ? Colors.primary : 'transparent',
-                  borderRadius: 8,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: userType === 'user' ? Colors.textWhite : Colors.textSecondary,
-                }}>
-                  User Login
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setUserType('admin')}
-                activeOpacity={0.7}
-                style={{
-                  flex: 1,
-                  backgroundColor: userType === 'admin' ? Colors.accent : 'transparent',
-                  borderRadius: 8,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: userType === 'admin' ? Colors.textWhite : Colors.textSecondary,
-                }}>
-                  Admin Login
-                </Text>
-              </TouchableOpacity>
-            </View>
+
 
             {/* Login Form Card */}
             <View style={{
@@ -193,18 +109,18 @@ export default function LoginScreen() {
               borderWidth: 1,
               borderColor: Colors.border,
             }}>
-              <Text style={{ 
-                fontSize: 24, 
-                fontWeight: '700', 
-                color: Colors.textPrimary, 
+              <Text style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: Colors.textPrimary,
                 marginBottom: 8,
                 letterSpacing: -0.4,
               }}>
-                Login to your account
+                {userType === 'user' ? 'Customer Login' : 'Delivery Partner Login'}
               </Text>
-              <Text style={{ 
-                fontSize: 14, 
-                color: Colors.textSecondary, 
+              <Text style={{
+                fontSize: 14,
+                color: Colors.textSecondary,
                 marginBottom: 28,
                 fontWeight: '400',
                 lineHeight: 20,
@@ -214,9 +130,9 @@ export default function LoginScreen() {
 
               {/* Email Input */}
               <View style={{ marginBottom: 20 }}>
-                <Text style={{ 
-                  fontSize: 14, 
-                  fontWeight: '600', 
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
                   color: Colors.textPrimary,
                   marginBottom: 8,
                 }}>
@@ -258,9 +174,9 @@ export default function LoginScreen() {
 
               {/* Password Input */}
               <View style={{ marginBottom: 20 }}>
-                <Text style={{ 
-                  fontSize: 14, 
-                  fontWeight: '600', 
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
                   color: Colors.textPrimary,
                   marginBottom: 8,
                 }}>
@@ -300,11 +216,11 @@ export default function LoginScreen() {
                     activeOpacity={0.7}
                     style={{ padding: 4 }}
                   >
-                    <Icon 
-                      name={showPassword ? 'visibility' : 'visibility-off'} 
-                      size={20} 
-                      color={Colors.textSecondary} 
-                      library="material" 
+                    <Icon
+                      name={showPassword ? 'visibility' : 'visibility-off'}
+                      size={20}
+                      color={Colors.textSecondary}
+                      library="material"
                     />
                   </TouchableOpacity>
                 </View>
@@ -329,9 +245,9 @@ export default function LoginScreen() {
               ) : null}
 
               {/* Remember Me & Forgot Password */}
-              <View style={{ 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: 24,
               }}>
@@ -355,8 +271,8 @@ export default function LoginScreen() {
                       <Icon name="check" size={14} color={Colors.textWhite} library="material" />
                     )}
                   </View>
-                  <Text style={{ 
-                    fontSize: 14, 
+                  <Text style={{
+                    fontSize: 14,
                     color: Colors.textSecondary,
                     fontWeight: '400',
                   }}>
@@ -364,8 +280,8 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={{ 
-                    fontSize: 14, 
+                  <Text style={{
+                    fontSize: 14,
                     color: Colors.primary,
                     fontWeight: '600',
                   }}>
@@ -396,9 +312,9 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator color={Colors.textWhite} size="small" />
                 ) : (
-                  <Text style={{ 
-                    color: Colors.textWhite, 
-                    fontWeight: '600', 
+                  <Text style={{
+                    color: Colors.textWhite,
+                    fontWeight: '600',
                     fontSize: 16,
                   }}>
                     Login
@@ -408,7 +324,7 @@ export default function LoginScreen() {
 
               {/* Register Link - Only show for user login */}
               {userType === 'user' && (
-                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
                   <Text style={{ color: Colors.textSecondary, fontSize: 14, fontWeight: '400' }}>
                     Don&apos;t have an account?{' '}
                   </Text>
@@ -419,6 +335,17 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {/* Delivery Partner Toggle */}
+              <TouchableOpacity
+                onPress={() => setUserType(prev => prev === 'user' ? 'delivery' : 'user')}
+                activeOpacity={0.7}
+                style={{ alignItems: 'center' }}
+              >
+                <Text style={{ color: Colors.textTertiary, fontSize: 13, fontWeight: '500' }}>
+                  {userType === 'user' ? 'Delivery Partner Login' : 'Customer Login'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </Animated.View>
         </ScrollView>

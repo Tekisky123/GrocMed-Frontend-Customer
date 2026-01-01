@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Cart, CartItem, Product } from '@/types';
-import { MOCK_PRODUCTS } from '@/constants/mockData';
+import React, { createContext, useCallback, useContext, useState } from 'react';
+import { useToast } from './ToastContext';
 
 interface CartContextType {
   cart: Cart;
@@ -27,6 +27,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     total: 0,
   });
 
+  const { showToast } = useToast();
+
   const calculateCart = useCallback((items: CartItem[], discount: number = 0, couponCode?: string) => {
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);
     const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
@@ -51,10 +53,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         newItems = prevCart.items.map((item) =>
           item.productId === product.id
             ? {
-                ...item,
-                quantity: item.quantity + quantity,
-                total: (item.quantity + quantity) * item.price,
-              }
+              ...item,
+              quantity: item.quantity + quantity,
+              total: (item.quantity + quantity) * item.price,
+            }
             : item
         );
       } else {
@@ -73,7 +75,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       return calculateCart(newItems, prevCart.discount, prevCart.couponCode);
     });
-  }, [calculateCart]);
+    showToast(`Added ${product.name} to cart`, 'success');
+  }, [calculateCart, showToast]);
 
   const removeFromCart = useCallback((productId: string) => {
     setCart((prevCart) => {
@@ -92,10 +95,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const newItems = prevCart.items.map((item) =>
         item.productId === productId
           ? {
-              ...item,
-              quantity,
-              total: item.price * quantity,
-            }
+            ...item,
+            quantity,
+            total: item.price * quantity,
+          }
           : item
       );
       return calculateCart(newItems, prevCart.discount, prevCart.couponCode);

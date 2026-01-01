@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
-import { Product } from '@/types';
-import { useCart } from '@/contexts/CartContext';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
+import { useCart } from '@/contexts/CartContext';
+import { Product } from '@/types';
+import React from 'react';
+import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
 
 interface ProductCardProps {
   product: Product;
@@ -65,19 +65,19 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           elevation: 1,
           opacity: !product.inStock ? 0.6 : 1,
         }}>
-          <View style={{ position: 'relative', backgroundColor: Colors.gray50, height: 180 }}>
+          <View style={{ position: 'relative', backgroundColor: Colors.surface, height: 180, alignItems: 'center', justifyContent: 'center' }}>
             <Image
               source={{ uri: product.image }}
               style={{ width: '100%', height: '100%' }}
               resizeMode="contain"
             />
-            
+
             {product.discount && (
               <View style={{
                 position: 'absolute',
                 top: 8,
                 left: 8,
-                backgroundColor: Colors.error,
+                backgroundColor: Colors.primary,
                 paddingHorizontal: 8,
                 paddingVertical: 4,
                 borderRadius: 4,
@@ -87,7 +87,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
                 </Text>
               </View>
             )}
-            
+
             {!product.inStock && (
               <View style={{
                 position: 'absolute',
@@ -114,29 +114,29 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           </View>
 
           <View style={{ padding: 12 }}>
-            <Text 
-              style={{ 
-                color: Colors.textPrimary, 
-                fontWeight: '500', 
-                fontSize: 14, 
+            <Text
+              style={{
+                color: Colors.textPrimary,
+                fontWeight: '500',
+                fontSize: 14,
                 marginBottom: 6,
                 lineHeight: 18,
                 minHeight: 36,
-              }} 
+              }}
               numberOfLines={2}
             >
               {product.name}
             </Text>
 
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
               marginBottom: 8,
             }}>
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                backgroundColor: Colors.success,
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: Colors.accent,
                 paddingHorizontal: 6,
                 paddingVertical: 2,
                 borderRadius: 4,
@@ -152,21 +152,21 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
               </Text>
             </View>
 
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'baseline', 
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
               marginBottom: 12,
             }}>
               <Text style={{ color: Colors.textPrimary, fontWeight: '700', fontSize: 18 }}>
                 ₹{product.price}
               </Text>
               {product.originalPrice && (
-                <Text style={{ 
-                  color: Colors.textTertiary, 
-                  textDecorationLine: 'line-through', 
-                  fontSize: 12, 
+                <Text style={{
+                  color: Colors.textTertiary,
+                  textDecorationLine: 'line-through',
+                  fontSize: 12,
                   marginLeft: 8,
-                  fontWeight: '400' 
+                  fontWeight: '400'
                 }}>
                   ₹{product.originalPrice}
                 </Text>

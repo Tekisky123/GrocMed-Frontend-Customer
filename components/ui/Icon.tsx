@@ -1,5 +1,5 @@
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
-import { MaterialIcons, Ionicons, Feather } from '@expo/vector-icons';
 
 type IconLibrary = 'material' | 'ionicons' | 'feather';
 
@@ -61,4 +61,5 @@ export const Icons = {
   radioChecked: { name: 'radio-button-checked', library: 'material' as IconLibrary },
   radioUnchecked: { name: 'radio-button-unchecked', library: 'material' as IconLibrary },
   closeCircle: { name: 'cancel', library: 'material' as IconLibrary },
+  category: { name: 'category', library: 'material' as IconLibrary },
 };

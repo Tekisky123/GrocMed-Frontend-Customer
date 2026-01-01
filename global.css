@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+
+  /* Set default background to modern off-white */
+  html,
+  body,
+  #root {
+    background-color: #F8F9FA;
+  }
+}

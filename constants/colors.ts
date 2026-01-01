@@ -1,63 +1,69 @@
-// Modern Professional Color Palette
 export const Colors = {
-  // Primary Brand Colors
-  primary: '#FF6B35',
-  primaryLight: '#FF8C5A',
-  primaryDark: '#E55A2B',
-  
-  // Accent Colors
-  accent: '#6366F1',
-  accentLight: '#818CF8',
-  accentDark: '#4F46E5',
-  
+  // Primary Brand Colors (Orange - Modern/Action)
+  primary: '#F8800E',     // Primary brand orange
+  primaryLight: '#FAA353', // Lighter variant
+  primaryDark: '#A7461B',  // Dark orange / brown accent
+
+  // Secondary/Accent Colors (Green - Freshness/Nature)
+  accent: '#63B041',      // Primary brand green
+  accentLight: '#85C866', // Lighter variant
+  accentDark: '#2C691D',  // Dark green accent
+
   // Success & Status
-  success: '#10B981',
-  successLight: '#34D399',
-  warning: '#F59E0B',
+  success: '#63B041',     // Aligning success with brand green (New Accent)
+  successLight: '#85C866',
+  warning: '#F8800E',     // Aligning warning with brand orange (New Primary)
   error: '#EF4444',
   info: '#3B82F6',
   infoLight: '#60A5FA',
-  
-  // Neutral Grays
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827',
-  
+
+  // Neutral System (Cool Grays)
+  neutral: '#64748B',     // Slate 500
+  neutralLight: '#94A3B8', // Slate 400
+  neutralDark: '#475569',  // Slate 600
+
+  // Modern Grays
+  gray50: '#F8F9FA',      // Matching Background
+  gray100: '#F1F5F9',     // Slate 100
+  gray200: '#E2E8F0',     // Slate 200
+  gray300: '#CBD5E1',     // Slate 300
+  gray400: '#94A3B8',     // Slate 400
+  gray500: '#64748B',     // Slate 500
+  gray600: '#475569',     // Slate 600
+  gray700: '#334155',     // Slate 700
+  gray800: '#1E293B',     // Slate 800
+  gray900: '#0F172A',     // Slate 900
+
   // Backgrounds
-  background: '#F0F4F8',
-  surface: 'rgba(255, 255, 255, 0.95)',
-  surfaceLight: 'rgba(255, 255, 255, 0.85)',
-  
+  background: '#F8F9FA',  // Modern Crisp Off-White
+  surface: '#FFFFFF',     // Pure White
+  surfaceLight: 'rgba(255, 255, 255, 0.95)',
+  secondaryBackground: '#F1F5F9', // Light Gray
+
   // Text
-  textPrimary: '#1F2937',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  textPrimary: '#0F172A',   // Slate 900 (High Contrast)
+  textSecondary: '#475569', // Slate 600
+  textTertiary: '#94A3B8',  // Slate 400
   textWhite: '#FFFFFF',
-  
+
   // Glass Effects
-  glassLight: 'rgba(255, 255, 255, 0.7)',
-  glassMedium: 'rgba(255, 255, 255, 0.85)',
-  glassHeavy: 'rgba(255, 255, 255, 0.95)',
-  
+  glassLight: 'rgba(245, 234, 210, 0.7)',  // Tinted with cream
+  glassMedium: 'rgba(255, 255, 255, 0.65)',
+  glassHeavy: 'rgba(255, 255, 255, 0.90)',
+
   // Borders & Shadows
-  border: 'rgba(229, 231, 235, 0.8)',
-  borderLight: 'rgba(243, 244, 246, 0.6)',
-  shadow: '#000000',
-  
+  border: '#E2E8F0',        // Slate 200
+  borderLight: '#F1F5F9',   // Slate 100
+  shadow: '#64748B',        // Cool Shadow
+
   // Error States
-  errorLight: 'rgba(254, 226, 226, 0.9)',
-  errorLightBorder: 'rgba(254, 202, 202, 0.6)',
-  
+  errorLight: 'rgba(239, 68, 68, 0.1)',
+  errorLightBorder: 'rgba(239, 68, 68, 0.2)',
+
   // Gradients
-  gradientPrimary: ['#FF6B35', '#FF8C5A'],
-  gradientAccent: ['#6366F1', '#818CF8'],
-  gradientSuccess: ['#10B981', '#34D399'],
+  gradientPrimary: ['#63B041', '#85C866'],
+  gradientAccent: ['#F8800E', '#FAA353'],
+  gradientSuccess: ['#63B041', '#85C866'],
+  gradientSurface: ['#FFFFFF', '#F5EAD2'],
 };
 

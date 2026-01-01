@@ -1,21 +1,21 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList, Animated, Platform } from 'react-native';
-import { router } from 'expo-router';
-import { MOCK_ORDERS } from '@/constants/mockData';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Icon, Icons } from '@/components/ui/Icon';
-import { Order, OrderStatus } from '@/types';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
+import { MOCK_ORDERS } from '@/constants/mockData';
+import { Order, OrderStatus } from '@/types';
+import { router } from 'expo-router';
+import React from 'react';
+import { Animated, FlatList, Platform, Text, TouchableOpacity, View } from 'react-native';
 
 const statusColors: Record<OrderStatus, { bg: string; text: string; border: string }> = {
-  pending: { bg: 'rgba(254, 243, 199, 0.9)', text: '#D97706', border: 'rgba(253, 230, 138, 0.6)' },
-  confirmed: { bg: 'rgba(219, 234, 254, 0.9)', text: '#2563EB', border: 'rgba(191, 219, 254, 0.6)' },
-  processing: { bg: 'rgba(233, 213, 255, 0.9)', text: '#7C3AED', border: 'rgba(221, 214, 254, 0.6)' },
-  packed: { bg: 'rgba(224, 231, 255, 0.9)', text: '#6366F1', border: 'rgba(199, 210, 254, 0.6)' },
-  shipped: { bg: 'rgba(209, 250, 229, 0.9)', text: '#059669', border: 'rgba(167, 243, 208, 0.6)' },
-  out_for_delivery: { bg: 'rgba(254, 215, 170, 0.9)', text: '#EA580C', border: 'rgba(253, 186, 116, 0.6)' },
-  delivered: { bg: 'rgba(209, 250, 229, 0.9)', text: '#059669', border: 'rgba(167, 243, 208, 0.6)' },
-  cancelled: { bg: 'rgba(254, 226, 226, 0.9)', text: '#DC2626', border: 'rgba(254, 202, 202, 0.6)' },
+  pending: { bg: 'rgba(248, 128, 14, 0.1)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.3)' },
+  confirmed: { bg: 'rgba(99, 176, 65, 0.1)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.3)' },
+  processing: { bg: 'rgba(248, 128, 14, 0.15)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.4)' },
+  packed: { bg: 'rgba(99, 176, 65, 0.15)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.4)' },
+  shipped: { bg: 'rgba(99, 176, 65, 0.2)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.5)' },
+  out_for_delivery: { bg: 'rgba(248, 128, 14, 0.2)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.5)' }, // Highlight active delivery
+  delivered: { bg: 'rgba(99, 176, 65, 0.25)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.6)' },
+  cancelled: { bg: 'rgba(239, 68, 68, 0.1)', text: Colors.error, border: 'rgba(239, 68, 68, 0.3)' },
   refunded: { bg: 'rgba(243, 244, 246, 0.9)', text: '#6B7280', border: 'rgba(229, 231, 235, 0.6)' },
 };
 
@@ -72,10 +72,10 @@ export default function OrdersScreen() {
               shadowRadius: 4,
               elevation: 2,
             }}>
-              <View style={{ 
+              <View style={{
                 backgroundColor: Colors.gray100,
-                borderRadius: 60, 
-                padding: 24, 
+                borderRadius: 60,
+                padding: 24,
                 marginBottom: 20,
               }}>
                 <Icon name={Icons.orders.name} size={60} color={Colors.textSecondary} library={Icons.orders.library} />
@@ -145,9 +145,9 @@ export default function OrdersScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Icon name="schedule" size={14} color={Colors.textSecondary} library="material" />
                         <Text style={{ fontSize: 14, color: Colors.textSecondary, fontWeight: '500' }}>
-                          {new Date(item.placedAt).toLocaleDateString('en-IN', { 
-                            day: 'numeric', 
-                            month: 'short', 
+                          {new Date(item.placedAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
                             year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit',
@@ -174,9 +174,9 @@ export default function OrdersScreen() {
                     </View>
                   </View>
 
-                  <View style={{ 
-                    borderTopWidth: 1.5, 
-                    borderTopColor: Colors.gray200, 
+                  <View style={{
+                    borderTopWidth: 1.5,
+                    borderTopColor: Colors.gray200,
                     paddingTop: 16,
                     flexDirection: 'row',
                     justifyContent: 'space-between',

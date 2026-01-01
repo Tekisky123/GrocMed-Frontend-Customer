@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Animated, Platform } from 'react-native';
-import { router } from 'expo-router';
-import { useCart } from '@/contexts/CartContext';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Icon, Icons } from '@/components/ui/Icon';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
+import { useCart } from '@/contexts/CartContext';
+import { router } from 'expo-router';
+import React from 'react';
+import { Animated, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const SECTION_PADDING = 20;
 
@@ -41,10 +41,10 @@ export default function CartScreen() {
               shadowRadius: 4,
               elevation: 2,
             }}>
-              <View style={{ 
+              <View style={{
                 backgroundColor: Colors.gray100,
-                borderRadius: 60, 
-                padding: 24, 
+                borderRadius: 60,
+                padding: 24,
                 marginBottom: 20,
               }}>
                 <Icon name={Icons.cart.name} size={60} color={Colors.textSecondary} library={Icons.cart.library} />
@@ -78,15 +78,15 @@ export default function CartScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader 
-        title="Shopping Cart" 
+      <PageHeader
+        title="Shopping Cart"
         variant="primary"
         rightComponent={
           cart.items.length > 0 ? (
-            <TouchableOpacity 
-              onPress={clearCart} 
-              style={{ 
-                flexDirection: 'row', 
+            <TouchableOpacity
+              onPress={clearCart}
+              style={{
+                flexDirection: 'row',
                 alignItems: 'center',
                 backgroundColor: 'rgba(255, 255, 255, 0.25)',
                 paddingHorizontal: 12,
@@ -105,8 +105,8 @@ export default function CartScreen() {
           ) : undefined
         }
       />
-      <ScrollView 
-        style={{ flex: 1 }} 
+      <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: headerHeight + 16, paddingHorizontal: SECTION_PADDING }}
         showsVerticalScrollIndicator={false}
       >
@@ -146,18 +146,18 @@ export default function CartScreen() {
                 }}>
                   <Image
                     source={{ uri: item.product.image }}
-                    style={{ 
-                      width: '100%', 
+                    style={{
+                      width: '100%',
                       height: '100%',
                     }}
                     resizeMode="contain"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ 
-                    fontSize: 15, 
-                    fontWeight: '600', 
-                    color: Colors.textPrimary, 
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '600',
+                    color: Colors.textPrimary,
                     marginBottom: 6,
                     lineHeight: 20,
                   }} numberOfLines={2}>
@@ -170,9 +170,9 @@ export default function CartScreen() {
                     <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary }}>
                       ₹{item.total}
                     </Text>
-                    <View style={{ 
-                      flexDirection: 'row', 
-                      alignItems: 'center', 
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       backgroundColor: Colors.gray100,
                       borderRadius: 6,
                       borderWidth: 1,
@@ -185,11 +185,11 @@ export default function CartScreen() {
                       >
                         <Icon name={Icons.remove.name} size={18} color={Colors.textPrimary} library={Icons.remove.library} />
                       </TouchableOpacity>
-                      <Text style={{ 
-                        paddingHorizontal: 16, 
-                        paddingVertical: 8, 
-                        color: Colors.textPrimary, 
-                        fontWeight: '600', 
+                      <Text style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        color: Colors.textPrimary,
+                        fontWeight: '600',
                         fontSize: 14,
                         borderLeftWidth: 1,
                         borderRightWidth: 1,
@@ -208,9 +208,9 @@ export default function CartScreen() {
                   </View>
                   <TouchableOpacity
                     onPress={() => removeFromCart(item.productId)}
-                    style={{ 
-                      flexDirection: 'row', 
-                      alignItems: 'center', 
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       alignSelf: 'flex-start',
                       paddingVertical: 6,
                     }}
@@ -229,9 +229,9 @@ export default function CartScreen() {
       </ScrollView>
 
       {/* Modern Summary */}
-      <Animated.View style={{ 
-        opacity: fadeAnim, 
-        paddingHorizontal: SECTION_PADDING, 
+      <Animated.View style={{
+        opacity: fadeAnim,
+        paddingHorizontal: SECTION_PADDING,
         paddingTop: 16,
         paddingBottom: Platform.OS === 'ios' ? 34 : 16,
         backgroundColor: Colors.surface,
@@ -274,19 +274,19 @@ export default function CartScreen() {
             </View>
             {cart.discount > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <Text style={{ color: Colors.success, fontSize: 14, fontWeight: '400' }}>Discount</Text>
-                <Text style={{ color: Colors.success, fontWeight: '600', fontSize: 14 }}>
+                <Text style={{ color: Colors.primary, fontSize: 14, fontWeight: '400' }}>Discount</Text>
+                <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14 }}>
                   -₹{cart.discount.toFixed(2)}
                 </Text>
               </View>
             )}
-            <View style={{ 
-              borderTopWidth: 1, 
-              borderTopColor: Colors.gray200, 
-              paddingTop: 12, 
+            <View style={{
+              borderTopWidth: 1,
+              borderTopColor: Colors.gray200,
+              paddingTop: 12,
               marginTop: 8,
-              flexDirection: 'row', 
-              justifyContent: 'space-between' 
+              flexDirection: 'row',
+              justifyContent: 'space-between'
             }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary }}>Total</Text>
               <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.textPrimary }}>

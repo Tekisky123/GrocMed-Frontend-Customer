@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
-import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
+import React from 'react';
+import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const SECTION_PADDING = 20;
 
@@ -21,11 +21,11 @@ export default function ProfileScreen() {
 
   const menuItems = [
     { icon: Icons.profile, title: 'Edit Profile', route: '/profile/edit', color: Colors.primary },
-    { icon: Icons.location, title: 'Addresses', route: '/profile/addresses', color: Colors.success },
-    { icon: Icons.notification, title: 'Notifications', route: '/notifications', color: Colors.warning },
-    { icon: Icons.settings, title: 'Settings', route: '/settings', color: Colors.accent },
-    { icon: Icons.support, title: 'Customer Support', route: '/support', color: Colors.info },
-    { icon: { name: 'description', library: 'material' as const }, title: 'Terms & Conditions', route: '/terms', color: Colors.accent },
+    { icon: Icons.location, title: 'Addresses', route: '/profile/addresses', color: Colors.primary },
+    { icon: Icons.notification, title: 'Notifications', route: '/notifications', color: Colors.accent },
+    { icon: Icons.settings, title: 'Settings', route: '/settings', color: Colors.primary },
+    { icon: Icons.support, title: 'Customer Support', route: '/support', color: Colors.accent },
+    { icon: { name: 'description', library: 'material' as const }, title: 'Terms & Conditions', route: '/terms', color: Colors.primary },
     { icon: { name: 'lock', library: 'material' as const }, title: 'Privacy Policy', route: '/privacy', color: Colors.gray600 },
   ];
 
@@ -34,10 +34,10 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Modern Header */}
         <Animated.View style={{ opacity: fadeAnim }}>
-          <View style={{ 
-            backgroundColor: Colors.primary, 
-            paddingTop: 50, 
-            paddingBottom: 32, 
+          <View style={{
+            backgroundColor: Colors.primary,
+            paddingTop: 50,
+            paddingBottom: 32,
             paddingHorizontal: SECTION_PADDING,
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
               </Text>
               {user?.isVerified && (
                 <View style={{
-                  backgroundColor: Colors.success,
+                  backgroundColor: Colors.accent,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 6,
@@ -118,10 +118,10 @@ export default function ProfileScreen() {
                 }}>
                   <Icon name={item.icon.name} size={20} color={item.color} library={item.icon.library} />
                 </View>
-                <Text style={{ 
-                  fontSize: 16, 
-                  fontWeight: '500', 
-                  color: Colors.textPrimary, 
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '500',
+                  color: Colors.textPrimary,
                   flex: 1,
                 }}>
                   {item.title}

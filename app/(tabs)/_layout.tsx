@@ -1,10 +1,10 @@
+import { HapticTab } from '@/components/haptic-tab';
+import { Icon, Icons } from '@/components/ui/Icon';
+import { Colors } from '@/constants/colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, Text } from 'react-native';
-import { HapticTab } from '@/components/haptic-tab';
-import { Icon, Icons } from '@/components/ui/Icon';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/colors';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -39,11 +39,11 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={Icons.home.name} 
-              size={focused ? 26 : 24} 
-              color={color} 
-              library={Icons.home.library} 
+            <Icon
+              name={Icons.home.name}
+              size={focused ? 26 : 24}
+              color={color}
+              library={Icons.home.library}
             />
           ),
           tabBarLabel: ({ color, focused }) => (
@@ -64,11 +64,11 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={Icons.search.name} 
-              size={focused ? 26 : 24} 
-              color={color} 
-              library={Icons.search.library} 
+            <Icon
+              name={Icons.category.name}
+              size={focused ? 26 : 24}
+              color={color}
+              library={Icons.category.library}
             />
           ),
           tabBarLabel: ({ color, focused }) => (
@@ -95,11 +95,11 @@ export default function TabLayout() {
         options={{
           title: 'Orders',
           tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={Icons.orders.name} 
-              size={focused ? 26 : 24} 
-              color={color} 
-              library={Icons.orders.library} 
+            <Icon
+              name={Icons.orders.name}
+              size={focused ? 26 : 24}
+              color={color}
+              library={Icons.orders.library}
             />
           ),
           tabBarLabel: ({ color, focused }) => (
@@ -120,11 +120,11 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Icon 
-              name={Icons.profile.name} 
-              size={focused ? 26 : 24} 
-              color={color} 
-              library={Icons.profile.library} 
+            <Icon
+              name={Icons.profile.name}
+              size={focused ? 26 : 24}
+              color={color}
+              library={Icons.profile.library}
             />
           ),
           tabBarLabel: ({ color, focused }) => (

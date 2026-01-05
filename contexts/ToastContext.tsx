@@ -171,7 +171,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
-        elevation: 8,
         borderLeftWidth: 6,
         borderWidth: 1, // Add subtle border for definition
         borderColor: '#f0f0f0',

@@ -1,10 +1,9 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { router } from 'expo-router';
-import { MOCK_CATEGORIES } from '@/constants/mockData';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Icon, Icons } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
+import { MOCK_CATEGORIES } from '@/constants/mockData';
+import { router } from 'expo-router';
+import React from 'react';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CategoriesScreen() {
   return (
@@ -14,7 +13,7 @@ export default function CategoriesScreen() {
       <FlatList
         data={MOCK_CATEGORIES}
         numColumns={2}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || Math.random().toString()}
         contentContainerStyle={{ padding: 20 }}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -37,20 +36,20 @@ export default function CategoriesScreen() {
               shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.05,
               shadowRadius: 2,
-              elevation: 1,
+              // elevation: 1,
             }}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>{item.icon}</Text>
-              <Text style={{ 
-                fontSize: 16, 
-                fontWeight: '600', 
-                color: Colors.textPrimary, 
-                textAlign: 'center', 
-                marginBottom: 4 
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: Colors.textPrimary,
+                textAlign: 'center',
+                marginBottom: 4
               }}>
                 {item.name}
               </Text>
-              <Text style={{ 
-                fontSize: 13, 
+              <Text style={{
+                fontSize: 13,
                 color: Colors.textSecondary,
                 textAlign: 'center',
               }}>

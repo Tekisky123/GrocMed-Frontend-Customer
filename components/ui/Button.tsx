@@ -1,6 +1,6 @@
-import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, Animated } from 'react-native';
 import { Colors } from '@/constants/colors';
+import React from 'react';
+import { ActivityIndicator, Animated, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -44,7 +44,7 @@ export function Button({
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.4,
       shadowRadius: 16,
-      elevation: 10,
+      // elevation: 10,
     },
     secondary: {
       backgroundColor: Colors.gray100,

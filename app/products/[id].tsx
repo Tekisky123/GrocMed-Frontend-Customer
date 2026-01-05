@@ -1,696 +1,480 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Animated, Platform } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { MOCK_PRODUCTS } from '@/constants/mockData';
-import { useCart } from '@/contexts/CartContext';
-import { Icon, Icons } from '@/components/ui/Icon';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { Product } from '@/types';
+import { Product as ApiProduct, productApi } from '@/api/productApi';
+import { Icon } from '@/components/ui/Icon';
+import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
+import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/contexts/ToastContext';
+import { Product } from '@/types';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 120 : 100;
+
+// Helper to map API product to UI product
+const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
+    const discount = apiProduct.mrp && apiProduct.offerPrice
+        ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
+        : 0;
+
+    return {
+        id: apiProduct._id,
+        name: apiProduct.name,
+        description: apiProduct.description,
+        price: apiProduct.offerPrice || apiProduct.mrp,
+        originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+        discount: discount > 0 ? discount : undefined,
+        image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
+        images: apiProduct.images,
+        categoryId: apiProduct.category,
+        brandId: apiProduct.brand,
+        brand: apiProduct.brand, // Assuming brand name or object is passed
+        category: apiProduct.category,
+        inStock: apiProduct.stock > 0 && apiProduct.isActive,
+        stockQuantity: apiProduct.stock,
+        unit: apiProduct.unitType,
+        minQuantity: apiProduct.minimumQuantity || 1,
+        maxQuantity: 10,
+        rating: 4.5, // Placeholder if not in API
+        reviewCount: 127, // Placeholder if not in API
+        ingredients: [],
+        nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        manfDate: apiProduct.manfDate,
+        expiryDate: apiProduct.expiryDate,
+    };
+};
 
 export default function ProductDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { addToCart } = useCart();
-  const [quantity, setQuantity] = useState(1);
-  const [selectedTab, setSelectedTab] = useState<'details' | 'nutrition' | 'reviews'>('details');
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const { id } = useLocalSearchParams<{ id: string }>();
+    const { addToCart, getItemQuantity } = useCart();
+    const { showToast } = useToast();
 
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+    const [product, setProduct] = useState<Product | null>(null);
+    const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [quantity, setQuantity] = useState(1);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const product = MOCK_PRODUCTS.find((p) => p.id === id);
+    useEffect(() => {
+        loadProduct();
+    }, [id]);
 
-  if (!product) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background }}>
-        <PageHeader title="Product Not Found" variant="primary" />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: HEADER_HEIGHT, paddingHorizontal: 24 }}>
-          <Animated.View style={{ opacity: fadeAnim, width: '100%', maxWidth: 400 }}>
-            <View style={{
-              backgroundColor: Colors.surface,
-              borderRadius: 20,
-              padding: 40,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 4,
-            }}>
-              <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 24, letterSpacing: -0.5 }}>
-                Product not found
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={{
-                  backgroundColor: Colors.primary,
-                  paddingVertical: 16,
-                  paddingHorizontal: 32,
-                  borderRadius: 14,
-                  shadowColor: Colors.primary,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 6,
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: Colors.textWhite, fontWeight: '700', fontSize: 16, letterSpacing: 0.5 }}>
-                  Go Back
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </View>
-    );
-  }
+    useEffect(() => {
+        if (product) {
+            const cartQty = getItemQuantity(product.id);
+            setQuantity(cartQty > 0 ? cartQty : product.minQuantity);
 
-  const handleAddToCart = () => {
-    if (product.inStock) {
-      addToCart(product, quantity);
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [product]);
+
+    const loadProduct = async () => {
+        if (!id) return;
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await productApi.getProductById(id);
+            if (response.success && response.data) {
+                const mappedProduct = mapApiProductToUiProduct(response.data);
+                setProduct(mappedProduct);
+
+                const suggestedResponse = await productApi.getSuggestedProducts(id);
+                if (suggestedResponse.success && Array.isArray(suggestedResponse.data)) {
+                    const suggested = suggestedResponse.data
+                        .map(mapApiProductToUiProduct);
+                    setSuggestedProducts(suggested);
+                }
+            } else {
+                setError('Product not found');
+            }
+        } catch (err) {
+            console.error('Error loading product:', err);
+            setError('Failed to load product');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleQuantityChange = (newQuantity: number) => {
+        if (!product) return;
+
+        if (newQuantity < product.minQuantity) {
+            showToast(`Minimum quantity is ${product.minQuantity}`, 'info');
+            return;
+        }
+
+        if (newQuantity > product.stockQuantity) {
+            showToast(`Only ${product.stockQuantity} items available`, 'info');
+            return;
+        }
+
+        setQuantity(newQuantity);
+    };
+
+    const handleAddToCart = async () => {
+        if (!product) return;
+
+        try {
+            await addToCart(product, quantity);
+            showToast(`Added ${quantity} ${product.unit} to cart`, 'success');
+        } catch (error) {
+            showToast('Failed to add to cart', 'error');
+        }
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                </View>
+            </SafeAreaView>
+        );
     }
-  };
 
-  const alternativeProducts = MOCK_PRODUCTS
-    .filter((p) => p.categoryId === product.categoryId && p.id !== product.id && p.inStock)
-    .slice(0, 3);
+    if (error || !product) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+                <View style={{ padding: 16 }}>
+                    <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
+                        <Text style={{ marginLeft: 8, fontSize: 16, fontWeight: '600', color: Colors.textPrimary }}>Back</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 16, color: Colors.textSecondary }}>{error || 'Product not found'}</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader title="Product Details" variant="primary" />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
-      >
-        {/* Modern Product Image */}
-        <Animated.View style={{ position: 'relative', opacity: fadeAnim }}>
-          <View style={{
-            backgroundColor: Colors.gray100,
-            width,
-            height: width * 0.9,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 24,
-          }}>
-            <Image
-              source={{ uri: product.image }}
-              style={{ width: width * 0.75, height: width * 0.75 }}
-              resizeMode="contain"
-            />
-            {product.discount && (
-              <View style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                backgroundColor: Colors.error,
+    const displayImages = product.images && product.images.length > 0 ? product.images : [product.image];
+    const hasDiscount = product.discount && product.discount > 0;
+
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+            {/* Header */}
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
                 paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 12,
-                shadowColor: Colors.error,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 8,
-                elevation: 6,
-                borderWidth: 2,
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-              }}>
-                <Text style={{ color: Colors.textWhite, fontSize: 14, fontWeight: '800', letterSpacing: 0.5 }}>
-                  {product.discount}% OFF
-                </Text>
-              </View>
-            )}
-          </View>
-        </Animated.View>
-
-        <View style={{ paddingHorizontal: 20, paddingBottom: 120 }}>
-          {/* Enhanced Product Info */}
-          <Animated.View style={{ marginBottom: 28, opacity: fadeAnim }}>
-            <View style={{
-              backgroundColor: Colors.surface,
-              borderRadius: 20,
-              padding: 24,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-              elevation: 4,
+                paddingVertical: 14, // Increased slightly for better touch area
+                backgroundColor: Colors.background,
+                borderBottomWidth: 1,
+                borderBottomColor: Colors.border,
             }}>
-              <Text style={{ 
-                fontSize: 12, 
-                color: Colors.textSecondary, 
-                marginBottom: 8, 
-                fontWeight: '700', 
-                letterSpacing: 1, 
-                textTransform: 'uppercase' 
-              }}>
-                {product.brand}
-              </Text>
-              <Text style={{ 
-                fontSize: 26, 
-                fontWeight: '800', 
-                color: Colors.textPrimary, 
-                marginBottom: 16, 
-                lineHeight: 34, 
-                letterSpacing: -0.6 
-              }}>
-                {product.name}
-              </Text>
-              
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                marginBottom: 20, 
-                gap: 12, 
-                flexWrap: 'wrap' 
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                  <Text style={{ 
-                    fontSize: 30, 
-                    fontWeight: '800', 
-                    color: Colors.textPrimary, 
-                    letterSpacing: -0.8 
-                  }}>
-                    ₹{product.price}
-                  </Text>
-                  {product.originalPrice && (
-                    <Text style={{ 
-                      fontSize: 18, 
-                      color: Colors.textTertiary, 
-                      textDecorationLine: 'line-through', 
-                      fontWeight: '600' 
-                    }}>
-                      ₹{product.originalPrice}
-                    </Text>
-                  )}
-                </View>
-                <View style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  backgroundColor: `${Colors.success}15`,
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 10,
-                  gap: 5,
-                  borderWidth: 1,
-                  borderColor: `${Colors.success}30`,
-                }}>
-                  <Icon name={Icons.star.name} size={14} color={Colors.success} library={Icons.star.library} />
-                  <Text style={{ color: Colors.success, fontSize: 13, fontWeight: '800' }}>
-                    {product.rating}
-                  </Text>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                    ({product.reviewCount})
-                  </Text>
-                </View>
-              </View>
-              
-              {!product.inStock && (
-                <View style={{
-                  backgroundColor: Colors.errorLight,
-                  padding: 14,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  borderColor: Colors.error,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                }}>
-                  <Icon name="error" size={20} color={Colors.error} library="material" />
-                  <Text style={{ color: Colors.error, fontWeight: '700', fontSize: 15, flex: 1 }}>
-                    Out of Stock
-                  </Text>
-                </View>
-              )}
-            </View>
-          </Animated.View>
-
-          {/* Enhanced Quantity Selector */}
-          {product.inStock && (
-            <Animated.View style={{ marginBottom: 28, opacity: fadeAnim }}>
-              <View style={{
-                backgroundColor: Colors.surface,
-                borderRadius: 20,
-                padding: 24,
-                borderWidth: 1,
-                borderColor: Colors.border,
-                shadowColor: Colors.shadow,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.08,
-                shadowRadius: 12,
-                elevation: 4,
-              }}>
-                <Text style={{ 
-                  fontSize: 16, 
-                  fontWeight: '700', 
-                  color: Colors.textPrimary, 
-                  marginBottom: 18, 
-                  letterSpacing: -0.2 
-                }}>
-                  Quantity ({product.unit})
-                </Text>
-                <View style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between' 
-                }}>
-                  <View style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    backgroundColor: Colors.gray100,
-                    borderRadius: 14,
-                    borderWidth: 2,
-                    borderColor: Colors.border,
-                  }}>
-                    <TouchableOpacity
-                      onPress={() => setQuantity(Math.max(product.minQuantity, quantity - 1))}
-                      style={{ paddingHorizontal: 20, paddingVertical: 14 }}
-                      activeOpacity={0.7}
-                    >
-                      <Icon name={Icons.remove.name} size={22} color={Colors.textPrimary} library={Icons.remove.library} />
-                    </TouchableOpacity>
-                    <Text style={{ 
-                      paddingHorizontal: 28, 
-                      paddingVertical: 14, 
-                      color: Colors.textPrimary, 
-                      fontWeight: '800', 
-                      fontSize: 18,
-                      borderLeftWidth: 2,
-                      borderRightWidth: 2,
-                      borderColor: Colors.border,
-                    }}>
-                      {quantity}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setQuantity(Math.min(product.maxQuantity, quantity + 1))}
-                      style={{ paddingHorizontal: 20, paddingVertical: 14 }}
-                      activeOpacity={0.7}
-                    >
-                      <Icon name={Icons.add.name} size={22} color={Colors.textPrimary} library={Icons.add.library} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: Colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 4 }}>
-                      Total
-                    </Text>
-                    <Text style={{ color: Colors.textPrimary, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 }}>
-                      ₹{product.price * quantity}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* Enhanced Tabs */}
-          <Animated.View style={{ marginBottom: 24, opacity: fadeAnim }}>
-            <View style={{ 
-              flexDirection: 'row', 
-              backgroundColor: Colors.gray100, 
-              borderRadius: 16, 
-              padding: 6,
-              borderWidth: 1,
-              borderColor: Colors.border,
-            }}>
-              {(['details', 'nutrition', 'reviews'] as const).map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setSelectedTab(tab)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 14,
-                    borderRadius: 12,
-                    backgroundColor: selectedTab === tab ? Colors.surface : 'transparent',
-                    shadowColor: selectedTab === tab ? Colors.shadow : 'transparent',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: selectedTab === tab ? 0.1 : 0,
-                    shadowRadius: 4,
-                    elevation: selectedTab === tab ? 2 : 0,
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      fontWeight: '700',
-                      fontSize: 14,
-                      letterSpacing: 0.2,
-                      color: selectedTab === tab ? Colors.textPrimary : Colors.textSecondary,
-                    }}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+                    <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
                 </TouchableOpacity>
-              ))}
+                <Text style={{ flex: 1, marginLeft: 12, fontSize: 18, fontWeight: '700', color: Colors.textPrimary }} numberOfLines={1}>
+                    {product.name}
+                </Text>
             </View>
-          </Animated.View>
 
-          {/* Enhanced Tab Content */}
-          <Animated.View style={{ opacity: fadeAnim, marginBottom: 24 }}>
-            <View style={{
-              backgroundColor: Colors.surface,
-              borderRadius: 20,
-              padding: 24,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-              elevation: 4,
-            }}>
-              {selectedTab === 'details' && (
-                <>
-                  <Text style={{ 
-                    fontSize: 16, 
-                    color: Colors.textPrimary, 
-                    marginBottom: 24, 
-                    lineHeight: 24, 
-                    fontWeight: '500' 
-                  }}>
-                    {product.description}
-                  </Text>
-                  {product.ingredients && (
-                    <View style={{ marginBottom: 24 }}>
-                      <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '800', 
-                        color: Colors.textPrimary, 
-                        marginBottom: 12, 
-                        letterSpacing: -0.3 
-                      }}>
-                        Ingredients
-                      </Text>
-                      <View style={{
-                        backgroundColor: Colors.gray100,
-                        borderRadius: 12,
-                        padding: 16,
-                        borderWidth: 1,
-                        borderColor: Colors.border,
-                      }}>
-                        <Text style={{ 
-                          fontSize: 15, 
-                          color: Colors.textSecondary, 
-                          lineHeight: 24, 
-                          fontWeight: '500' 
-                        }}>
-                          {product.ingredients.join(', ')}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                  {product.manufacturer && (
-                    <View style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingTop: 16,
-                      borderTopWidth: 1,
-                      borderTopColor: Colors.border,
-                    }}>
-                      <View style={{ marginRight: 10 }}>
-                        <Icon name="business" size={18} color={Colors.textSecondary} library="material" />
-                      </View>
-                      <Text style={{ fontSize: 14, color: Colors.textTertiary, fontWeight: '600' }}>
-                        Manufacturer: <Text style={{ color: Colors.textPrimary, fontWeight: '700' }}>{product.manufacturer}</Text>
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                <Animated.View style={{ opacity: fadeAnim }}>
 
-              {selectedTab === 'nutrition' && product.nutrition && (
-                <View>
-                  <Text style={{ 
-                    fontSize: 20, 
-                    fontWeight: '800', 
-                    color: Colors.textPrimary, 
-                    marginBottom: 24, 
-                    letterSpacing: -0.5 
-                  }}>
-                    Nutrition Facts
-                  </Text>
-                  <View style={{ gap: 16 }}>
-                    {[
-                      { label: 'Calories', value: `${product.nutrition.calories} kcal`, icon: 'local-fire-department' },
-                      { label: 'Protein', value: `${product.nutrition.protein}g`, icon: 'fitness-center' },
-                      { label: 'Carbs', value: `${product.nutrition.carbs}g`, icon: 'grain' },
-                      { label: 'Fat', value: `${product.nutrition.fat}g`, icon: 'opacity' },
-                      ...(product.nutrition.fiber ? [{ label: 'Fiber', value: `${product.nutrition.fiber}g`, icon: 'eco' }] : []),
-                    ].map((item, index) => (
-                      <View 
-                        key={index} 
-                        style={{ 
-                          flexDirection: 'row', 
-                          alignItems: 'center',
-                          justifyContent: 'space-between', 
-                          paddingVertical: 14, 
-                          paddingHorizontal: 16,
-                          backgroundColor: Colors.gray100,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: Colors.border,
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                          <View style={{
-                            backgroundColor: Colors.primary,
-                            borderRadius: 8,
-                            padding: 8,
-                          }}>
-                            <Icon name={item.icon} size={18} color={Colors.textWhite} library="material" />
-                          </View>
-                          <Text style={{ color: Colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
-                            {item.label}
-                          </Text>
+                    {/* Product Image Section - Consistent with ProductCard styles */}
+                    <View style={{ backgroundColor: '#F8F9FA', paddingVertical: 20, alignItems: 'center' }}>
+                        {hasDiscount && (
+                            <View style={{
+                                position: 'absolute',
+                                top: 16,
+                                left: 16,
+                                backgroundColor: Colors.error,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 8,
+                                zIndex: 1,
+                            }}>
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{product.discount}% OFF</Text>
+                            </View>
+                        )}
+
+                        <ScrollView
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onMomentumScrollEnd={(event) => {
+                                const index = Math.round(event.nativeEvent.contentOffset.x / width);
+                                setActiveImageIndex(index);
+                            }}
+                            contentContainerStyle={{ alignItems: 'center' }}
+                        >
+                            {displayImages.map((imageUri, index) => (
+                                <View key={index} style={{ width, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Image
+                                        source={{ uri: imageUri }}
+                                        style={{ width: width - 32, height: 300 }}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        {/* Pagination Dots */}
+                        {displayImages.length > 1 && (
+                            <View style={{ flexDirection: 'row', marginTop: 16, gap: 6 }}>
+                                {displayImages.map((_, index) => (
+                                    <View
+                                        key={index}
+                                        style={{
+                                            width: index === activeImageIndex ? 24 : 6,
+                                            height: 6,
+                                            borderRadius: 3,
+                                            backgroundColor: index === activeImageIndex ? Colors.primary : Colors.gray300,
+                                        }}
+                                    />
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Details Container */}
+                    <View style={{ padding: 16 }}>
+                        {/* Title & Unit */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.textPrimary, lineHeight: 28, marginBottom: 4 }}>
+                                {product.name}
+                            </Text>
+                            <Text style={{ fontSize: 14, color: Colors.textTertiary, fontWeight: '500' }}>
+                                {product.unit}
+                            </Text>
                         </View>
-                        <Text style={{ color: Colors.textPrimary, fontWeight: '800', fontSize: 16 }}>
-                          {item.value}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
 
-              {selectedTab === 'reviews' && (
-                <View>
-                  <View style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    marginBottom: 24,
-                  }}>
-                    <Text style={{ 
-                      fontSize: 20, 
-                      fontWeight: '800', 
-                      color: Colors.textPrimary, 
-                      letterSpacing: -0.5 
-                    }}>
-                      Reviews ({product.reviewCount})
-                    </Text>
-                    <View style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: `${Colors.success}15`,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 10,
-                      gap: 6,
-                      borderWidth: 1,
-                      borderColor: `${Colors.success}30`,
-                    }}>
-                      <Icon name={Icons.star.name} size={16} color={Colors.success} library={Icons.star.library} />
-                      <Text style={{ color: Colors.success, fontSize: 16, fontWeight: '800' }}>
-                        {product.rating}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={{ 
-                    alignItems: 'center', 
-                    paddingVertical: 60,
-                    backgroundColor: Colors.gray100,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: Colors.border,
-                  }}>
-                    <View style={{
-                      backgroundColor: Colors.surface,
-                      borderRadius: 50,
-                      padding: 20,
-                      marginBottom: 16,
-                    }}>
-                      <Icon name="rate-review" size={40} color={Colors.textSecondary} library="material" />
-                    </View>
-                    <Text style={{ color: Colors.textSecondary, fontSize: 16, fontWeight: '600', marginBottom: 6 }}>
-                      No reviews yet
-                    </Text>
-                    <Text style={{ color: Colors.textTertiary, fontSize: 14, fontWeight: '400' }}>
-                      Be the first to review this product!
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          </Animated.View>
+                        {/* Rating & Reviews */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#FFF8E1',
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                marginRight: 8
+                            }}>
+                                <Icon name="star" size={16} color="#FFA500" library="material" />
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#F57C00', marginLeft: 4 }}>
+                                    {product.rating}
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 13, color: Colors.textTertiary, fontWeight: '500' }}>
+                                {product.reviewCount} Ratings & Reviews
+                            </Text>
+                        </View>
 
-          {/* Enhanced Alternative Products */}
-          {!product.inStock && alternativeProducts.length > 0 && (
-            <Animated.View style={{ marginTop: 8, opacity: fadeAnim }}>
-              <Text style={{ 
-                fontSize: 22, 
-                fontWeight: '800', 
-                color: Colors.textPrimary, 
-                marginBottom: 20, 
-                letterSpacing: -0.5 
-              }}>
-                Similar Products Available
-              </Text>
-              {alternativeProducts.map((altProduct) => (
-                <TouchableOpacity
-                  key={altProduct.id}
-                  onPress={() => router.replace(`/products/${altProduct.id}`)}
-                  activeOpacity={0.8}
-                  style={{ marginBottom: 16 }}
-                >
-                  <View style={{
-                    backgroundColor: Colors.surface,
-                    borderRadius: 16,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: Colors.border,
-                    shadowColor: Colors.shadow,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    elevation: 3,
-                  }}>
-                    <View style={{ flexDirection: 'row' }}>
-                      <View style={{
-                        backgroundColor: Colors.gray100,
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        marginRight: 16,
-                        width: 100,
-                        height: 100,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        <Image
-                          source={{ uri: altProduct.image }}
-                          style={{ width: '90%', height: '90%' }}
-                          resizeMode="contain"
-                        />
-                      </View>
-                      <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <Text style={{ 
-                          fontSize: 16, 
-                          fontWeight: '700', 
-                          color: Colors.textPrimary, 
-                          marginBottom: 6, 
-                          letterSpacing: -0.3 
+                        {/* Price & Stock Block - Enhanced Professional Look */}
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            backgroundColor: Colors.surface,
+                            borderRadius: 16,
+                            padding: 16,
+                            borderWidth: 1,
+                            borderColor: 'rgba(0,0,0,0.05)',
+                            marginBottom: 24,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 8
                         }}>
-                          {altProduct.name}
-                        </Text>
-                        <Text style={{ 
-                          fontSize: 13, 
-                          color: Colors.textSecondary, 
-                          marginBottom: 10, 
-                          fontWeight: '600' 
-                        }}>
-                          {altProduct.brand}
-                        </Text>
-                        <Text style={{ 
-                          fontSize: 20, 
-                          fontWeight: '800', 
-                          color: Colors.textPrimary, 
-                          letterSpacing: -0.5 
-                        }}>
-                          ₹{altProduct.price}
-                        </Text>
-                      </View>
-                      <View style={{ justifyContent: 'center' }}>
-                        <Icon name="chevron-right" size={24} color={Colors.textTertiary} library="material" />
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </Animated.View>
-          )}
-        </View>
-      </ScrollView>
+                            <View>
+                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                    <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginRight: 8 }}>
+                                        ₹{product.price}
+                                    </Text>
+                                    {hasDiscount && (
+                                        <Text style={{ fontSize: 14, color: Colors.textTertiary, textDecorationLine: 'line-through' }}>
+                                            ₹{product.originalPrice}
+                                        </Text>
+                                    )}
+                                </View>
+                                {hasDiscount && (
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.success, marginTop: 4 }}>
+                                        You save ₹{(product.originalPrice || 0) - product.price}
+                                    </Text>
+                                )}
+                            </View>
 
-      {/* Enhanced Bottom Actions */}
-      <View style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: Colors.surface,
-        borderTopWidth: 1.5,
-        borderTopColor: Colors.border,
-        padding: 20,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-        elevation: 12,
-      }}>
-        {product.inStock ? (
-          <TouchableOpacity
-            onPress={handleAddToCart}
-            style={{
-              backgroundColor: Colors.primary,
-              paddingVertical: 18,
-              borderRadius: 14,
-              alignItems: 'center',
-              shadowColor: Colors.primary,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={{ color: Colors.textWhite, fontWeight: '800', fontSize: 17, letterSpacing: 0.5 }}>
-              Add to Cart - ₹{product.price * quantity}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={{
-              backgroundColor: Colors.gray200,
-              paddingVertical: 18,
-              borderRadius: 14,
-              alignItems: 'center',
-              borderWidth: 1.5,
-              borderColor: Colors.gray300,
-            }}
-            activeOpacity={0.8}
-            onPress={() => {
-              // Handle notify me
-            }}
-          >
-            <Text style={{ color: Colors.textSecondary, fontWeight: '800', fontSize: 17, letterSpacing: 0.5 }}>
-              Notify Me When Available
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+                            <View style={{ alignItems: 'flex-end' }}>
+                                {product.inStock ? (
+                                    <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={{ color: Colors.success, fontSize: 12, fontWeight: '700' }}>IN STOCK</Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ backgroundColor: '#FFEBEE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={{ color: Colors.error, fontSize: 12, fontWeight: '700' }}>OUT OF STOCK</Text>
+                                    </View>
+                                )}
+                                <Text style={{ fontSize: 11, color: Colors.textTertiary, marginTop: 4 }}>Inclusive of all taxes</Text>
+                            </View>
+                        </View>
+
+                        {/* Quantity Selector - Large Touch Targets */}
+                        <View style={{ marginBottom: 24 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 }}>
+                                Quantity
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: '#F3F4F6',
+                                    borderRadius: 12,
+                                    padding: 4
+                                }}>
+                                    <TouchableOpacity
+                                        onPress={() => handleQuantityChange(quantity - 1)}
+                                        disabled={quantity <= product.minQuantity}
+                                        style={{
+                                            width: 44,
+                                            height: 44,
+                                            backgroundColor: '#fff',
+                                            borderRadius: 10,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            shadowColor: "#000",
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: 0.1,
+                                            shadowRadius: 2,
+                                            opacity: quantity <= product.minQuantity ? 0.5 : 1
+                                        }}
+                                    >
+                                        <Icon name="remove" size={20} color={Colors.textPrimary} library="material" />
+                                    </TouchableOpacity>
+
+                                    <View style={{ width: 60, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>{quantity}</Text>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        onPress={() => handleQuantityChange(quantity + 1)}
+                                        disabled={quantity >= product.stockQuantity}
+                                        style={{
+                                            width: 44,
+                                            height: 44,
+                                            backgroundColor: Colors.primary,
+                                            borderRadius: 10,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity: quantity >= product.stockQuantity ? 0.5 : 1
+                                        }}
+                                    >
+                                        <Icon name="add" size={20} color="#fff" library="material" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Total Calculation */}
+                                <View>
+                                    <Text style={{ fontSize: 12, color: Colors.textTertiary, textAlign: 'right' }}>Total</Text>
+                                    <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>₹{product.price * quantity}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Product Highlights / Specs */}
+                        <View style={{ marginBottom: 24 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>
+                                Product Details
+                            </Text>
+                            <View style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 12, overflow: 'hidden' }}>
+                                <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, padding: 12 }}>
+                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Unit</Text>
+                                    <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{product.unit}</Text>
+                                </View>
+                                {/* Display Brand if is a string, checking since API might return ID */}
+                                {/* Only display if brand is defined and is a string for now, or use a safe method */}
+                                <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, padding: 12 }}>
+                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Availability</Text>
+                                    <Text style={{ flex: 1, color: Colors.success, fontSize: 13, fontWeight: '600' }}>In Stock</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', padding: 12 }}>
+                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Country of Origin</Text>
+                                    <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' }}>India</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Description */}
+                        {product.description && (
+                            <View style={{ marginBottom: 32 }}>
+                                <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 }}>
+                                    Description
+                                </Text>
+                                <Text style={{ fontSize: 14, color: Colors.textSecondary, lineHeight: 22 }}>
+                                    {product.description}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* Action Button */}
+                        <TouchableOpacity
+                            onPress={handleAddToCart}
+                            disabled={!product.inStock}
+                            style={{
+                                backgroundColor: product.inStock ? Colors.primary : Colors.gray300,
+                                paddingVertical: 18,
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                shadowColor: product.inStock ? Colors.primary : 'transparent',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: product.inStock ? 0.25 : 0,
+                                shadowRadius: 8,
+                            }}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={{
+                                fontSize: 16,
+                                fontWeight: '800',
+                                color: '#fff',
+                                letterSpacing: 0.5
+                            }}>
+                                {product.inStock ? 'ADD TO CART' : 'NOTIFY ME'}
+                            </Text>
+                        </TouchableOpacity>
+
+                    </View>
+
+                    {/* Related Products Divider */}
+                    <View style={{ height: 12, backgroundColor: '#F3F4F6', marginBottom: 24 }} />
+
+                    {/* Related Products */}
+                    {suggestedProducts.length > 0 && (
+                        <View style={{ paddingBottom: 24 }}>
+                            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>
+                                    You Might Also Like
+                                </Text>
+                            </View>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                            >
+                                {suggestedProducts.map((item) => (
+                                    <View key={item.id} style={{ width: 154 }}>
+                                        <ProductCard
+                                            product={item}
+                                            onPress={() => router.push(`/products/${item.id}`)}
+                                        />
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                </Animated.View>
+            </ScrollView>
+        </SafeAreaView>
+    );
 }

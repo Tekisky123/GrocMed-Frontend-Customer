@@ -1,54 +1,115 @@
+import { Category, categoryApi } from '@/api/categoryApi';
+import { Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
-import { MOCK_BRANDS, MOCK_CATEGORIES, MOCK_PRODUCTS } from '@/constants/mockData';
 import { Product } from '@/types';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Animated, Dimensions, FlatList, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20;
 const ITEM_SPACING = 12;
 
+// Reusing mapping function
+const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
+  const discount = apiProduct.mrp && apiProduct.offerPrice
+    ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
+    : 0;
+
+  return {
+    id: apiProduct._id,
+    name: apiProduct.name,
+    description: apiProduct.description,
+    price: apiProduct.offerPrice || apiProduct.mrp,
+    originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+    discount: discount > 0 ? discount : undefined,
+    image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
+    categoryId: apiProduct.category,
+    brandId: apiProduct.brand,
+    brand: apiProduct.brand,
+    category: apiProduct.category,
+    inStock: apiProduct.stock > 0 && apiProduct.isActive,
+    stockQuantity: apiProduct.stock,
+    unit: apiProduct.unitType || 'unit',
+    minQuantity: apiProduct.minimumQuantity || 1,
+    maxQuantity: 10,
+    rating: 4.5,
+    reviewCount: 0,
+    ingredients: [],
+    nutrition: undefined
+  };
+};
+
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  // API State
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
+
+    // Load categories for filter
+    loadCategories();
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    let products = MOCK_PRODUCTS;
+  const loadCategories = async () => {
+    try {
+      const response = await categoryApi.getAllCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+      }
+    } catch (e) {
+      console.error("Failed to load categories for search filter", e);
+    }
+  };
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      products = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.brand.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query)
-      );
+  // Debounced search function
+  const performSearch = async (query: string, category: string | null) => {
+    if (!query && !category) {
+      setProducts([]);
+      return;
     }
 
-    if (selectedCategory) {
-      products = products.filter((p) => p.categoryId === selectedCategory);
+    setSearching(true);
+    try {
+      const response = await productApi.searchProducts(query, category || undefined);
+      if (response.success && response.data) {
+        setProducts(response.data.map(mapApiProductToUiProduct));
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Search failed", error);
+      setProducts([]);
+    } finally {
+      setSearching(false);
     }
+  };
 
-    if (selectedBrand) {
-      products = products.filter((p) => p.brandId === selectedBrand);
-    }
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery || selectedCategory) {
+        performSearch(searchQuery, selectedCategory);
+      } else {
+        setProducts([]);
+      }
+    }, 500);
 
-    return products;
-  }, [searchQuery, selectedCategory, selectedBrand]);
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedCategory]);
 
   const handleProductPress = (product: Product) => {
     router.push({
@@ -61,7 +122,7 @@ export default function SearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      {/* Modern Clean Header - Matching PageHeader container style */}
+      {/* Search Header */}
       <View style={{
         backgroundColor: Colors.background,
         paddingTop: statusBarHeight + 16,
@@ -71,9 +132,9 @@ export default function SearchScreen() {
         borderBottomColor: Colors.border,
         shadowColor: Colors.shadow,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        // elevation: 4,
         zIndex: 1000,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -93,7 +154,6 @@ export default function SearchScreen() {
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.05,
               shadowRadius: 4,
-              elevation: 2,
             }}
           >
             <Icon name={Icons.back.name} size={24} color={Colors.textPrimary} library={Icons.back.library} />
@@ -112,7 +172,7 @@ export default function SearchScreen() {
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.05,
             shadowRadius: 4,
-            elevation: 2,
+            // elevation: 2,
           }}>
             <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
             <TextInput
@@ -145,29 +205,10 @@ export default function SearchScreen() {
         <Animated.View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 28, opacity: fadeAnim }}>
 
           {/* Filters Section */}
-          <View style={{ marginBottom: 28 }}>
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{
-                fontSize: 22,
-                fontWeight: '700',
-                color: Colors.textPrimary,
-                letterSpacing: -0.3,
-                marginBottom: 4,
-              }}>
-                Filter Products
-              </Text>
-              <View style={{
-                width: 50,
-                height: 3,
-                backgroundColor: Colors.primary,
-                borderRadius: 2,
-              }} />
-            </View>
-
-            {/* Categories */}
-            <View style={{ marginBottom: 20 }}>
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ marginBottom: 16 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 }}>
-                By Category
+                Filter by Category
               </Text>
               <ScrollView
                 horizontal
@@ -195,85 +236,27 @@ export default function SearchScreen() {
                     All
                   </Text>
                 </TouchableOpacity>
-                {MOCK_CATEGORIES.map((category) => (
+                {categories.map((category, index) => (
                   <TouchableOpacity
-                    key={category.id}
-                    onPress={() => setSelectedCategory(category.id)}
+                    key={index}
+                    onPress={() => setSelectedCategory(category.name)}
                     activeOpacity={0.7}
                     style={{
                       marginRight: 10,
                       paddingHorizontal: 18,
                       paddingVertical: 8,
                       borderRadius: 25,
-                      backgroundColor: selectedCategory === category.id ? Colors.primary : Colors.surface,
+                      backgroundColor: selectedCategory === category.name ? Colors.primary : Colors.surface,
                       borderWidth: 1,
-                      borderColor: selectedCategory === category.id ? Colors.primary : Colors.border,
+                      borderColor: selectedCategory === category.name ? Colors.primary : Colors.border,
                     }}
                   >
                     <Text style={{
                       fontWeight: '600',
                       fontSize: 13,
-                      color: selectedCategory === category.id ? '#FFF' : Colors.textPrimary,
+                      color: selectedCategory === category.name ? '#FFF' : Colors.textPrimary,
                     }}>
                       {category.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Brands */}
-            <View style={{ marginBottom: 4 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 }}>
-                By Brand
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20 }}
-              >
-                <TouchableOpacity
-                  onPress={() => setSelectedBrand(null)}
-                  activeOpacity={0.7}
-                  style={{
-                    marginRight: 10,
-                    paddingHorizontal: 18,
-                    paddingVertical: 8,
-                    borderRadius: 25,
-                    backgroundColor: selectedBrand === null ? Colors.accent : Colors.surface,
-                    borderWidth: 1,
-                    borderColor: selectedBrand === null ? Colors.accent : Colors.border,
-                  }}
-                >
-                  <Text style={{
-                    fontWeight: '600',
-                    fontSize: 13,
-                    color: selectedBrand === null ? '#FFF' : Colors.textPrimary,
-                  }}>
-                    All
-                  </Text>
-                </TouchableOpacity>
-                {MOCK_BRANDS.map((brand) => (
-                  <TouchableOpacity
-                    key={brand.id}
-                    onPress={() => setSelectedBrand(brand.id)}
-                    activeOpacity={0.7}
-                    style={{
-                      marginRight: 10,
-                      paddingHorizontal: 18,
-                      paddingVertical: 8,
-                      borderRadius: 25,
-                      backgroundColor: selectedBrand === brand.id ? Colors.accent : Colors.surface,
-                      borderWidth: 1,
-                      borderColor: selectedBrand === brand.id ? Colors.accent : Colors.border,
-                    }}
-                  >
-                    <Text style={{
-                      fontWeight: '600',
-                      fontSize: 13,
-                      color: selectedBrand === brand.id ? '#FFF' : Colors.textPrimary,
-                    }}>
-                      {brand.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -296,7 +279,7 @@ export default function SearchScreen() {
                 letterSpacing: -0.3,
                 marginBottom: 4,
               }}>
-                Results
+                Results {products.length > 0 && `(${products.length})`}
               </Text>
               <View style={{
                 width: 50,
@@ -306,11 +289,10 @@ export default function SearchScreen() {
               }} />
             </View>
 
-            {(selectedCategory || selectedBrand || searchQuery) && (
+            {(selectedCategory || searchQuery) && (
               <TouchableOpacity
                 onPress={() => {
                   setSelectedCategory(null);
-                  setSelectedBrand(null);
                   setSearchQuery('');
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -322,9 +304,13 @@ export default function SearchScreen() {
             )}
           </View>
 
-          {/* Product Grid - Matching Explore Screen Exact Dimensions */}
+          {/* Product Grid */}
           <View style={{ paddingBottom: 40 }}>
-            {filteredProducts.length === 0 ? (
+            {searching ? (
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+              </View>
+            ) : products.length === 0 ? (
               <View style={{
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -343,15 +329,15 @@ export default function SearchScreen() {
                   <Icon name={Icons.search.name} size={32} color={Colors.textTertiary} library={Icons.search.library} />
                 </View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }}>
-                  No matches found
+                  {searchQuery || selectedCategory ? 'No matches found' : 'Start searching...'}
                 </Text>
                 <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center' }}>
-                  Try checking your spelling or changing filters
+                  {searchQuery || selectedCategory ? 'Try checking your spelling or changing filters' : 'Find your favorite products'}
                 </Text>
               </View>
             ) : (
               <FlatList
-                data={filteredProducts}
+                data={products}
                 numColumns={2}
                 scrollEnabled={false}
                 keyExtractor={(item) => item.id}

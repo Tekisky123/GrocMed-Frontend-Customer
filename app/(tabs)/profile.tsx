@@ -19,11 +19,20 @@ export default function ProfileScreen() {
     }).start();
   }, []);
 
+  // Auth Guard
+  React.useEffect(() => {
+    if (!user) { // Assuming user is null if not authenticated
+      router.replace('/auth/login');
+    }
+  }, [user]);
+
+  if (!user) {
+    return null;
+  }
+
   const menuItems = [
     { icon: Icons.profile, title: 'Edit Profile', route: '/profile/edit', color: Colors.primary },
-    { icon: Icons.location, title: 'Addresses', route: '/profile/addresses', color: Colors.primary },
     { icon: Icons.notification, title: 'Notifications', route: '/notifications', color: Colors.accent },
-    { icon: Icons.settings, title: 'Settings', route: '/settings', color: Colors.primary },
     { icon: Icons.support, title: 'Customer Support', route: '/support', color: Colors.accent },
     { icon: { name: 'description', library: 'material' as const }, title: 'Terms & Conditions', route: '/terms', color: Colors.primary },
     { icon: { name: 'lock', library: 'material' as const }, title: 'Privacy Policy', route: '/privacy', color: Colors.gray600 },
@@ -45,7 +54,7 @@ export default function ProfileScreen() {
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.2,
             shadowRadius: 8,
-            elevation: 4,
+            // elevation: 4,
           }}>
             <View style={{ alignItems: 'center' }}>
               <View style={{
@@ -105,7 +114,7 @@ export default function ProfileScreen() {
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
                 shadowRadius: 2,
-                elevation: 1,
+                // elevation: 1,
               }}>
                 <View style={{
                   width: 40,

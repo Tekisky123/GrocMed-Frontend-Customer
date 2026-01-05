@@ -1,477 +1,453 @@
+import { Category, categoryApi } from '@/api/categoryApi';
+import { Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
-import { CATEGORY_ICONS } from '@/constants/categoryIcons';
 import { Colors } from '@/constants/colors';
-import { MOCK_BANNERS, MOCK_CATEGORIES, MOCK_PRODUCTS } from '@/constants/mockData';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { useCart } from '@/contexts/CartContext';
-import { Category, Product } from '@/types';
+import { Product } from '@/types';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Animated, Dimensions, FlatList, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const SECTION_PADDING = 20; // Consistent section padding
-const ITEM_SPACING = 12; // Consistent spacing between items
+
+// Safe mapping function
+const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Product | null => {
+    if (!apiProduct || !apiProduct._id) return null;
+
+    const discount = apiProduct.mrp && apiProduct.offerPrice
+        ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
+        : 0;
+
+    return {
+        id: apiProduct._id,
+        name: apiProduct.name || 'Unknown Product',
+        description: apiProduct.description || '',
+        price: apiProduct.offerPrice || apiProduct.mrp || 0,
+        originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+        discount: discount > 0 ? discount : undefined,
+        image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : 'https://via.placeholder.com/150',
+        categoryId: apiProduct.category || '',
+        brandId: apiProduct.brand || '',
+        brand: apiProduct.brand || 'Unknown Brand',
+        category: apiProduct.category || 'Uncategorized',
+        inStock: (apiProduct.stock || 0) > 0 && !!apiProduct.isActive,
+        stockQuantity: apiProduct.stock || 0,
+        unit: apiProduct.unitType || 'unit',
+        minQuantity: apiProduct.minimumQuantity || 1,
+        maxQuantity: 10,
+        rating: 4.5,
+        reviewCount: 0,
+        ingredients: [],
+        nutrition: {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+        }
+    };
+};
 
 export default function HomeScreen() {
-  const { getItemCount, addToCart } = useCart();
-  const { user } = useAuth();
-  const [bannerIndex, setBannerIndex] = useState(0);
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [currentBanner, setCurrentBanner] = useState(0);
 
-  const featuredProducts = MOCK_PRODUCTS.slice(0, 6);
-  const cartItemCount = getItemCount();
-  const dealsProducts = MOCK_PRODUCTS.filter(p => p.discount && p.discount > 15).slice(0, 4);
-  const newArrivals = MOCK_PRODUCTS.slice(-4).reverse();
-  const topRated = [...MOCK_PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 4);
+    const { getItemCount } = useCart();
+    const { setCartIconPosition } = useCartAnimation();
+    const scrollViewRef = useRef<ScrollView>(null);
 
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+    const banners = [
+        {
+            id: 1,
+            title: 'Delivery in 4 Hours',
+            subtitle: 'Fast & Reliable Service',
+            color: '#4CAF50',
+            tag: 'Express Delivery',
+            description: 'Order now and get your groceries delivered within 4 hours'
+        },
+        {
+            id: 2,
+            title: 'Business to Business',
+            subtitle: 'Wholesale Solutions',
+            color: '#2196F3',
+            tag: 'B2B Partner',
+            description: 'Special pricing and bulk orders for businesses'
+        },
+        {
+            id: 3,
+            title: 'Quality Assured',
+            subtitle: 'Fresh & Organic',
+            color: '#FF9800',
+            tag: 'Premium Quality',
+            description: '100% quality guarantee on all fresh produce'
+        },
+    ];
 
-  const handleCategoryPress = (category: Category) => {
-    router.push({
-      pathname: '/products/category',
-      params: { categoryId: category.id, categoryName: category.name },
-    });
-  };
+    // Auto-slide banner
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentBanner((prev) => {
+                const next = (prev + 1) % banners.length;
+                scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
+                return next;
+            });
+        }, 3000);
 
-  const handleProductPress = (product: Product) => {
-    router.push({
-      pathname: '/products/[id]',
-      params: { id: product.id },
-    });
-  };
+        return () => clearInterval(interval);
+    }, []);
 
-  const handleSearchPress = () => {
-    router.push('/products/search');
-  };
+    const loadData = async () => {
+        setError(null);
+        try {
+            const [productsRes, categoriesRes] = await Promise.all([
+                productApi.getAllProducts().catch(e => ({ success: false, data: [] as ApiProduct[], message: 'Failed to fetch products' })),
+                categoryApi.getAllCategories().catch(e => ({ success: false, data: [] as Category[], message: 'Failed to fetch categories' })),
+            ]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      {/* Modern E-commerce Header */}
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          paddingTop: 50,
-          paddingBottom: 18,
-          paddingHorizontal: SECTION_PADDING,
-          backgroundColor: Colors.background,
-          borderBottomWidth: 1,
-          borderBottomColor: Colors.border,
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-          elevation: 4,
-          zIndex: 100,
-        }}
-      >
-        {/* Top Row: GrocMed and Cart */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 14,
-        }}>
-          {/* GrocMed Logo */}
-          <View style={{ height: 50, justifyContent: 'center' }}>
-            <Image
-              source={require('@/assets/images/logo-removebg-preview.png')}
-              style={{
-                width: 160,
-                height: 60,
-              }}
-              resizeMode="contain"
-            />
-          </View>
+            if (productsRes.success && Array.isArray(productsRes.data)) {
+                const validProducts = productsRes.data
+                    .map(mapApiProductToUiProduct)
+                    .filter((p): p is Product => p !== null);
+                setProducts(validProducts);
+            } else {
+                if (products.length === 0) setError('Unable to load products');
+            }
 
-          {/* Cart Icon */}
-          <View>
-            <TouchableOpacity
-              onPress={() => router.push('/cart')}
-              style={{
-                position: 'relative',
-                backgroundColor: 'rgba(99, 176, 65, 0.1)',
-                borderRadius: 12,
-                padding: 10,
-                borderWidth: 1,
-                borderColor: 'rgba(99, 176, 65, 0.2)',
-              }}
-              activeOpacity={0.8}
-            >
-              <Icon name={Icons.cart.name} size={24} color={Colors.primary} library={Icons.cart.library} />
-              {cartItemCount > 0 && (
-                <View style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  backgroundColor: Colors.accent,
-                  borderRadius: 10,
-                  minWidth: 20,
-                  height: 20,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: Colors.background,
-                }}>
-                  <Text style={{ color: Colors.textWhite, fontSize: 10, fontWeight: '800' }}>
-                    {cartItemCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+            if (categoriesRes.success && Array.isArray(categoriesRes.data)) {
+                const validCategories = categoriesRes.data.filter(c => c && c.name);
+                setCategories(validCategories);
+            }
+        } catch (err) {
+            console.error('Error loading home data:', err);
+            if (products.length === 0) setError('Failed to connect to server');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
 
-        {/* Modern Search Bar */}
-        <TouchableOpacity
-          onPress={handleSearchPress}
-          activeOpacity={0.95}
-        >
-          <View style={{
-            backgroundColor: Colors.surface,
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: Colors.border,
-            shadowColor: Colors.primaryDark,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
-          }}>
-            <Icon name={Icons.search.name} size={20} color={Colors.primary} library={Icons.search.library} />
-            <Text style={{
-              color: Colors.textTertiary,
-              fontSize: 15,
-              flex: 1,
-              marginLeft: 12,
-              fontWeight: '400',
-            }}>
-              Search for products, brands and more
-            </Text>
-            <Icon name="mic" size={20} color={Colors.primary} library="material" />
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+    useEffect(() => {
+        loadData();
+    }, []);
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 32 }}
-      >
-        {/* Modern Premium Carousel */}
-        <Animated.View style={{ marginTop: 24, marginBottom: 8, opacity: fadeAnim }}>
-          <FlatList
-            data={MOCK_BANNERS}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            onMomentumScrollEnd={(e) => {
-              const index = Math.round(e.nativeEvent.contentOffset.x / width);
-              setBannerIndex(index);
-            }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={{ width }}
-                onPress={() => item.categoryId && handleCategoryPress(
-                  MOCK_CATEGORIES.find((c) => c.id === item.categoryId)!
-                )}
-                activeOpacity={0.95}
-              >
-                <View style={{
-                  marginHorizontal: SECTION_PADDING,
-                  height: 200,
-                  borderRadius: 24,
-                  backgroundColor: Colors.surface,
-                  shadowColor: Colors.shadow,
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 16,
-                  elevation: 8,
-                }}>
-                  <View style={{
-                    flex: 1,
-                    borderRadius: 24,
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
-                    <Image
-                      source={{ uri: item.image }}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                      }}
-                      resizeMode="cover"
-                    />
-                    {/* Modern Overlay Gradient Effect */}
-                    <View style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: '60%',
-                      backgroundColor: 'rgba(0,0,0,0.35)', // Simple darken for readability
-                      paddingHorizontal: 20,
-                      paddingBottom: 20,
-                      justifyContent: 'flex-end',
-                    }}>
-                      <Text style={{
-                        color: Colors.textWhite,
-                        fontSize: 28,
-                        fontWeight: '800',
-                        letterSpacing: -0.5,
-                        textShadowColor: 'rgba(0,0,0,0.3)',
-                        textShadowOffset: { width: 0, height: 2 },
-                        textShadowRadius: 4,
-                        marginBottom: 12,
-                      }}>
-                        {item.title}
-                      </Text>
-                      <View style={{
-                        backgroundColor: Colors.primary,
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 12,
-                        alignSelf: 'flex-start',
-                      }}>
-                        <Text style={{ color: Colors.textWhite, fontWeight: '700', fontSize: 13 }}>
-                          Shop Now
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-          {/* Pagination Indicators */}
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 16 }}>
-            {MOCK_BANNERS.map((_, index) => (
-              <Animated.View
-                key={index}
-                style={{
-                  height: 8,
-                  borderRadius: 4,
-                  width: index === bannerIndex ? 32 : 8,
-                  backgroundColor: index === bannerIndex ? Colors.primary : Colors.gray300,
-                }}
-              />
-            ))}
-          </View>
-        </Animated.View>
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadData();
+    };
 
-        {/* Modern Category Grid */}
-        <Animated.View style={{ marginTop: 20, marginBottom: 24, paddingHorizontal: SECTION_PADDING, opacity: fadeAnim }}>
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{
-              fontSize: 20,
-              fontWeight: '700',
-              color: Colors.textPrimary,
-              letterSpacing: -0.2,
-            }}>
-              Categories
-            </Text>
-          </View>
-          <View style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-          }}>
-            {MOCK_CATEGORIES.filter(category => category.id !== '9' && category.id !== '10').map((category) => {
-              const categoryIcon = CATEGORY_ICONS[category.id] || { name: 'category', library: 'material' as const };
-              const cardWidth = (width - (SECTION_PADDING * 2) - (ITEM_SPACING * 3)) / 4;
+    const handleProductPress = (product: Product) => {
+        if (!product || !product.id) return;
+        router.push({
+            pathname: '/products/[id]',
+            params: { id: product.id },
+        });
+    };
 
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  onPress={() => handleCategoryPress(category)}
-                  activeOpacity={0.8}
-                  style={{
-                    width: cardWidth,
-                    alignItems: 'center',
-                    marginBottom: 16,
-                  }}
-                >
-                  <View style={{
-                    width: cardWidth - 4,
-                    height: cardWidth - 4,
-                    backgroundColor: Colors.textWhite,
-                    borderRadius: 10,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 8,
-                    borderWidth: 1,
-                    borderColor: Colors.gray200,
-                    shadowColor: Colors.shadow,
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}>
-                    <Icon
-                      name={categoryIcon.name}
-                      size={28}
-                      color={Colors.primary}
-                      library={categoryIcon.library}
-                    />
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      textAlign: 'center',
-                      color: Colors.textPrimary,
-                      fontWeight: '500',
-                      lineHeight: 13,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Animated.View>
+    const handleCategoryPress = (category: Category) => {
+        if (!category || !category.name) return;
+        router.push({
+            pathname: '/products/category',
+            params: { categoryName: category.name },
+        });
+    };
 
-        {/* Mega Deals Section */}
-        {dealsProducts.length > 0 && (
-          <Animated.View style={{ marginBottom: 36, opacity: fadeAnim }}>
+    if (loading && !refreshing) {
+        return (
+            <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+            {/* Header with Logo and Search */}
             <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingHorizontal: SECTION_PADDING,
-              marginBottom: 24,
-            }}>
-              <View>
-                <Text style={{ fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.8 }}>
-                  Best Offers
-                </Text>
-                <View style={{
-                  width: 60,
-                  height: 4,
-                  backgroundColor: Colors.accent,
-                  borderRadius: 2,
-                  marginTop: 8,
-                }} />
-              </View>
-              <TouchableOpacity
-                onPress={() => router.push('/products/search')}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: `${Colors.accent}15`,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 14,
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: Colors.accent, fontWeight: '700', fontSize: 15, marginRight: 6 }}>
-                  See All
-                </Text>
-                <Icon name={Icons.arrowForward.name} size={18} color={Colors.accent} library={Icons.arrowForward.library} />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={dealsProducts}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingHorizontal: ITEM_SPACING }}
-              renderItem={({ item }) => (
-                <View style={{ width: width * 0.54, marginHorizontal: ITEM_SPACING / 2 }}>
-                  <ProductCard
-                    product={item}
-                    onPress={() => handleProductPress(item)}
-                  />
-                </View>
-              )}
-            />
-          </Animated.View>
-        )}
-
-
-
-        {/* Modern All Products Grid - Uniform Cards */}
-        <Animated.View style={{ paddingHorizontal: SECTION_PADDING, opacity: fadeAnim, marginBottom: 32 }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 24,
-          }}>
-            <View>
-              <Text style={{
-                fontSize: 26,
-                fontWeight: '800',
-                color: Colors.textPrimary,
-                letterSpacing: -0.8,
-                marginBottom: 4,
-              }}>
-                All Products
-              </Text>
-              <View style={{
-                width: 60,
-                height: 4,
-                backgroundColor: Colors.primary,
-                borderRadius: 2,
-                marginTop: 8,
-              }} />
-            </View>
-            <TouchableOpacity
-              onPress={() => router.push('/products/search')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: `${Colors.primary}15`,
+                backgroundColor: Colors.background,
                 paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 14,
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 15, marginRight: 6 }}>
-                See All
-              </Text>
-              <Icon name={Icons.arrowForward.name} size={18} color={Colors.primary} library={Icons.arrowForward.library} />
-            </TouchableOpacity>
-          </View>
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: Colors.border,
+            }}>
+                {/* Logo and Cart Row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <Image
+                        source={require('@/assets/images/logo-removebg-preview.png')}
+                        style={{ width: 190, height: 70 }}
+                        resizeMode="contain"
+                    />
 
-          {/* Modern Uniform Grid Layout - Refactored to use ProductCard */}
-          <View style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-          }}>
-            {MOCK_PRODUCTS.map((item) => (
-              <View
-                key={item.id}
-                style={{
-                  width: (width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2,
-                  marginBottom: ITEM_SPACING
-                }}
-              >
-                <ProductCard
-                  product={item}
-                  onPress={() => handleProductPress(item)}
-                />
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-      </ScrollView>
-    </View>
-  );
+                    <TouchableOpacity
+                        ref={(view) => {
+                            view?.measureInWindow((x, y, width, height) => {
+                                setCartIconPosition({ x, y, width, height });
+                            });
+                        }}
+                        onPress={() => router.push('/(tabs)/cart')}
+                        style={{
+                            position: 'relative',
+                            padding: 10,
+                            backgroundColor: Colors.surface,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: Colors.border,
+                        }}
+                    >
+                        <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
+                        {getItemCount() > 0 && (
+                            <View style={{
+                                position: 'absolute',
+                                top: -4,
+                                right: -4,
+                                backgroundColor: Colors.error,
+                                borderRadius: 10,
+                                minWidth: 20,
+                                height: 20,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingHorizontal: 4,
+                                borderWidth: 2,
+                                borderColor: Colors.background,
+                            }}>
+                                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
+                                    {getItemCount() > 99 ? '99+' : getItemCount()}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                {/* Search Bar */}
+                <TouchableOpacity
+                    onPress={() => router.push('/products/search')}
+                    activeOpacity={0.8}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: Colors.surface,
+                        borderRadius: 12,
+                        paddingHorizontal: 14,
+                        height: 48,
+                        borderWidth: 1,
+                        borderColor: Colors.border,
+                        shadowColor: Colors.shadow,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                    }}
+                >
+                    <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
+                    <Text style={{ marginLeft: 10, color: Colors.textTertiary, fontSize: 15, fontWeight: '500', flex: 1 }}>
+                        Search for products...
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+                contentContainerStyle={{ paddingBottom: 20 }}
+            >
+                {/* Auto-Sliding Banner */}
+                <View style={{ marginTop: 16, marginBottom: 20 }}>
+                    <ScrollView
+                        ref={scrollViewRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={(event) => {
+                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+                            setCurrentBanner(slideIndex);
+                        }}
+                        snapToInterval={width}
+                        decelerationRate="fast"
+                    >
+                        {banners.map((banner, index) => (
+                            <View
+                                key={banner.id}
+                                style={{
+                                    width: width,
+                                    paddingHorizontal: 16,
+                                }}
+                            >
+                                <View style={{
+                                    height: 210,
+                                    backgroundColor: banner.color,
+                                    borderRadius: 20,
+                                    padding: 24,
+                                    justifyContent: 'space-between',
+                                    shadowColor: banner.color,
+                                    shadowOffset: { width: 0, height: 8 },
+                                    shadowOpacity: 0.4,
+                                    shadowRadius: 12,
+                                    overflow: 'hidden',
+                                }}>
+                                    {/* Background Decorative Elements */}
+                                    <View style={{
+                                        position: 'absolute',
+                                        right: -60,
+                                        top: -60,
+                                        width: 220,
+                                        height: 220,
+                                        borderRadius: 110,
+                                        backgroundColor: 'rgba(255,255,255,0.15)',
+                                    }} />
+                                    <View style={{
+                                        position: 'absolute',
+                                        right: 20,
+                                        bottom: -40,
+                                        width: 140,
+                                        height: 140,
+                                        borderRadius: 70,
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                    }} />
+
+                                    {/* Content */}
+                                    <View>
+                                        <View style={{
+                                            backgroundColor: 'rgba(255,255,255,0.3)',
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            borderRadius: 8,
+                                            alignSelf: 'flex-start',
+                                            marginBottom: 12,
+                                        }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                                {banner.tag}
+                                            </Text>
+                                        </View>
+
+                                        <Text style={{ fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, lineHeight: 36 }}>
+                                            {banner.title}
+                                        </Text>
+                                        <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginBottom: 8 }}>
+                                            {banner.subtitle}
+                                        </Text>
+                                        <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18 }}>
+                                            {banner.description}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                        ))}
+                    </ScrollView>
+
+                    {/* Pagination Dots */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
+                        {banners.map((_, index) => (
+                            <View
+                                key={index}
+                                style={{
+                                    width: index === currentBanner ? 28 : 8,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300,
+                                }}
+                            />
+                        ))}
+                    </View>
+                </View>
+
+                {/* Categories - Horizontal Scroll */}
+                <View style={{ marginBottom: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                        <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Shop by Category</Text>
+                        <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
+                            <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
+                        {categories.map((category, index) => {
+                            if (!category) return null;
+                            return (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={{ alignItems: 'center', width: 75 }}
+                                    onPress={() => handleCategoryPress(category)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={{
+                                        width: 75,
+                                        height: 75,
+                                        borderRadius: 38,
+                                        backgroundColor: Colors.surface,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        marginBottom: 8,
+                                        borderWidth: 1,
+                                        borderColor: Colors.border,
+                                        shadowColor: Colors.shadow,
+                                        shadowOffset: { width: 0, height: 3 },
+                                        shadowOpacity: 0.12,
+                                        shadowRadius: 5,
+                                    }}>
+                                        {category.image ? (
+                                            <Image source={{ uri: category.image }} style={{ width: 52, height: 52 }} resizeMode="contain" />
+                                        ) : (
+                                            <Icon name="category" size={34} color={Colors.primary} library="material" />
+                                        )}
+                                    </View>
+                                    <Text
+                                        style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }}
+                                        numberOfLines={2}
+                                    >
+                                        {category.name || 'Unknown'}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+
+                {/* Popular Products - Horizontal Scroll */}
+                {products.length > 0 && (
+                    <View style={{ marginBottom: 20 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Popular Products</Text>
+                            <TouchableOpacity onPress={() => router.push('/products/search')}>
+                                <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>View All</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+                            {products.slice(0, 6).map((product) => (
+                                <View key={product.id} style={{ width: 160 }}>
+                                    <ProductCard product={product} onPress={() => handleProductPress(product)} />
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
+                {/* All Products Grid */}
+                <View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                        <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>All Products</Text>
+                    </View>
+
+                    {error ? (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Icon name="error-outline" size={32} color={Colors.error} library="material" />
+                            <Text style={{ color: Colors.error, textAlign: 'center', marginTop: 10, fontSize: 14 }}>{error}</Text>
+                        </View>
+                    ) : (
+                        <View style={{ paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                            {products.map((product) => (
+                                <View key={product.id} style={{ width: (width - 44) / 2 }}>
+                                    <ProductCard product={product} onPress={() => handleProductPress(product)} />
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
 }

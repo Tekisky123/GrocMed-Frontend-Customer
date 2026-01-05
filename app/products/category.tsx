@@ -1,35 +1,88 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList, Dimensions, Animated, Platform } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from '@/constants/mockData';
-import { ProductCard } from '@/components/ui/ProductCard';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { categoryApi } from '@/api/categoryApi';
+import { Product as ApiProduct } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
-import { Product } from '@/types';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
+import { Product } from '@/types';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20;
 
+// Reusing mapping function
+const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
+  const discount = apiProduct.mrp && apiProduct.offerPrice
+    ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
+    : 0;
+
+  return {
+    id: apiProduct._id,
+    name: apiProduct.name,
+    description: apiProduct.description,
+    price: apiProduct.offerPrice || apiProduct.mrp,
+    originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+    discount: discount > 0 ? discount : undefined,
+    image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
+    categoryId: apiProduct.category,
+    brandId: apiProduct.brand,
+    brand: apiProduct.brand,
+    category: apiProduct.category,
+    inStock: apiProduct.stock > 0 && apiProduct.isActive,
+    stockQuantity: apiProduct.stock,
+    unit: apiProduct.unitType || 'unit',
+    minQuantity: apiProduct.minimumQuantity || 1,
+    maxQuantity: 10,
+    rating: 4.5,
+    reviewCount: 0,
+    ingredients: [],
+    nutrition: undefined
+  };
+};
+
 export default function CategoryScreen() {
-  const { categoryId, categoryName } = useLocalSearchParams<{ categoryId: string; categoryName: string }>();
+  const { categoryName } = useLocalSearchParams<{ categoryName: string }>();
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+  // API State
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const category = MOCK_CATEGORIES.find((c) => c.id === categoryId);
-  let products = MOCK_PRODUCTS.filter((p) => p.categoryId === categoryId);
+  useEffect(() => {
+    loadCategoryProducts();
+  }, [categoryName]);
+
+  const loadCategoryProducts = async () => {
+    if (!categoryName) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await categoryApi.getProductsByCategory(categoryName);
+      if (response.success && response.data) {
+        setProducts(response.data.map(mapApiProductToUiProduct));
+      } else {
+        setError(response.message || 'No products found in this category');
+      }
+    } catch (err) {
+      console.error('Error fetching category products:', err);
+      setError('Failed to load products');
+    } finally {
+      setLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
 
   // Sort products
-  products = [...products].sort((a, b) => {
+  const sortedProducts = [...products].sort((a, b) => {
     if (sortBy === 'price') return a.price - b.price;
     if (sortBy === 'rating') return b.rating - a.rating;
     return a.name.localeCompare(b.name);
@@ -44,76 +97,20 @@ export default function CategoryScreen() {
 
   const headerHeight = Platform.OS === 'ios' ? 120 : 100;
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader title={categoryName || category?.name || 'Category'} variant="primary" />
-
-      {/* Modern Filters */}
-      <Animated.View style={{ 
-        opacity: fadeAnim,
-        marginHorizontal: SECTION_PADDING,
-        marginBottom: 16,
-        marginTop: headerHeight + 16,
-      }}>
-        <View style={{
-          backgroundColor: Colors.textWhite,
-          borderRadius: 8,
-          padding: 12,
-          borderWidth: 1,
-          borderColor: Colors.gray200,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {(['price', 'rating', 'name'] as const).map((sort) => (
-                <TouchableOpacity
-                  key={sort}
-                  onPress={() => setSortBy(sort)}
-                  activeOpacity={0.8}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    borderRadius: 10,
-                    backgroundColor: sortBy === sort ? Colors.primary : Colors.gray100,
-                    borderWidth: sortBy === sort ? 0 : 1.5,
-                    borderColor: Colors.gray200,
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 13,
-                    fontWeight: '800',
-                    letterSpacing: 0.3,
-                    color: sortBy === sort ? Colors.textWhite : Colors.textSecondary,
-                  }}>
-                    {sort.charAt(0).toUpperCase() + sort.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: Colors.gray100,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 10,
-                borderWidth: 1.5,
-                borderColor: Colors.gray200,
-              }}
-            >
-              <Icon 
-                name={viewMode === 'grid' ? 'view-list' : 'view-module'} 
-                size={22} 
-                color={Colors.textPrimary} 
-                library="material" 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Animated.View>
+      <PageHeader title={categoryName || 'Category'} variant="primary" />
 
       {/* Modern Products */}
-      {products.length === 0 ? (
+      {sortedProducts.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SECTION_PADDING }}>
           <Animated.View style={{ opacity: fadeAnim }}>
             <View style={{
@@ -124,35 +121,35 @@ export default function CategoryScreen() {
               borderWidth: 1,
               borderColor: Colors.gray200,
             }}>
-              <View style={{ 
+              <View style={{
                 backgroundColor: Colors.gray100,
-                borderRadius: 60, 
-                padding: 24, 
+                borderRadius: 60,
+                padding: 24,
                 marginBottom: 20,
               }}>
                 <Icon name={Icons.orders.name} size={60} color={Colors.textSecondary} library={Icons.orders.library} />
               </View>
               <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10 }}>
-                No products found
+                {error || 'No products found'}
               </Text>
               <Text style={{ color: Colors.textSecondary, textAlign: 'center', fontSize: 15, fontWeight: '400' }}>
-                This category is empty
+                Try exploring other categories
               </Text>
             </View>
           </Animated.View>
         </View>
       ) : (
-        <Animated.View style={{ opacity: fadeAnim }}>
+        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
           <FlatList
-            data={products}
+            data={sortedProducts}
             numColumns={viewMode === 'grid' ? 2 : 1}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: SECTION_PADDING, paddingTop: 0, paddingBottom: 24 }}
+            contentContainerStyle={{ padding: SECTION_PADDING, paddingTop: headerHeight + 20, paddingBottom: 24 }}
             columnWrapperStyle={viewMode === 'grid' ? { justifyContent: 'space-between', gap: 12 } : undefined}
             renderItem={({ item }) => (
-              <View style={{ 
-                width: viewMode === 'grid' ? (width - (SECTION_PADDING * 2) - 12) / 2 : '100%', 
-                marginBottom: 20 
+              <View style={{
+                width: viewMode === 'grid' ? (width - (SECTION_PADDING * 2) - 12) / 2 : '100%',
+                marginBottom: 20
               }}>
                 <ProductCard
                   product={item}

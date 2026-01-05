@@ -1,46 +1,78 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import "../global.css";
 
-import { AdminProvider } from '@/contexts/AdminContext';
+import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
+
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CartAnimationProvider } from '@/contexts/CartAnimationContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { DeliveryPartnerProvider } from '@/contexts/DeliveryPartnerContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { setupNotificationListeners } from '@/utils/notificationHelper';
+import { StickyCartBar } from '@/components/ui/StickyCartBar';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      try {
+        NavigationBar.setVisibilityAsync('hidden');
+      } catch (e) {
+        console.log("NavigationBar error", e);
+      }
+    }
+
+    let unsubscribe: any;
+
+    try {
+      unsubscribe = setupNotificationListeners((orderId: string) => {
+        setTimeout(() => {
+          router.push(`/orders/${orderId}`);
+        }, 500);
+      });
+    } catch (e) {
+      console.log("Notification setup failed", e);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (showSplash) return null;
 
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AdminProvider>
-          <CartProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="auth" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="admin" />
-                <Stack.Screen name="products" />
-                <Stack.Screen name="checkout" />
-                <Stack.Screen name="orders" />
-                <Stack.Screen name="settings" />
-                <Stack.Screen name="notifications" />
-                <Stack.Screen name="support" />
-                <Stack.Screen name="categories" />
-                <Stack.Screen name="profile" />
-              </Stack>
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </CartProvider>
-        </AdminProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <DeliveryPartnerProvider>
+            <CartAnimationProvider>
+              <CartProvider>
+                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                  <Stack screenOptions={{ headerShown: false }} />
+                  <StatusBar hidden />
+                  <StickyCartBar />
+                </ThemeProvider>
+              </CartProvider>
+            </CartAnimationProvider>
+          </DeliveryPartnerProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

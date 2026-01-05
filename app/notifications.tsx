@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList, Animated } from 'react-native';
-import { router } from 'expo-router';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { Icon, Icons } from '@/components/ui/Icon';
-import { Notification } from '@/types';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
+import { Notification } from '@/types';
+import { testLocalNotification } from '@/utils/notificationHelper';
+import { router } from 'expo-router';
+import React from 'react';
+import { Animated, FlatList, Text, TouchableOpacity, View } from 'react-native';
 
 const CARD_PADDING = 20;
 const SECTION_PADDING = 20;
@@ -67,24 +69,33 @@ export default function NotificationsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader 
-        title="Notifications" 
+      <PageHeader
+        title="Notifications"
         variant="primary"
         rightComponent={
-          unreadCount > 0 ? (
-            <View style={{
-              backgroundColor: Colors.error,
-              borderRadius: 12,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderWidth: 2,
-              borderColor: Colors.textWhite,
-            }}>
-              <Text style={{ color: Colors.textWhite, fontSize: 12, fontWeight: '700' }}>
-                {unreadCount}
-              </Text>
-            </View>
-          ) : undefined
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => testLocalNotification()}
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+            >
+              <Text style={{ color: Colors.textWhite, fontSize: 12, fontWeight: '600' }}>Test Push</Text>
+            </TouchableOpacity>
+
+            {unreadCount > 0 && (
+              <View style={{
+                backgroundColor: Colors.error,
+                borderRadius: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderWidth: 2,
+                borderColor: Colors.textWhite,
+              }}>
+                <Text style={{ color: Colors.textWhite, fontSize: 12, fontWeight: '700' }}>
+                  {unreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
         }
       />
 
@@ -165,11 +176,11 @@ export default function NotificationsScreen() {
                         borderWidth: 2,
                         borderColor: `${iconConfig.color}30`,
                       }}>
-                        <Icon 
-                          name={iconConfig.name} 
-                          size={28} 
-                          color={iconConfig.color} 
-                          library={iconConfig.library} 
+                        <Icon
+                          name={iconConfig.name}
+                          size={28}
+                          color={iconConfig.color}
+                          library={iconConfig.library}
                         />
                       </View>
                       <View style={{ flex: 1 }}>

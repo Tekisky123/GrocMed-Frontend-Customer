@@ -1,51 +1,168 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Animated, Platform } from 'react-native';
-import { router } from 'expo-router';
-import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Icon, Icons } from '@/components/ui/Icon';
+import { orderApi } from '@/api/orderApi';
+import { Icon } from '@/components/ui/Icon';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { MOCK_USER, MOCK_COUPONS } from '@/constants/mockData';
-import { PaymentMethod } from '@/types';
 import { Colors } from '@/constants/colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
+import { Address, PaymentMethod } from '@/types';
+import { router } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import { Animated, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const SECTION_PADDING = 20;
 
 export default function CheckoutScreen() {
-  const { cart, applyCoupon, removeCoupon } = useCart();
-  const { user } = useAuth();
-  const [selectedAddress, setSelectedAddress] = useState(user?.addresses[0]?.id || '');
+  const { cart, clearCart } = useCart();
+  const { user, updateProfile } = useAuth(); // Assuming updateProfile exists or we need to implement address adding via API
+  const [selectedAddressId, setSelectedAddressId] = useState(user?.addresses?.[0]?.id || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
-  const [couponCode, setCouponCode] = useState('');
-  const [showCouponInput, setShowCouponInput] = useState(false);
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState<Partial<Address>>({
+    street: '',
+    city: '',
+    state: '',
+    zip: '',
+    type: 'Home',
+    isDefault: false
+  });
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
-      useNativeDriver: true,
+      useNativeDriver: true, // Opacity needs true
     }).start();
   }, []);
 
-  const handleApplyCoupon = () => {
-    if (couponCode) {
-      const success = applyCoupon(couponCode);
-      if (success) {
-        setShowCouponInput(false);
-        setCouponCode('');
+  // Auto-select default address or first address when user data loads
+  React.useEffect(() => {
+    if (user?.addresses && user.addresses.length > 0) {
+      // Find default address
+      const defaultAddress = user.addresses.find(addr => addr.isDefault);
+
+      // Select default address if exists, otherwise select first address
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+      } else if (!selectedAddressId) {
+        setSelectedAddressId(user.addresses[0].id);
       }
     }
+  }, [user?.addresses]);
+
+  const handleSaveAddress = async () => {
+    // Basic validation
+    if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zip) {
+      alert('Please fill all address fields');
+      return;
+    }
+
+    // Prepare full address object
+    // Prepare full address object
+    const addressToSave: Address = {
+      id: Math.random().toString(36).substr(2, 9), // Temp ID till server response
+      street: newAddress.street,
+      city: newAddress.city,
+      state: newAddress.state,
+      zip: newAddress.zip,
+      type: newAddress.type as 'Home' | 'Work' | 'Other',
+      isDefault: newAddress.isDefault || false,
+    };
+
+    if (user) {
+      // 1. Optimistically update local list for immediate feedback
+      const updatedAddresses = [...user.addresses, addressToSave];
+
+      // 2. Call API to persist
+      try {
+        const res = await updateProfile({ addresses: updatedAddresses });
+        if (res.success) {
+          // Profile updated via context, user object should be fresh now
+          // If backend overwrites IDs, we might want to select the last one from the updated user
+          // For simplicity, we select the ID we just generated or rely on refresh
+          setSelectedAddressId(addressToSave.id);
+        } else {
+          alert('Failed to save address to profile, but selected for this order.');
+          // Still select it locally
+          user.addresses.push(addressToSave); // Fallback local mutation
+          setSelectedAddressId(addressToSave.id);
+        }
+      } catch (e) {
+        console.error("Save address invalid", e);
+      }
+    }
+
+    setIsAddingAddress(false);
   };
 
-  const handlePlaceOrder = () => {
-    router.replace({
-      pathname: '/orders/confirmation',
-      params: {
-        orderId: `ORD-${Date.now()}`,
-        total: cart.total.toString(),
-      },
+  const handlePlaceOrder = async () => {
+    // Find the full address object
+    const addressObject = user?.addresses.find(a => a.id === selectedAddressId);
+
+    if (!addressObject) {
+      alert('Please select or add a delivery address');
+      return;
+    }
+
+    // Validate minimum quantities before placing order
+    const invalidItems = cart.items.filter(item => {
+      const minQty = item.product.minQuantity || 1;
+      return item.quantity < minQty;
     });
+
+    if (invalidItems.length > 0) {
+      const itemNames = invalidItems.map(item =>
+        `${item.product.name} (min: ${item.product.minQuantity || 1}, current: ${item.quantity})`
+      ).join('\n');
+
+      alert(`Cannot place order. The following items are below minimum quantity:\n\n${itemNames}\n\nPlease update your cart.`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const orderData = {
+        // Backend expects 'shippingAddress' as a string based on "Cast to string failed" error.
+        // We will format the address object into a single string.
+        shippingAddress: JSON.stringify({
+          streetAddress: addressObject.street,
+          city: addressObject.city,
+          state: addressObject.state,
+          postalCode: addressObject.zip,
+          fullName: user?.name || 'Guest',
+          phoneNumber: user?.phone || '',
+        }),
+        // Also try passing simplified string if JSON fails? 
+        // But JSON is safer.
+        // paymentMethod: UPPERCASE
+        paymentMethod: paymentMethod.toUpperCase(),
+        items: cart.items,
+        totalAmount: cart.total
+      };
+
+      const res = await orderApi.placeOrder(orderData);
+
+      if (res.success) {
+        clearCart();
+        router.replace({
+          pathname: '/orders/confirmation',
+          params: {
+            orderId: res.data?.orderId || res.data?._id || `ORD-${Date.now()}`,
+            total: cart.total.toString(),
+          },
+        });
+      } else {
+        alert(res.message || 'Failed to place order');
+      }
+    } catch (error) {
+      alert('An error occurred while placing order');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const headerHeight = Platform.OS === 'ios' ? 120 : 100;
@@ -54,296 +171,194 @@ export default function CheckoutScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <PageHeader title="Checkout" variant="primary" />
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: headerHeight }}
+        contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 100 }}
       >
-        {/* Modern Delivery Address */}
+        {/* Address Section */}
         <Animated.View style={{ padding: SECTION_PADDING, opacity: fadeAnim }}>
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }}>
-              Delivery Address
-            </Text>
-          </View>
-          {user?.addresses.map((address) => (
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 }}>
+            Delivery Address
+          </Text>
+
+          {/* List Existing Addresses */}
+          {!isAddingAddress && user?.addresses && user.addresses.length > 0 && user.addresses.map((address) => (
             <TouchableOpacity
               key={address.id}
-              onPress={() => setSelectedAddress(address.id)}
-              style={{ marginBottom: 12 }}
-              activeOpacity={0.8}
-            >
-              <View
-                style={{
-                  backgroundColor: Colors.textWhite,
-                  borderRadius: 8,
-                  padding: 16,
-                  borderWidth: selectedAddress === address.id ? 2 : 1,
-                  borderColor: selectedAddress === address.id ? Colors.primary : Colors.gray200,
-                  shadowColor: Colors.shadow,
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                      <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginRight: 8 }}>
-                        {address.name}
-                      </Text>
-                      {selectedAddress === address.id && (
-                        <View style={{
-                          backgroundColor: Colors.primary,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 4,
-                        }}>
-                          <Text style={{ color: Colors.textWhite, fontSize: 10, fontWeight: '700' }}>
-                            Selected
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ fontSize: 14, color: Colors.textSecondary, marginBottom: 4, lineHeight: 20, fontWeight: '400' }}>
-                      {address.addressLine1}
-                      {address.addressLine2 && `, ${address.addressLine2}`}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: Colors.textSecondary, marginBottom: 4, fontWeight: '400' }}>
-                      {address.city}, {address.state} - {address.pincode}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: Colors.textTertiary, fontWeight: '400' }}>
-                      Phone: {address.phone}
-                    </Text>
-                  </View>
-                  {selectedAddress === address.id && (
-                    <View style={{
-                      backgroundColor: Colors.primary,
-                      borderRadius: 12,
-                      width: 24,
-                      height: 24,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginLeft: 12,
-                    }}>
-                      <Icon name={Icons.check.name} size={16} color={Colors.textWhite} library={Icons.check.library} />
-                    </View>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            onPress={() => router.push('/profile/addresses')}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: Colors.textWhite,
-              borderRadius: 8,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: Colors.primary,
-              borderStyle: 'dashed',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Icon name={Icons.add.name} size={18} color={Colors.primary} library={Icons.add.library} />
-              <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14, marginLeft: 8 }}>
-                Add New Address
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Modern Order Summary */}
-        <Animated.View style={{ padding: SECTION_PADDING, paddingTop: 0, opacity: fadeAnim }}>
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary }}>
-              Order Summary
-            </Text>
-          </View>
-          <View style={{
-            backgroundColor: Colors.textWhite,
-            borderRadius: 8,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: Colors.gray200,
-            shadowColor: Colors.shadow,
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 2,
-            elevation: 1,
-          }}>
-            {cart.items.map((item) => (
-              <View key={item.id} style={{ 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                marginBottom: 12,
-                paddingBottom: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: Colors.gray200,
-              }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginBottom: 4 }}>
-                    {item.product.name}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '400' }}>
-                    {item.quantity} x ₹{item.price}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textPrimary }}>
-                  ₹{item.total}
-                </Text>
-              </View>
-            ))}
-            <View style={{ marginTop: 8, gap: 10 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 14, fontWeight: '400' }}>Subtotal</Text>
-                <Text style={{ color: Colors.textPrimary, fontWeight: '600', fontSize: 14 }}>
-                  ₹{cart.subtotal.toFixed(2)}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 14, fontWeight: '400' }}>Delivery Fee</Text>
-                <Text style={{ color: Colors.textPrimary, fontWeight: '600', fontSize: 14 }}>
-                  {cart.deliveryFee === 0 ? (
-                    <Text style={{ color: Colors.success, fontWeight: '600' }}>FREE</Text>
-                  ) : (
-                    `₹${cart.deliveryFee.toFixed(2)}`
-                  )}
-                </Text>
-              </View>
-              {cart.discount > 0 && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: Colors.success, fontSize: 14, fontWeight: '400' }}>Discount</Text>
-                  <Text style={{ color: Colors.success, fontWeight: '600', fontSize: 14 }}>
-                    -₹{cart.discount.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              <View style={{ 
-                borderTopWidth: 1, 
-                borderTopColor: Colors.gray200, 
-                paddingTop: 12, 
-                marginTop: 8,
-                flexDirection: 'row', 
-                justifyContent: 'space-between' 
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary }}>Total</Text>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.textPrimary }}>
-                  ₹{cart.total.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Modern Coupon */}
-        <Animated.View style={{ paddingHorizontal: SECTION_PADDING, paddingBottom: SECTION_PADDING, opacity: fadeAnim }}>
-          {!showCouponInput && !cart.couponCode ? (
-            <TouchableOpacity
-              onPress={() => setShowCouponInput(true)}
+              onPress={() => setSelectedAddressId(address.id)}
               activeOpacity={0.8}
               style={{
                 backgroundColor: Colors.textWhite,
-                borderRadius: 8,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+                borderWidth: selectedAddressId === address.id ? 2 : 1,
+                borderColor: selectedAddressId === address.id ? Colors.primary : Colors.gray200,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  <View style={{ backgroundColor: Colors.gray100, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginRight: 8 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase' }}>{address.type}</Text>
+                  </View>
+                  <Text style={{ fontWeight: '600', color: Colors.textPrimary, fontSize: 15 }}>
+                    {address.city}, {address.state}
+                  </Text>
+                </View>
+                <Text style={{ color: Colors.textSecondary, fontSize: 14 }}>
+                  {address.street}, {address.zip}
+                </Text>
+              </View>
+
+              {selectedAddressId === address.id && (
+                <View style={{ backgroundColor: Colors.primary, borderRadius: 12, padding: 4 }}>
+                  <Icon name="check" size={16} color="#fff" library="material" />
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+
+          {/* Add New Address Button */}
+          {!isAddingAddress && (
+            <TouchableOpacity
+              onPress={() => setIsAddingAddress(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
                 padding: 16,
                 borderWidth: 1,
                 borderColor: Colors.primary,
                 borderStyle: 'dashed',
-                alignItems: 'center',
+                borderRadius: 12,
+                backgroundColor: 'rgba(248, 128, 14, 0.05)'
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="local-offer" size={18} color={Colors.primary} library="material" />
-                <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14, marginLeft: 8 }}>
-                  Apply Coupon Code
-                </Text>
-              </View>
+              <Icon name="add" size={20} color={Colors.primary} library="material" />
+              <Text style={{ color: Colors.primary, fontWeight: '600', marginLeft: 8 }}>Add New Address</Text>
             </TouchableOpacity>
-          ) : cart.couponCode ? (
-            <View style={{
-              backgroundColor: Colors.textWhite,
-              borderRadius: 8,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: Colors.success,
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View>
-                  <Text style={{ fontSize: 12, color: Colors.success, marginBottom: 4, fontWeight: '600' }}>
-                    Coupon Applied
-                  </Text>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.success }}>
-                    {cart.couponCode}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={removeCoupon} activeOpacity={0.7}>
-                  <Text style={{ color: Colors.error, fontWeight: '600', fontSize: 14 }}>
-                    Remove
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={{
-              backgroundColor: Colors.textWhite,
-              borderRadius: 8,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: Colors.gray200,
-            }}>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
+          )}
+
+          {/* Add Address Form */}
+          {isAddingAddress && (
+            <View style={{ backgroundColor: Colors.textWhite, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: Colors.gray200 }}>
+              <Text style={{ fontWeight: '700', marginBottom: 12, fontSize: 16 }}>New Address Details</Text>
+
+              <TextInput
+                placeholder="Street Address / Building"
+                value={newAddress.street}
+                onChangeText={(t) => setNewAddress(prev => ({ ...prev, street: t }))}
+                style={{ borderWidth: 1, borderColor: Colors.gray200, borderRadius: 8, padding: 12, marginBottom: 12 }}
+              />
+              <View style={{ marginBottom: 12 }}>
                 <TextInput
-                  placeholder="Enter coupon code"
-                  value={couponCode}
-                  onChangeText={setCouponCode}
-                  style={{
-                    flex: 1,
-                    backgroundColor: Colors.gray50,
-                    borderWidth: 1,
-                    borderColor: Colors.gray200,
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    fontSize: 14,
-                    color: Colors.textPrimary,
-                    fontWeight: '400',
-                  }}
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholder="City"
+                  value={newAddress.city}
+                  onChangeText={(t) => setNewAddress(prev => ({ ...prev, city: t }))}
+                  style={{ borderWidth: 1, borderColor: Colors.gray200, borderRadius: 8, padding: 12, width: '100%', marginBottom: 12 }}
                 />
+                <TextInput
+                  placeholder="State"
+                  value={newAddress.state}
+                  onChangeText={(t) => setNewAddress(prev => ({ ...prev, state: t }))}
+                  style={{ borderWidth: 1, borderColor: Colors.gray200, borderRadius: 8, padding: 12, width: '100%' }}
+                />
+              </View>
+              <View style={{ marginBottom: 12 }}>
+                <TextInput
+                  placeholder="Zip / Pincode"
+                  value={newAddress.zip}
+                  onChangeText={(t) => setNewAddress(prev => ({ ...prev, zip: t }))}
+                  keyboardType="numeric"
+                  style={{ borderWidth: 1, borderColor: Colors.gray200, borderRadius: 8, padding: 12, width: '100%' }}
+                />
+              </View>
+
+              <View style={{ marginBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: Colors.textSecondary, marginBottom: 8, fontWeight: '600' }}>Address Type</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {(['Home', 'Work', 'Other'] as const).map(type => (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => setNewAddress(prev => ({ ...prev, type }))}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 8,
+                        backgroundColor: newAddress.type === type ? Colors.primary : Colors.gray100,
+                        borderWidth: 1,
+                        borderColor: newAddress.type === type ? Colors.primary : Colors.gray200
+                      }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: newAddress.type === type ? '#fff' : Colors.textSecondary }}>{type}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
                 <TouchableOpacity
-                  onPress={handleApplyCoupon}
-                  style={{
-                    backgroundColor: Colors.primary,
-                    paddingHorizontal: 20,
-                    paddingVertical: 10,
-                    borderRadius: 6,
-                  }}
-                  activeOpacity={0.8}
+                  onPress={() => setIsAddingAddress(false)}
+                  style={{ flex: 1, padding: 12, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Text style={{ color: Colors.textWhite, fontWeight: '600', fontSize: 14 }}>
-                    Apply
-                  </Text>
+                  <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveAddress}
+                  style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 8, padding: 12, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>Save & Select</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
+
         </Animated.View>
 
-        {/* Modern Payment Method */}
+        {/* Order Summary (No Coupons) */}
         <Animated.View style={{ padding: SECTION_PADDING, paddingTop: 0, opacity: fadeAnim }}>
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary }}>
-              Payment Method
-            </Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 16 }}>
+            Order Summary
+          </Text>
+          <View style={{ backgroundColor: Colors.textWhite, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: Colors.gray200 }}>
+            {/* Simple list of totals */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ color: Colors.textSecondary }}>Subtotal</Text>
+              <Text style={{ fontWeight: '600' }}>₹{cart.subtotal}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ color: Colors.textSecondary }}>Delivery Fee</Text>
+              <Text style={{ fontWeight: '600', color: Colors.success }}>{cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}</Text>
+            </View>
+            {cart.discount > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ color: Colors.textSecondary }}>Discount</Text>
+                <Text style={{ fontWeight: '600', color: Colors.success }}>-₹{cart.discount}</Text>
+              </View>
+            )}
+            <View style={{ height: 1, backgroundColor: Colors.gray200, marginVertical: 12 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16, fontWeight: '800' }}>Total Amount</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.primary }}>₹{cart.total}</Text>
+            </View>
           </View>
-          {(['cod', 'upi', 'card', 'wallet'] as PaymentMethod[]).map((method) => (
+        </Animated.View>
+
+        {/* Payment Method */}
+        <Animated.View style={{ padding: SECTION_PADDING, paddingTop: 0, opacity: fadeAnim }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 16 }}>
+            Payment Method
+          </Text>
+          {(['cod', 'upi', 'card'] as PaymentMethod[]).map((method) => (
             <TouchableOpacity
               key={method}
               onPress={() => setPaymentMethod(method)}
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: 10 }}
               activeOpacity={0.8}
             >
               <View style={{
@@ -352,52 +367,39 @@ export default function CheckoutScreen() {
                 padding: 16,
                 borderWidth: paymentMethod === method ? 2 : 1,
                 borderColor: paymentMethod === method ? Colors.primary : Colors.gray200,
-                shadowColor: Colors.shadow,
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
-                elevation: 1,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: Colors.textPrimary }}>
-                    {method === 'cod' ? 'Cash on Delivery' : method.toUpperCase()}
-                  </Text>
-                  {paymentMethod === method && (
-                    <View style={{
-                      backgroundColor: Colors.primary,
-                      borderRadius: 12,
-                      width: 24,
-                      height: 24,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <Icon name={Icons.check.name} size={16} color={Colors.textWhite} library={Icons.check.library} />
-                    </View>
-                  )}
-                </View>
+                <Text style={{ fontWeight: '600', color: Colors.textPrimary }}>{method === 'cod' ? 'Cash on Delivery' : method.toUpperCase()}</Text>
+                {paymentMethod === method && <Icon name="check-circle" size={20} color={Colors.primary} library="material" />}
               </View>
             </TouchableOpacity>
           ))}
         </Animated.View>
       </ScrollView>
 
-      {/* Modern Place Order Button */}
-      <Animated.View style={{ opacity: fadeAnim, padding: SECTION_PADDING }}>
+      {/* Place Order Button */}
+      <View style={{ padding: 20, backgroundColor: Colors.textWhite, borderTopWidth: 1, borderColor: Colors.gray200 }}>
         <TouchableOpacity
           onPress={handlePlaceOrder}
+          disabled={loading}
           style={{
-            backgroundColor: Colors.primary,
+            backgroundColor: loading ? Colors.gray400 : Colors.primary,
+            borderRadius: 12,
             paddingVertical: 16,
-            borderRadius: 8,
             alignItems: 'center',
+            shadowColor: Colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8
           }}
-          activeOpacity={0.8}
         >
-          <Text style={{ color: Colors.textWhite, fontWeight: '600', fontSize: 16 }}>
-            Place Order - ₹{cart.total.toFixed(2)}
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+            {loading ? 'Processing...' : `Place Order • ₹${cart.total}`}
           </Text>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     </View>
   );
 }

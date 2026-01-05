@@ -11,6 +11,7 @@ interface PageHeaderProps {
   style?: ViewStyle;
   variant?: 'default' | 'primary';
   subtitle?: string;
+  showCart?: boolean;
 }
 
 export function PageHeader({
@@ -20,6 +21,7 @@ export function PageHeader({
   style,
   variant = 'primary',
   subtitle,
+  showCart = false, // Default to false (only explicitly show if needed or rely on home header)
 }: PageHeaderProps) {
   // Modern Clean Style (regardless of variant for now, to unify app)
   const isPrimary = variant === 'primary';
@@ -29,52 +31,37 @@ export function PageHeader({
 
   return (
     <View style={[{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
-      backgroundColor: Colors.background, // Clean background
-      paddingTop: statusBarHeight + 16,
-      paddingBottom: 22,
-      paddingHorizontal: 20,
+      backgroundColor: '#FFFFFF', // Clean White
+      paddingTop: statusBarHeight + 10, // Tighter top padding
+      paddingBottom: 16, // Sleek bottom padding
+      paddingHorizontal: 20, // Standard padding
       borderBottomWidth: 1,
-      borderBottomColor: Colors.border,
-      shadowColor: Colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 12,
-      elevation: 4,
+      borderBottomColor: '#F0F0F0',
+      // No elevation
     }, style]}>
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 14,
-        minHeight: 48,
+        gap: 12, // Tighter gap
+        minHeight: 80, // Standard height
       }}>
         {showBackButton && (
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
             style={{
-              backgroundColor: Colors.surface,
-              borderRadius: 12,
-              width: 44,
-              height: 44,
+              width: 40, // Smaller button
+              height: 40,
               alignItems: 'center',
               justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
+              borderRadius: 20, // Circular
+              backgroundColor: Colors.gray100, // Subtle background
+              // No border for cleaner look
             }}
           >
             <Icon
               name={Icons.back.name}
-              size={24}
+              size={24} // Standard icon size
               color={Colors.textPrimary}
               library={Icons.back.library}
             />
@@ -82,11 +69,11 @@ export function PageHeader({
         )}
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={{
-            fontSize: 28, // Slightly larger for modern feel
-            fontWeight: '800',
-            color: Colors.textPrimary, // Dark text
+            fontSize: 22, // Professional Size (was 34)
+            fontWeight: '700', // Bold but not heavy
+            color: Colors.textPrimary,
             letterSpacing: -0.5,
-            lineHeight: 34,
+            lineHeight: 28,
           }}>
             {title}
           </Text>
@@ -95,22 +82,44 @@ export function PageHeader({
               fontSize: 14,
               fontWeight: '500',
               color: Colors.textSecondary,
-              marginTop: 4,
-              lineHeight: 20,
+              marginTop: 2,
+              lineHeight: 18,
             }}>
               {subtitle}
             </Text>
           )}
         </View>
-        {rightComponent && (
+        {rightComponent ? (
           <View style={{
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: 48,
+            minHeight: 56,
           }}>
             {rightComponent}
           </View>
-        )}
+        ) : showCart ? (
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/cart')}
+            style={{
+              backgroundColor: Colors.surface,
+              borderRadius: 16,
+              width: 52,
+              height: 52,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: Colors.border,
+              // elevation removed
+            }}
+          >
+            <Icon
+              name="shopping-cart"
+              size={26}
+              color={Colors.textPrimary}
+              library="material"
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );

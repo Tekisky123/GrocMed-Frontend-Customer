@@ -1,227 +1,248 @@
-import { Icon, Icons } from '@/components/ui/Icon';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { orderApi } from '@/api/orderApi';
+import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
-import { MOCK_ORDERS } from '@/constants/mockData';
-import { Order, OrderStatus } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { Order } from '@/types';
 import { router } from 'expo-router';
-import React from 'react';
-import { Animated, FlatList, Platform, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, FlatList, Image, Platform, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const statusColors: Record<OrderStatus, { bg: string; text: string; border: string }> = {
-  pending: { bg: 'rgba(248, 128, 14, 0.1)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.3)' },
-  confirmed: { bg: 'rgba(99, 176, 65, 0.1)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.3)' },
-  processing: { bg: 'rgba(248, 128, 14, 0.15)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.4)' },
-  packed: { bg: 'rgba(99, 176, 65, 0.15)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.4)' },
-  shipped: { bg: 'rgba(99, 176, 65, 0.2)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.5)' },
-  out_for_delivery: { bg: 'rgba(248, 128, 14, 0.2)', text: Colors.primary, border: 'rgba(248, 128, 14, 0.5)' }, // Highlight active delivery
-  delivered: { bg: 'rgba(99, 176, 65, 0.25)', text: Colors.accent, border: 'rgba(99, 176, 65, 0.6)' },
-  cancelled: { bg: 'rgba(239, 68, 68, 0.1)', text: Colors.error, border: 'rgba(239, 68, 68, 0.3)' },
-  refunded: { bg: 'rgba(243, 244, 246, 0.9)', text: '#6B7280', border: 'rgba(229, 231, 235, 0.6)' },
+const statusColors: Record<string, { bg: string; text: string }> = {
+  placed: { bg: '#E3F2FD', text: '#1976D2' },
+  pending: { bg: '#FFF3E0', text: '#F57C00' },
+  confirmed: { bg: '#E8F5E9', text: '#2E7D32' },
+  processing: { bg: '#E3F2FD', text: '#1565C0' },
+  packed: { bg: '#F3E5F5', text: '#7B1FA2' },
+  shipped: { bg: '#E0F7FA', text: '#006064' },
+  out_for_delivery: { bg: '#FFF8E1', text: '#FF6F00' },
+  delivered: { bg: '#E8F5E9', text: '#1B5E20' },
+  cancelled: { bg: '#FFEBEE', text: '#C62828' },
+  refunded: { bg: '#FAFAFA', text: '#757575' },
 };
 
-const statusLabels: Record<OrderStatus, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  processing: 'Processing',
-  packed: 'Packed',
-  shipped: 'Shipped',
-  out_for_delivery: 'Out for Delivery',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-  refunded: 'Refunded',
+const getStatusStyle = (status: string) => {
+  const normalized = status?.toLowerCase() || 'pending';
+  return statusColors[normalized] || statusColors.pending;
 };
-
-const SECTION_PADDING = 20;
 
 export default function OrdersScreen() {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { isAuthenticated } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 600,
       useNativeDriver: true,
     }).start();
   }, []);
 
-  const handleOrderPress = (order: Order) => {
-    router.push({
-      pathname: '/orders/[id]',
-      params: { id: order.id },
-    });
+  useEffect(() => {
+    if (isAuthenticated) fetchOrders();
+  }, [isAuthenticated]);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await orderApi.getMyOrders();
+      if (res.success && Array.isArray(res.data)) {
+        // Normalize data
+        const mappedOrders = res.data.map((o: any) => ({
+          id: o._id || o.id,
+          orderNumber: o.orderId || o._id?.slice(-6).toUpperCase() || 'UNKNOWN',
+          items: (o.items || []).map((i: any) => ({
+            id: i._id,
+            name: i.name || i.product?.name || 'Product',
+            image: i.image || i.product?.image,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+          status: o.orderStatus || o.status || 'Placed',
+          total: o.totalAmount || 0,
+          placedAt: o.createdAt,
+          shippingAddress: o.shippingAddress,
+        }));
+        setOrders(mappedOrders.reverse());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const headerHeight = Platform.OS === 'ios' ? 120 : 100;
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchOrders();
+  };
 
-  if (MOCK_ORDERS.length === 0) {
+  if (loading && !refreshing) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.background }}>
-        <PageHeader title="My Orders" variant="primary" />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: headerHeight, paddingHorizontal: 24 }}>
-          <Animated.View style={{ opacity: fadeAnim, width: '100%', maxWidth: 400 }}>
-            <View style={{
-              backgroundColor: Colors.textWhite,
-              borderRadius: 12,
-              padding: 40,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: Colors.gray200,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
-            }}>
-              <View style={{
-                backgroundColor: Colors.gray100,
-                borderRadius: 60,
-                padding: 24,
-                marginBottom: 20,
-              }}>
-                <Icon name={Icons.orders.name} size={60} color={Colors.textSecondary} library={Icons.orders.library} />
-              </View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10, textAlign: 'center' }}>
-                No orders yet
-              </Text>
-              <Text style={{ color: Colors.textSecondary, textAlign: 'center', fontSize: 15, lineHeight: 22, fontWeight: '400' }}>
-                Your order history will appear here
-              </Text>
-            </View>
-          </Animated.View>
-        </View>
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader title="My Orders" variant="primary" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+      <View style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 16,
+          backgroundColor: Colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(0,0,0,0.05)'
+        }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: Colors.textPrimary }}>
+            My Orders
+          </Text>
+        </View>
 
-      <FlatList
-        data={MOCK_ORDERS}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: SECTION_PADDING, paddingTop: headerHeight + 20, paddingBottom: SECTION_PADDING }}
-        renderItem={({ item }) => {
-          const statusStyle = statusColors[item.status];
-          return (
-            <Animated.View
+        {!loading && orders.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 }}>
+            <View style={{
+              width: 120,
+              height: 120,
+              backgroundColor: '#F3F4F6',
+              borderRadius: 60,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 24
+            }}>
+              <Icon name="shopping-bag" size={56} color={Colors.gray300} library="material" />
+            </View>
+            <Text style={{ fontSize: 20, color: Colors.textPrimary, fontWeight: '700', marginBottom: 8 }}>No orders yet</Text>
+            <Text style={{ fontSize: 14, color: Colors.textTertiary, textAlign: 'center', paddingHorizontal: 40, marginBottom: 32 }}>
+              It looks like you haven't placed any orders yet. Start shopping to see them here!
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/')}
               style={{
-                opacity: fadeAnim,
-                marginBottom: 16,
+                paddingHorizontal: 32,
+                paddingVertical: 16,
+                backgroundColor: Colors.primary,
+                borderRadius: 16,
+                shadowColor: Colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
               }}
             >
-              <TouchableOpacity onPress={() => handleOrderPress(item)} activeOpacity={0.85}>
-                <View style={{
-                  backgroundColor: Colors.textWhite,
-                  borderRadius: 16,
-                  padding: 20,
-                  borderWidth: 1.5,
-                  borderColor: Colors.gray200,
-                  borderLeftWidth: 5,
-                  borderLeftColor: statusStyle.border,
-                  shadowColor: Colors.shadow,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{
-                        backgroundColor: Colors.gray100,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        alignSelf: 'flex-start',
-                        marginBottom: 10,
-                      }}>
-                        <Text style={{ fontSize: 11, color: Colors.textTertiary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Start Shopping</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={orders}
+            keyExtractor={(item) => item.id}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+            contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item, index }) => {
+              const statusStyle = getStatusStyle(item.status);
+              return (
+                <Animated.View style={{ opacity: fadeAnim, marginBottom: 16 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}
+                    style={{
+                      backgroundColor: '#fff',
+                      borderRadius: 20,
+                      padding: 16,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 8,
+                      elevation: 2,
+                      borderWidth: 1,
+                      borderColor: 'rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    {/* ID & Date */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                      <View>
+                        <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600', marginBottom: 4 }}>
                           ORDER #{item.orderNumber}
                         </Text>
+                        <Text style={{ fontSize: 12, color: Colors.textTertiary, fontWeight: '500' }}>
+                          {new Date(item.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {new Date(item.placedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
                       </View>
-                      <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8, letterSpacing: -0.3 }}>
-                        {item.items.length} {item.items.length === 1 ? 'item' : 'items'}
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Icon name="schedule" size={14} color={Colors.textSecondary} library="material" />
-                        <Text style={{ fontSize: 14, color: Colors.textSecondary, fontWeight: '500' }}>
-                          {new Date(item.placedAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                      <View style={{ backgroundColor: statusStyle.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                        <Text style={{ color: statusStyle.text, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          {item.status}
                         </Text>
                       </View>
                     </View>
-                    <View style={{
-                      backgroundColor: statusStyle.bg,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 8,
-                      borderWidth: 1.5,
-                      borderColor: statusStyle.border,
-                      shadowColor: statusStyle.border,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                      elevation: 2,
-                    }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: statusStyle.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        {statusLabels[item.status]}
-                      </Text>
-                    </View>
-                  </View>
 
-                  <View style={{
-                    borderTopWidth: 1.5,
-                    borderTopColor: Colors.gray200,
-                    paddingTop: 16,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <View>
-                      <Text style={{ fontSize: 13, color: Colors.textSecondary, marginBottom: 6, fontWeight: '500' }}>Total Amount</Text>
-                      <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 }}>
-                        ₹{item.total}
-                      </Text>
+                    {/* Divider */}
+                    <View style={{ height: 1, backgroundColor: '#F3F4F6', marginBottom: 16 }} />
+
+                    {/* Images Horizontal Scroll Preview */}
+                    <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+                      {item.items.slice(0, 4).map((p: any, idx: number) => (
+                        <View key={idx} style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 12,
+                          backgroundColor: '#F8F9FA',
+                          marginRight: 10,
+                          borderWidth: 1,
+                          borderColor: '#F3F4F6',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          {p.image ? (
+                            <Image
+                              source={{ uri: p.image }}
+                              style={{ width: 44, height: 44 }}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <Icon name="image" size={20} color={Colors.gray300} library="material" />
+                          )}
+                        </View>
+                      ))}
+                      {item.items.length > 4 && (
+                        <View style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 12,
+                          backgroundColor: '#F3F4F6',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.textSecondary }}>+{item.items.length - 4}</Text>
+                        </View>
+                      )}
                     </View>
-                    {item.status === 'out_for_delivery' && (
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: Colors.primary,
-                          paddingHorizontal: 20,
-                          paddingVertical: 12,
-                          borderRadius: 10,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          shadowColor: Colors.primary,
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 6,
-                          elevation: 4,
-                        }}
-                        onPress={() => router.push({
-                          pathname: '/orders/[id]',
-                          params: { id: item.id },
-                        })}
-                        activeOpacity={0.8}
-                      >
-                        <Icon name={Icons.truck.name} size={18} color={Colors.textWhite} library={Icons.truck.library} />
-                        <Text style={{ color: Colors.textWhite, fontWeight: '700', fontSize: 14, marginLeft: 8, letterSpacing: 0.3 }}>
-                          Track Order
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        }}
-      />
-    </View>
+
+                    {/* Footer - Total & Action */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View>
+                        <Text style={{ fontSize: 12, color: Colors.textTertiary, marginBottom: 2 }}>Total Amount</Text>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>₹{item.total}</Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ color: Colors.primary, fontSize: 14, fontWeight: '700', marginRight: 4 }}>View Details</Text>
+                        <Icon name="chevron-right" size={20} color={Colors.primary} library="material" />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            }}
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }

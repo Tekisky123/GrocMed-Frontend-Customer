@@ -1,10 +1,7 @@
-import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
-// Base URL for the API
-// For Android Emulator: use 'http://10.0.2.2:3000/api'
-// For iOS Simulator: use 'http://localhost:3000/api'
-// For Physical Device: use your computer's IP address, e.g., 'http://192.168.1.100:3000/api'
+
 const BASE_URL = 'https://groc-med-backend.vercel.app/api';
 // const BASE_URL = 'http://localhost:3000/api';
 
@@ -20,8 +17,10 @@ const axiosInstance = axios.create({
 });
 
 // Token storage keys
-const TOKEN_KEY = '@admin_token';
-const ADMIN_DATA_KEY = '@admin_data';
+// Token storage keys
+const TOKEN_KEY = 'token';
+const USER_DATA_KEY = '@user_data';
+const DELIVERY_PARTNER_DATA_KEY = '@delivery_partner_data';
 
 // Request interceptor to add token
 axiosInstance.interceptors.request.use(
@@ -64,7 +63,7 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await AsyncStorage.removeItem(TOKEN_KEY);
-        await AsyncStorage.removeItem(ADMIN_DATA_KEY);
+        await AsyncStorage.removeItem(USER_DATA_KEY);
       } catch {
         // Error clearing storage
       }
@@ -95,26 +94,52 @@ export const tokenManager = {
   async removeToken(): Promise<void> {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);
-      await AsyncStorage.removeItem(ADMIN_DATA_KEY);
+      await AsyncStorage.removeItem(USER_DATA_KEY);
+      await AsyncStorage.removeItem(DELIVERY_PARTNER_DATA_KEY);
     } catch {
       throw new Error('Failed to remove token');
     }
   },
 
-  async saveAdminData(adminData: any): Promise<void> {
+  async saveUserData(data: any): Promise<void> {
     try {
-      await AsyncStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(adminData));
+      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(data));
     } catch (error) {
       throw error;
     }
   },
 
-  async getAdminData(): Promise<any | null> {
+  async getUserData(): Promise<any | null> {
     try {
-      const data = await AsyncStorage.getItem(ADMIN_DATA_KEY);
+      const data = await AsyncStorage.getItem(USER_DATA_KEY);
       return data ? JSON.parse(data) : null;
     } catch {
       return null;
+    }
+  },
+
+  async saveDeliveryPartnerData(data: any): Promise<void> {
+    try {
+      await AsyncStorage.setItem(DELIVERY_PARTNER_DATA_KEY, JSON.stringify(data));
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getDeliveryPartnerData(): Promise<any | null> {
+    try {
+      const data = await AsyncStorage.getItem(DELIVERY_PARTNER_DATA_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async removeDeliveryPartnerData(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(DELIVERY_PARTNER_DATA_KEY);
+    } catch {
+      // ignore
     }
   },
 };

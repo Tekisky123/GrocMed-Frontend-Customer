@@ -62,4 +62,6 @@ export const Icons = {
   radioUnchecked: { name: 'radio-button-unchecked', library: 'material' as IconLibrary },
   closeCircle: { name: 'cancel', library: 'material' as IconLibrary },
   category: { name: 'category', library: 'material' as IconLibrary },
+  logo: { name: 'storefront', library: 'material' as IconLibrary }, // Added logo
+  notifications: { name: 'notifications', library: 'material' as IconLibrary }, // Added plural alias
 };

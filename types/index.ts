@@ -8,6 +8,7 @@ export interface Product {
   originalPrice?: number;
   discount?: number;
   image: string;
+  images?: string[]; // Added support for multiple images
   categoryId: string;
   brandId: string;
   brand: string;
@@ -15,6 +16,10 @@ export interface Product {
   inStock: boolean;
   stockQuantity: number;
   unit: string; // kg, g, L, ml, pcs, etc.
+  unitType?: string;
+  perUnitWeightVolume?: string;
+  unitsPerUnitType?: number;
+  singleUnitPrice?: number;
   minQuantity: number;
   maxQuantity: number;
   ingredients?: string[];
@@ -25,8 +30,16 @@ export interface Product {
   isFavorite?: boolean;
   tags?: string[];
   expiryDate?: string;
+  manfDate?: string;
   manufacturer?: string;
   barcode?: string;
+  notifyCustomers?: boolean;
+  isOffer?: boolean;
+  createdBy?: {
+    _id: string;
+    name: string;
+    email?: string;
+  };
 }
 
 export interface NutritionInfo {
@@ -53,12 +66,12 @@ export interface Review {
 }
 
 export interface Category {
-  id: string;
+  id?: string; // Optional now, as API uses name as identifier
   name: string;
-  icon: string;
+  icon?: string; // Keeping for backward compatibility if icon lib is used
   image?: string;
   description?: string;
-  productCount?: number;
+  productCount: number;
 }
 
 export interface Brand {
@@ -89,31 +102,39 @@ export interface Cart {
 
 export interface Address {
   id: string;
-  type: 'home' | 'work' | 'other';
-  name: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2?: string;
+  street: string;
   city: string;
   state: string;
-  pincode: string;
-  landmark?: string;
+  zip: string;
+  type: 'Home' | 'Work' | 'Other';
   isDefault: boolean;
+  // Optional UI-only fields if needed, but keeping strict to schema for core data
+  name?: string;
+  phone?: string;
 }
 
 export interface Order {
   id: string;
   orderNumber: string;
-  userId: string;
+  userId?: string;
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;
   discount: number;
   total: number;
   status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
-  address: Address;
+  paymentMethod: PaymentMethod | string;
+  paymentStatus?: PaymentStatus;
+  address?: Address;
+  shippingAddress?: {
+    fullName: string;
+    phoneNumber: string;
+    streetAddress: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country?: string;
+  };
   placedAt: string;
   estimatedDelivery?: string;
   deliveredAt?: string;
@@ -121,7 +142,7 @@ export interface Order {
   couponCode?: string;
 }
 
-export type OrderStatus = 
+export type OrderStatus =
   | 'pending'
   | 'confirmed'
   | 'processing'
@@ -149,8 +170,8 @@ export interface User {
   phone: string;
   avatar?: string;
   addresses: Address[];
-  aadhaar?: string;
   pan?: string;
+  adhaar?: string;
   isVerified: boolean;
   createdAt: string;
 }

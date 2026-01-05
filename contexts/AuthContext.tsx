@@ -1,73 +1,149 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { tokenManager } from '@/api/axiosInstance'; // Use tokenManager
+import { customerApi } from '@/api/customerApi';
 import { User } from '@/types';
-import { MOCK_USER } from '@/constants/mockData';
+import { getFCMToken, requestUserPermission } from '@/utils/notificationHelper';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+
+// ... (keep types)
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (phoneOrEmail: string, otp: string) => Promise<boolean>;
-  register: (phoneOrEmail: string, name: string, otp: string) => Promise<boolean>;
-  sendOTP: (phoneOrEmail: string) => Promise<boolean>;
+  isLoading: boolean;
+  login: (data: any) => Promise<{ success: boolean; message?: string }>;
+  register: (data: any) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
+  updateProfile: (data: Partial<User>) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock OTP storage (in real app, this would be handled by backend)
-const mockOTPStore: Record<string, string> = {};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(MOCK_USER); // Start with mock user for demo
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const sendOTP = useCallback(async (phoneOrEmail: string): Promise<boolean> => {
-    // Mock OTP generation
-    const otp = '123456'; // In real app, this would come from backend
-    mockOTPStore[phoneOrEmail] = otp;
-    
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    console.log(`OTP sent to ${phoneOrEmail}: ${otp}`); // For demo purposes
-    return true;
+  // Load user from token on mount
+  useEffect(() => {
+    loadUser();
   }, []);
 
-  const login = useCallback(async (phoneOrEmail: string, otp: string): Promise<boolean> => {
-    // Mock OTP validation
-    const storedOTP = mockOTPStore[phoneOrEmail];
-    if (storedOTP === otp || otp === '123456') {
-      // In real app, this would fetch user from backend
-      setUser(MOCK_USER);
-      setIsAuthenticated(true);
-      delete mockOTPStore[phoneOrEmail];
-      return true;
+  const loadUser = async () => {
+    try {
+      const token = await tokenManager.getToken(); // Use tokenManager
+      if (token) {
+        setIsAuthenticated(true);
+        // Fetch profile
+        const res = await customerApi.getProfile();
+        if (res.success && res.data) {
+          const userData: User = {
+            id: res.data._id || res.data.id,
+            name: res.data.name,
+            email: res.data.email,
+            phone: res.data.phone,
+            addresses: res.data.addresses || [],
+            pan: res.data.pan,
+            adhaar: res.data.adhaar,
+            createdAt: res.data.createdAt,
+            isVerified: true
+          };
+          setUser(userData);
+
+          // Sync FCM Token quietly on load
+          const hasPermission = await requestUserPermission();
+          if (hasPermission) {
+            const fcmToken = await getFCMToken();
+            if (fcmToken) {
+              customerApi.updateFcmToken(fcmToken);
+            }
+          }
+        } else {
+          logout();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user', error);
+      logout();
+    } finally {
+      setIsLoading(false);
     }
-    return false;
-  }, []);
+  };
 
-  const register = useCallback(async (phoneOrEmail: string, name: string, otp: string): Promise<boolean> => {
-    // Mock registration
-    const storedOTP = mockOTPStore[phoneOrEmail];
-    if (storedOTP === otp || otp === '123456') {
-      const newUser: User = {
-        id: `u-${Date.now()}`,
-        name,
-        phone: phoneOrEmail.startsWith('+') ? phoneOrEmail : `+91 ${phoneOrEmail}`,
-        email: phoneOrEmail.includes('@') ? phoneOrEmail : undefined,
-        addresses: [],
-        isVerified: false,
-        createdAt: new Date().toISOString(),
-      };
-      setUser(newUser);
+  const login = useCallback(async (data: any) => {
+    const res = await customerApi.login(data);
+    if (res.success && res.token) {
+      await tokenManager.saveToken(res.token); // Use tokenManager
       setIsAuthenticated(true);
-      delete mockOTPStore[phoneOrEmail];
-      return true;
+
+      const profileRes = await customerApi.getProfile();
+      if (profileRes.success && profileRes.data) {
+        const userData: User = {
+          id: profileRes.data._id || profileRes.data.id,
+          name: profileRes.data.name,
+          email: profileRes.data.email,
+          phone: profileRes.data.phone,
+          addresses: profileRes.data.addresses || [],
+          pan: profileRes.data.pan,
+          adhaar: profileRes.data.adhaar,
+          createdAt: profileRes.data.createdAt,
+          isVerified: true
+        };
+        setUser(userData);
+
+        // Request Notification Permission & Sync Token
+        const hasPermission = await requestUserPermission();
+        if (hasPermission) {
+          const fcmToken = await getFCMToken();
+          if (fcmToken) {
+            await customerApi.updateFcmToken(fcmToken);
+          }
+        }
+      }
+      return { success: true };
     }
-    return false;
+    return { success: false, message: res.message };
   }, []);
 
-  const logout = useCallback(() => {
+  const register = useCallback(async (data: any) => {
+    const res = await customerApi.register(data);
+    if (res.success) {
+      if (res.token) {
+        await tokenManager.saveToken(res.token); // Use tokenManager
+        setIsAuthenticated(true);
+
+        const profileRes = await customerApi.getProfile();
+        if (profileRes.success && profileRes.data) {
+          const userData: User = {
+            id: profileRes.data._id || profileRes.data.id,
+            name: profileRes.data.name,
+            email: profileRes.data.email,
+            phone: profileRes.data.phone,
+            addresses: profileRes.data.addresses || [],
+            pan: profileRes.data.pan,
+            adhaar: profileRes.data.adhaar,
+            createdAt: profileRes.data.createdAt,
+            isVerified: true
+          };
+          setUser(userData);
+
+          // Request Notification Permission & Sync Token
+          const hasPermission = await requestUserPermission();
+          if (hasPermission) {
+            const fcmToken = await getFCMToken();
+            if (fcmToken) {
+              await customerApi.updateFcmToken(fcmToken);
+            }
+          }
+        }
+      }
+      return { success: true, message: res.message };
+    }
+    return { success: false, message: res.message };
+  }, []);
+
+  const logout = useCallback(async () => {
+    await tokenManager.removeToken(); // Use tokenManager
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -76,16 +152,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((prevUser) => (prevUser ? { ...prevUser, ...userData } : null));
   }, []);
 
+  const updateProfile = useCallback(async (data: Partial<User>) => {
+    const res = await customerApi.updateProfile(data);
+    if (res.success && res.data) {
+      // Update local state with returned data
+      const userData: User = {
+        id: res.data._id || res.data.id,
+        name: res.data.name,
+        email: res.data.email,
+        phone: res.data.phone,
+        addresses: res.data.addresses || [],
+        createdAt: res.data.createdAt,
+        isVerified: true
+      };
+      setUser(userData);
+      return { success: true, message: 'Profile updated successfully' };
+    }
+    return { success: false, message: res.message || 'Failed to update profile' };
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated,
+        isLoading,
         login,
         register,
-        sendOTP,
         logout,
         updateUser,
+        updateProfile,
       }}
     >
       {children}

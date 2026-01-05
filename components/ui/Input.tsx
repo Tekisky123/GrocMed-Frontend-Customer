@@ -1,6 +1,6 @@
-import React from 'react';
-import { TextInput, TextInputProps, View, Text } from 'react-native';
 import { Colors } from '@/constants/colors';
+import React from 'react';
+import { Text, TextInput, TextInputProps, View } from 'react-native';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -21,10 +21,10 @@ export function Input({
   return (
     <View style={{ width: '100%', marginBottom: 20 }}>
       {label && (
-        <Text style={{ 
-          fontSize: 15, 
-          fontWeight: '700', 
-          color: Colors.textPrimary, 
+        <Text style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: Colors.textPrimary,
           marginBottom: 10,
           letterSpacing: -0.2,
         }}>
@@ -33,10 +33,10 @@ export function Input({
       )}
       <View style={{ position: 'relative' }}>
         {leftIcon && (
-          <View style={{ 
-            position: 'absolute', 
-            left: 16, 
-            top: '50%', 
+          <View style={{
+            position: 'absolute',
+            left: 16,
+            top: '50%',
             transform: [{ translateY: -12 }],
             zIndex: 10,
           }}>
@@ -46,7 +46,7 @@ export function Input({
         <TextInput
           style={{
             backgroundColor: Colors.gray50,
-            borderWidth: error ? 2 : 1.5,
+            borderWidth: error ? 1.5 : 1,
             borderColor: error ? Colors.error : Colors.gray200,
             borderRadius: 16,
             paddingHorizontal: leftIcon ? 52 : 18,
@@ -56,15 +56,16 @@ export function Input({
             color: Colors.textPrimary,
             fontWeight: '500',
             letterSpacing: 0.2,
+            // elevation: 0, // Ensure no native shadow
           }}
           placeholderTextColor={Colors.textTertiary}
           {...props}
         />
         {rightIcon && (
-          <View style={{ 
-            position: 'absolute', 
-            right: 16, 
-            top: '50%', 
+          <View style={{
+            position: 'absolute',
+            right: 16,
+            top: '50%',
             transform: [{ translateY: -12 }],
             zIndex: 10,
           }}>

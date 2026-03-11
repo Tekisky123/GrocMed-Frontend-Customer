@@ -27,6 +27,8 @@ export function Button({
     Animated.spring(scaleAnim, {
       toValue: 0.96,
       useNativeDriver: true,
+      bounciness: 12,
+      speed: 20
     }).start();
   };
 
@@ -34,6 +36,8 @@ export function Button({
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
+      bounciness: 10,
+      speed: 20
     }).start();
   };
 
@@ -91,6 +95,7 @@ export function Button({
         activeOpacity={0.8}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         {...props}
       >
         {loading ? (

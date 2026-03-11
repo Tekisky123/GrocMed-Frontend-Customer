@@ -11,7 +11,6 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartAnimationProvider } from '@/contexts/CartAnimationContext';
 import { CartProvider } from '@/contexts/CartContext';
-import { DeliveryPartnerProvider } from '@/contexts/DeliveryPartnerContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -60,17 +59,15 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <DeliveryPartnerProvider>
-            <CartAnimationProvider>
-              <CartProvider>
-                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                  <Stack screenOptions={{ headerShown: false }} />
-                  <StatusBar hidden />
-                  <StickyCartBar />
-                </ThemeProvider>
-              </CartProvider>
-            </CartAnimationProvider>
-          </DeliveryPartnerProvider>
+          <CartAnimationProvider>
+            <CartProvider>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <Stack screenOptions={{ headerShown: false }} />
+                <StatusBar hidden />
+                <StickyCartBar />
+              </ThemeProvider>
+            </CartProvider>
+          </CartAnimationProvider>
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>

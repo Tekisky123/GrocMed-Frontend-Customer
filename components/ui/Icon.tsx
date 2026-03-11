@@ -1,7 +1,7 @@
-import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons, FontAwesome, Entypo } from '@expo/vector-icons';
 import React from 'react';
 
-type IconLibrary = 'material' | 'ionicons' | 'feather';
+type IconLibrary = 'material' | 'ionicons' | 'feather' | 'fontawesome' | 'entypo';
 
 interface IconProps {
   name: string;
@@ -18,6 +18,10 @@ export function Icon({ name, size = 24, color = '#000', library = 'material' }: 
       return <Ionicons {...props} />;
     case 'feather':
       return <Feather {...props} />;
+    case 'fontawesome':
+      return <FontAwesome {...props} />;
+    case 'entypo':
+      return <Entypo {...props} />;
     default:
       return <MaterialIcons {...props} />;
   }

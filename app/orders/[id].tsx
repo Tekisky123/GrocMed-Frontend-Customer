@@ -57,8 +57,11 @@ export default function OrderDetailsScreen() {
           orderNumber: o.orderId || o._id?.slice(-6).toUpperCase() || 'UNKNOWN',
           items: (o.items || []).map((i: any) => ({
             id: i._id,
-            name: i.name || i.product?.name || 'Product',
-            image: i.image || i.product?.image,
+            productId: i.product?._id || i._id,
+            product: {
+              name: i.name || i.product?.name || 'Product',
+              image: i.image || i.product?.image || '',
+            } as any,
             quantity: i.quantity,
             price: i.price,
             total: (i.price * i.quantity)
@@ -261,14 +264,14 @@ export default function OrderDetailsScreen() {
                   justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F3F4F6'
                 }}>
                   <Image
-                    source={{ uri: item.image || 'https://via.placeholder.com/64' }}
+                    source={{ uri: item.product?.image || 'https://via.placeholder.com/64' }}
                     style={{ width: 50, height: 50 }}
                     resizeMode="contain"
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 16, justifyContent: 'center' }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }} numberOfLines={1}>
-                    {item.name}
+                    {item.product?.name}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 13, color: Colors.textSecondary, backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' }}>

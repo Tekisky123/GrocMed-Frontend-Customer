@@ -8,20 +8,19 @@ import { Input } from '@/components/ui/Input';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { Address } from '@/types';
 import { Colors } from '@/constants/colors';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 export default function AddressesScreen() {
   const { user, updateUser } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState<Partial<Address>>({
-    type: 'home',
+    type: 'Home',
     name: '',
     phone: '',
-    addressLine1: '',
-    addressLine2: '',
+    street: '',
     city: '',
     state: '',
-    pincode: '',
-    landmark: '',
+    zip: '',
     isDefault: false,
   });
 
@@ -32,10 +31,10 @@ export default function AddressesScreen() {
         ...formData,
         name: formData.name || '',
         phone: formData.phone || '',
-        addressLine1: formData.addressLine1 || '',
+        street: formData.street || '',
         city: formData.city || '',
         state: formData.state || '',
-        pincode: formData.pincode || '',
+        zip: formData.zip || '',
         isDefault: formData.isDefault || false,
       } as Address;
 
@@ -44,15 +43,13 @@ export default function AddressesScreen() {
       });
       setShowAddForm(false);
       setFormData({
-        type: 'home',
+        type: 'Home',
         name: '',
         phone: '',
-        addressLine1: '',
-        addressLine2: '',
+        street: '',
         city: '',
         state: '',
-        pincode: '',
-        landmark: '',
+        zip: '',
         isDefault: false,
       });
     }
@@ -99,17 +96,10 @@ export default function AddressesScreen() {
               className="mb-4"
             />
             <Input
-              label="Address Line 1"
-              placeholder="Enter address"
-              value={formData.addressLine1}
-              onChangeText={(text) => setFormData({ ...formData, addressLine1: text })}
-              className="mb-4"
-            />
-            <Input
-              label="Address Line 2 (Optional)"
-              placeholder="Apartment, suite, etc."
-              value={formData.addressLine2}
-              onChangeText={(text) => setFormData({ ...formData, addressLine2: text })}
+              label="Street Address / Apartment"
+              placeholder="Enter full street address"
+              value={formData.street}
+              onChangeText={(text) => setFormData({ ...formData, street: text })}
               className="mb-4"
             />
             <Input
@@ -127,10 +117,10 @@ export default function AddressesScreen() {
               className="mb-4"
             />
             <Input
-              label="Pincode"
+              label="Pincode / ZIP"
               placeholder="Enter pincode"
-              value={formData.pincode}
-              onChangeText={(text) => setFormData({ ...formData, pincode: text })}
+              value={formData.zip}
+              onChangeText={(text) => setFormData({ ...formData, zip: text })}
               keyboardType="number-pad"
               maxLength={6}
               className="mb-4"
@@ -184,11 +174,10 @@ export default function AddressesScreen() {
                       )}
                     </View>
                     <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      {address.addressLine1}
-                      {address.addressLine2 && `, ${address.addressLine2}`}
+                      {address.street}
                     </Text>
                     <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      {address.city}, {address.state} - {address.pincode}
+                      {address.city}, {address.state} - {address.zip}
                     </Text>
                     <Text className="text-sm text-gray-600 dark:text-gray-400">
                       Phone: {address.phone}

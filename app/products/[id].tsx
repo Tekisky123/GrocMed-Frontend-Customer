@@ -207,6 +207,8 @@ export default function ProductDetailScreen() {
                                 const index = Math.round(event.nativeEvent.contentOffset.x / width);
                                 setActiveImageIndex(index);
                             }}
+                            snapToInterval={width}
+                            decelerationRate="fast"
                             contentContainerStyle={{ alignItems: 'center' }}
                         >
                             {displayImages.map((imageUri, index) => (

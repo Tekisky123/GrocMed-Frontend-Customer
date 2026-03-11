@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Alert, PermissionsAndroid, Platform, Linking } from 'react-native';
 
 let messaging: any;
@@ -99,8 +100,9 @@ export async function ensureNotificationPermission() {
 export async function getFCMToken() {
     try {
         // Use Expo Push Token for reliability in Expo environment
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId || "7a31d9b9-c599-43cd-8a2d-0a88b851171c";
         const { data: token } = await Notifications.getExpoPushTokenAsync({
-            projectId: "a0990835-1316-433b-8197-295325997b69" // Usually inferred, but good to be specific if EAS. ID not vital for local test if inferred.
+            projectId
             // If projectId is missing in app.json, this might throw in EAS build, but works locally/Standard Expo Go
         });
 

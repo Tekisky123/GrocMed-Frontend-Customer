@@ -57,6 +57,7 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentBanner, setCurrentBanner] = useState(0);
+    const [isAutoPlay, setIsAutoPlay] = useState(true);
 
     const { getItemCount } = useCart();
     const { setCartIconPosition } = useCartAnimation();
@@ -91,6 +92,8 @@ export default function HomeScreen() {
 
     // Auto-slide banner
     useEffect(() => {
+        if (!isAutoPlay) return;
+        
         const interval = setInterval(() => {
             setCurrentBanner((prev) => {
                 const next = (prev + 1) % banners.length;
@@ -100,7 +103,7 @@ export default function HomeScreen() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [isAutoPlay, banners.length, width]);
 
     const loadData = async () => {
         setError(null);
@@ -261,9 +264,11 @@ export default function HomeScreen() {
                         horizontal
                         pagingEnabled
                         showsHorizontalScrollIndicator={false}
+                        onScrollBeginDrag={() => setIsAutoPlay(false)}
                         onMomentumScrollEnd={(event) => {
                             const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
                             setCurrentBanner(slideIndex);
+                            setIsAutoPlay(true);
                         }}
                         snapToInterval={width}
                         decelerationRate="fast"

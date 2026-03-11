@@ -141,12 +141,13 @@ export default function CartScreen() {
                           }
                           disabled={item.quantity <= (item.product.minQuantity || 1)}
                           activeOpacity={item.quantity <= (item.product.minQuantity || 1) ? 1 : 0.7}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           style={{
                             width: 28,
                             height: 28,
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: Colors.white,
+                            backgroundColor: Colors.textWhite,
                             borderRadius: 8,
                             shadowColor: "#000",
                             shadowOpacity: 0.05,
@@ -161,6 +162,7 @@ export default function CartScreen() {
 
                         <TouchableOpacity
                           onPress={() => updateQuantity(item.productId, item.quantity + 1)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: 8 }}
                         >
                           <Icon name="add" size={16} color="#fff" library="material" />

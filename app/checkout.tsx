@@ -87,7 +87,7 @@ export default function CheckoutScreen() {
         } else {
           alert('Failed to save address to profile, but selected for this order.');
           // Still select it locally
-          user.addresses.push(addressToSave); // Fallback local mutation
+          const updatedFailAddresses = [...user.addresses, addressToSave]; // Fallback local mutation safely cloned
           setSelectedAddressId(addressToSave.id);
         }
       } catch (e) {

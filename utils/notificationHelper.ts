@@ -6,6 +6,13 @@ let messaging: any;
 
 try {
     messaging = require('@react-native-firebase/messaging').default;
+    
+    // Mount Killed-State Background Handler Outside React Component Lifecycle
+    messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
+        console.log('Background FCM Message Received:', remoteMessage);
+        // Note: Expo handled notifications display automatically if correctly formatted.
+        // Complex background sync operations can go here.
+    });
 } catch (error) {
     console.log('Firebase messaging not available (running in Expo Go?):', error);
     messaging = null;
@@ -148,15 +155,15 @@ export async function testLocalNotification() {
     });
 }
 
-export function setupNotificationListeners(onOrderClick?: (orderId: string) => void) {
+export function setupNotificationListeners(onNotificationAction?: (payload: any) => void) {
     if (!messaging) {
         console.log('Skipping Firebase listeners in Expo Go');
 
         // Listen to Expo local notifications (background/foreground interaction)
         const sub1 = Notifications.addNotificationResponseReceivedListener(response => {
             const data = response.notification.request.content.data;
-            if (data?.orderId && onOrderClick) {
-                onOrderClick(data.orderId as string);
+            if (data && onNotificationAction) {
+                onNotificationAction(data);
             }
         });
 
@@ -176,8 +183,8 @@ export function setupNotificationListeners(onOrderClick?: (orderId: string) => v
     // Background handling
     messaging().onNotificationOpenedApp((remoteMessage: any) => {
         console.log('Notification caused app to open from background state:', remoteMessage);
-        if (remoteMessage.data?.orderId && onOrderClick) {
-            onOrderClick(remoteMessage.data.orderId as string);
+        if (remoteMessage.data && onNotificationAction) {
+            onNotificationAction(remoteMessage.data);
         }
     });
 
@@ -187,8 +194,8 @@ export function setupNotificationListeners(onOrderClick?: (orderId: string) => v
         .then((remoteMessage: any) => {
             if (remoteMessage) {
                 console.log('Notification caused app to open from quit state:', remoteMessage);
-                if (remoteMessage.data?.orderId && onOrderClick) {
-                    onOrderClick(remoteMessage.data.orderId as string);
+                if (remoteMessage.data && onNotificationAction) {
+                    onNotificationAction(remoteMessage.data);
                 }
             }
         });

@@ -34,9 +34,16 @@ export default function RootLayout() {
     let unsubscribe: any;
 
     try {
-      unsubscribe = setupNotificationListeners((orderId: string) => {
+      unsubscribe = setupNotificationListeners((payload: any) => {
         setTimeout(() => {
-          router.push(`/orders/${orderId}`);
+          if (payload?.type === 'ORDER_UPDATE' && payload?.orderId) {
+             router.push(`/orders/${payload.orderId}`);
+          } else if (payload?.type === 'PRODUCT_ALERT' && payload?.productId) {
+             router.push(`/products/${payload.productId}`);
+          } else if (payload?.orderId) {
+             // Fallback
+             router.push(`/orders/${payload.orderId}`);
+          }
         }, 500);
       });
     } catch (e) {

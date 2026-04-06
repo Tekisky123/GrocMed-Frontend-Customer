@@ -7,8 +7,8 @@ import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -50,6 +50,33 @@ const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Pr
     };
 };
 
+const HOME_BANNERS = [
+    {
+        id: 1,
+        title: 'Delivery in 4 Hours',
+        subtitle: 'Fast & Reliable Service',
+        color: '#4CAF50',
+        tag: 'Express Delivery',
+        description: 'Order now and get your groceries delivered within 4 hours'
+    },
+    {
+        id: 2,
+        title: 'Business to Business',
+        subtitle: 'Wholesale Solutions',
+        color: '#2196F3',
+        tag: 'B2B Partner',
+        description: 'Special pricing and bulk orders for businesses'
+    },
+    {
+        id: 3,
+        title: 'Quality Assured',
+        subtitle: 'Fresh & Organic',
+        color: '#FF9800',
+        tag: 'Premium Quality',
+        description: '100% quality guarantee on all fresh produce'
+    },
+];
+
 export default function HomeScreen() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -63,47 +90,20 @@ export default function HomeScreen() {
     const { setCartIconPosition } = useCartAnimation();
     const scrollViewRef = useRef<ScrollView>(null);
 
-    const banners = [
-        {
-            id: 1,
-            title: 'Delivery in 4 Hours',
-            subtitle: 'Fast & Reliable Service',
-            color: '#4CAF50',
-            tag: 'Express Delivery',
-            description: 'Order now and get your groceries delivered within 4 hours'
-        },
-        {
-            id: 2,
-            title: 'Business to Business',
-            subtitle: 'Wholesale Solutions',
-            color: '#2196F3',
-            tag: 'B2B Partner',
-            description: 'Special pricing and bulk orders for businesses'
-        },
-        {
-            id: 3,
-            title: 'Quality Assured',
-            subtitle: 'Fresh & Organic',
-            color: '#FF9800',
-            tag: 'Premium Quality',
-            description: '100% quality guarantee on all fresh produce'
-        },
-    ];
-
     // Auto-slide banner
     useEffect(() => {
         if (!isAutoPlay) return;
         
         const interval = setInterval(() => {
             setCurrentBanner((prev) => {
-                const next = (prev + 1) % banners.length;
+                const next = (prev + 1) % HOME_BANNERS.length;
                 scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
                 return next;
             });
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [isAutoPlay, banners.length, width]);
+    }, [isAutoPlay, width]);
 
     const loadData = async () => {
         setError(null);
@@ -252,207 +252,132 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView
+            {/* Main FlatList Container to prevent UI Thread Blocking on deep mapping arrays */}
+            <FlatList
+                data={error ? [] : products}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={2}
                 showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+                columnWrapperStyle={{ paddingHorizontal: 16, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 20 }}
-            >
-                {/* Auto-Sliding Banner */}
-                <View style={{ marginTop: 16, marginBottom: 20 }}>
-                    <ScrollView
-                        ref={scrollViewRef}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onScrollBeginDrag={() => setIsAutoPlay(false)}
-                        onMomentumScrollEnd={(event) => {
-                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-                            setCurrentBanner(slideIndex);
-                            setIsAutoPlay(true);
-                        }}
-                        snapToInterval={width}
-                        decelerationRate="fast"
-                    >
-                        {banners.map((banner, index) => (
-                            <View
-                                key={banner.id}
-                                style={{
-                                    width: width,
-                                    paddingHorizontal: 16,
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+                ListHeaderComponent={() => (
+                    <>
+                        {/* Auto-Sliding Banner */}
+                        <View style={{ marginTop: 16, marginBottom: 20 }}>
+                            <ScrollView
+                                ref={scrollViewRef}
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                onScrollBeginDrag={() => setIsAutoPlay(false)}
+                                onMomentumScrollEnd={(event) => {
+                                    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+                                    setCurrentBanner(slideIndex);
+                                    setIsAutoPlay(true);
                                 }}
+                                snapToInterval={width}
+                                decelerationRate="fast"
                             >
-                                <View style={{
-                                    height: 210,
-                                    backgroundColor: banner.color,
-                                    borderRadius: 20,
-                                    padding: 24,
-                                    justifyContent: 'space-between',
-                                    shadowColor: banner.color,
-                                    shadowOffset: { width: 0, height: 8 },
-                                    shadowOpacity: 0.4,
-                                    shadowRadius: 12,
-                                    overflow: 'hidden',
-                                }}>
-                                    {/* Background Decorative Elements */}
-                                    <View style={{
-                                        position: 'absolute',
-                                        right: -60,
-                                        top: -60,
-                                        width: 220,
-                                        height: 220,
-                                        borderRadius: 110,
-                                        backgroundColor: 'rgba(255,255,255,0.15)',
-                                    }} />
-                                    <View style={{
-                                        position: 'absolute',
-                                        right: 20,
-                                        bottom: -40,
-                                        width: 140,
-                                        height: 140,
-                                        borderRadius: 70,
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
-                                    }} />
-
-                                    {/* Content */}
-                                    <View>
+                                {HOME_BANNERS.map((banner) => (
+                                    <View key={banner.id} style={{ width: width, paddingHorizontal: 16 }}>
                                         <View style={{
-                                            backgroundColor: 'rgba(255,255,255,0.3)',
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 6,
-                                            borderRadius: 8,
-                                            alignSelf: 'flex-start',
-                                            marginBottom: 12,
+                                            height: 210, backgroundColor: banner.color, borderRadius: 20, padding: 24,
+                                            justifyContent: 'space-between', shadowColor: banner.color, shadowOffset: { width: 0, height: 8 },
+                                            shadowOpacity: 0.4, shadowRadius: 12, overflow: 'hidden',
                                         }}>
-                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                                {banner.tag}
-                                            </Text>
+                                            <View style={{ position: 'absolute', right: -60, top: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                                            <View style={{ position: 'absolute', right: 20, bottom: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                                            <View>
+                                                <View style={{ backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 }}>
+                                                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>{banner.tag}</Text>
+                                                </View>
+                                                <Text style={{ fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, lineHeight: 36 }}>{banner.title}</Text>
+                                                <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginBottom: 8 }}>{banner.subtitle}</Text>
+                                                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18 }}>{banner.description}</Text>
+                                            </View>
                                         </View>
-
-                                        <Text style={{ fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, lineHeight: 36 }}>
-                                            {banner.title}
-                                        </Text>
-                                        <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginBottom: 8 }}>
-                                            {banner.subtitle}
-                                        </Text>
-                                        <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18 }}>
-                                            {banner.description}
-                                        </Text>
                                     </View>
-                                </View>
+                                ))}
+                            </ScrollView>
+
+                            {/* Pagination Dots */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
+                                {HOME_BANNERS.map((_, index) => (
+                                    <View key={index} style={{ width: index === currentBanner ? 28 : 8, height: 8, borderRadius: 4, backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300 }} />
+                                ))}
                             </View>
-                        ))}
-                    </ScrollView>
-
-                    {/* Pagination Dots */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
-                        {banners.map((_, index) => (
-                            <View
-                                key={index}
-                                style={{
-                                    width: index === currentBanner ? 28 : 8,
-                                    height: 8,
-                                    borderRadius: 4,
-                                    backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300,
-                                }}
-                            />
-                        ))}
-                    </View>
-                </View>
-
-                {/* Categories - Horizontal Scroll */}
-                <View style={{ marginBottom: 20 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
-                        <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Shop by Category</Text>
-                        <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-                            <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>See All</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
-                        {categories.map((category, index) => {
-                            if (!category) return null;
-                            return (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={{ alignItems: 'center', width: 75 }}
-                                    onPress={() => handleCategoryPress(category)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={{
-                                        width: 75,
-                                        height: 75,
-                                        borderRadius: 38,
-                                        backgroundColor: Colors.surface,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        marginBottom: 8,
-                                        borderWidth: 1,
-                                        borderColor: Colors.border,
-                                        shadowColor: Colors.shadow,
-                                        shadowOffset: { width: 0, height: 3 },
-                                        shadowOpacity: 0.12,
-                                        shadowRadius: 5,
-                                    }}>
-                                        {category.image ? (
-                                            <Image source={{ uri: category.image }} style={{ width: 52, height: 52 }} resizeMode="contain" />
-                                        ) : (
-                                            <Icon name="category" size={34} color={Colors.primary} library="material" />
-                                        )}
-                                    </View>
-                                    <Text
-                                        style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }}
-                                        numberOfLines={2}
-                                    >
-                                        {category.name || 'Unknown'}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
-
-                {/* Popular Products - Horizontal Scroll */}
-                {products.length > 0 && (
-                    <View style={{ marginBottom: 20 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
-                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Popular Products</Text>
-                            <TouchableOpacity onPress={() => router.push('/products/search')}>
-                                <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>View All</Text>
-                            </TouchableOpacity>
                         </View>
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-                            {products.slice(0, 6).map((product) => (
-                                <View key={product.id} style={{ width: 160 }}>
-                                    <ProductCard product={product} onPress={() => handleProductPress(product)} />
+                        {/* Categories List */}
+                        <View style={{ marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                                <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Shop by Category</Text>
+                                <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
+                                    <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>See All</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <FlatList
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
+                                data={categories.filter(c => c)}
+                                keyExtractor={(item, index) => index.toString()}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity style={{ alignItems: 'center', width: 75 }} onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
+                                        <View style={{ width: 75, height: 75, borderRadius: 38, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 5 }}>
+                                            {item.image ? <Image source={{ uri: item.image }} style={{ width: 52, height: 52 }} resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
+                                        </View>
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>{item.name || 'Unknown'}</Text>
+                                    </TouchableOpacity>
+                                )}
+                            />
+                        </View>
+
+                        {/* Popular Products List */}
+                        {products.length > 0 && (
+                            <View style={{ marginBottom: 20 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                                    <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Popular Products</Text>
+                                    <TouchableOpacity onPress={() => router.push('/products/search')}>
+                                        <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>View All</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            ))}
-                        </ScrollView>
+
+                                <FlatList
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                                    data={products.slice(0, 6)}
+                                    keyExtractor={(item) => item.id.toString()}
+                                    renderItem={({ item }) => (
+                                        <View style={{ width: 160 }}>
+                                            <ProductCard product={item} onPress={() => handleProductPress(item)} />
+                                        </View>
+                                    )}
+                                />
+                            </View>
+                        )}
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>All Products</Text>
+                        </View>
+                        
+                        {error && (
+                            <View style={{ padding: 20, alignItems: 'center' }}>
+                                <Icon name="error-outline" size={32} color={Colors.error} library="material" />
+                                <Text style={{ color: Colors.error, textAlign: 'center', marginTop: 10, fontSize: 14 }}>{error}</Text>
+                            </View>
+                        )}
+                    </>
+                )}
+                renderItem={({ item }) => (
+                    <View style={{ flex: 1, maxWidth: (width - 44) / 2 }}>
+                        <ProductCard product={item} onPress={() => handleProductPress(item)} />
                     </View>
                 )}
-
-                {/* All Products Grid */}
-                <View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
-                        <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>All Products</Text>
-                    </View>
-
-                    {error ? (
-                        <View style={{ padding: 20, alignItems: 'center' }}>
-                            <Icon name="error-outline" size={32} color={Colors.error} library="material" />
-                            <Text style={{ color: Colors.error, textAlign: 'center', marginTop: 10, fontSize: 14 }}>{error}</Text>
-                        </View>
-                    ) : (
-                        <View style={{ paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                            {products.map((product) => (
-                                <View key={product.id} style={{ width: (width - 44) / 2 }}>
-                                    <ProductCard product={product} onPress={() => handleProductPress(product)} />
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </View>
-            </ScrollView>
+            />
         </SafeAreaView>
     );
 }

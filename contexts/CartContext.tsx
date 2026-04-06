@@ -1,7 +1,7 @@
 import { cartApi } from '@/api/cartApi';
 import { Cart, CartItem, Product } from '@/types';
 import { router } from 'expo-router';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext'; // Import Auth Context
 import { useToast } from './ToastContext';
 
@@ -30,6 +30,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     discount: 0,
     total: 0,
   });
+
+  const apiTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth(); // Check auth status
@@ -138,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated]);
 
-  const updateQuantity = useCallback(async (productId: string, quantity: number) => {
+  const updateQuantity = useCallback((productId: string, quantity: number) => {
     // 1. Calculate Difference
     const currentItem = cart.items.find(i => i.productId === productId);
     if (!currentItem) return;
@@ -183,15 +185,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
-    // 3. API Sync (Properly)
+    // 3. API Sync (Properly Debounced)
     if (isAuthenticated) {
-      try {
-        await cartApi.addToCart(productId, diff);
-      } catch (e) {
-        console.error("Failed to sync cart quantity", e);
+      if (apiTimeoutRefs.current[productId]) {
+        clearTimeout(apiTimeoutRefs.current[productId]);
       }
+      
+      apiTimeoutRefs.current[productId] = setTimeout(async () => {
+        try {
+          await cartApi.addToCart(productId, diff);
+        } catch (e) {
+          console.error("Failed to sync cart quantity", e);
+        }
+      }, 500); // 500ms debounce
     }
-  }, [cart.items, isAuthenticated, removeFromCart, showToast]); // Added showToast dep
+  }, [cart.items, isAuthenticated, removeFromCart, showToast]);
 
   const clearCart = useCallback(async () => {
     // Optimistic clear

@@ -1,19 +1,16 @@
 {
   "expo": {
     "name": "GrocMed",
-    "slug": "ReactNative",
+    "slug": "grocmed-hu7gc6cggntrepcpb-se",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "reactnative",
     "userInterfaceStyle": "automatic",
-
     "entryPoint": "./node_modules/expo-router/entry",
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "package": "com.tekisky.ReactNative",
       "adaptiveIcon": {
@@ -21,12 +18,10 @@
         "foregroundImage": "./assets/images/logo.png"
       }
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/logo.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -39,11 +34,12 @@
         }
       ]
     ],
-
     "extra": {
       "eas": {
-        "projectId": "7a31d9b9-c599-43cd-8a2d-0a88b851171c"
-      }
-    }
+        "projectId": "addec3b1-ed6f-4065-a47e-7cf6411198b7"
+      },
+      "router": {}
+    },
+    "owner": "tekisky"
   }
 }

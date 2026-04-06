@@ -107,7 +107,7 @@ export async function ensureNotificationPermission() {
 export async function getFCMToken() {
     try {
         // Use Expo Push Token for reliability in Expo environment
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId || "7a31d9b9-c599-43cd-8a2d-0a88b851171c";
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId || "addec3b1-ed6f-4065-a47e-7cf6411198b7";
         const { data: token } = await Notifications.getExpoPushTokenAsync({
             projectId
             // If projectId is missing in app.json, this might throw in EAS build, but works locally/Standard Expo Go

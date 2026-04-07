@@ -106,39 +106,96 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return newCart;
   }, []);
 
-  const addToCart = useCallback(async (product: Product, quantity: number) => {
+  const addToCart = useCallback((product: Product, quantity: number) => {
     if (!isAuthenticated) {
       showToast('Please login to add items to cart', 'info');
       router.push('/auth/login');
       return;
     }
 
-    // Optimistic UI Update first (or wait for API?)
-    // Let's wait for API to ensure consistency
+    // 1. Optimistic UI Update (Immediate)
+    setCart(prev => {
+      const existingItem = prev.items.find(i => i.productId === product.id);
+      let updatedItems;
 
-    // Call API
-    const res = await cartApi.addToCart(product.id, quantity);
+      if (existingItem) {
+        updatedItems = prev.items.map(item =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
+            : item
+        );
+      } else {
+        updatedItems = [...prev.items, {
+          id: Date.now().toString(),
+          productId: product.id,
+          product,
+          quantity,
+          price: product.price,
+          total: product.price * quantity
+        }];
+      }
 
-    if (res.success) {
-      showToast(`Added ${product.name} to cart`, 'success');
-      // Refresh cart from server to get updated state (easiest way to sync)
-      fetchServerCart();
-    } else {
-      showToast(res.message || 'Failed to add to cart', 'error');
+      const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
+      const total = subtotal + prev.deliveryFee - prev.discount;
+
+      return {
+        ...prev,
+        items: updatedItems,
+        subtotal,
+        total
+      };
+    });
+
+    showToast(`Added ${product.name} to cart`, 'success');
+
+    // 2. Background API Sync
+    if (apiTimeoutRefs.current[product.id]) {
+      clearTimeout(apiTimeoutRefs.current[product.id]);
     }
+
+    apiTimeoutRefs.current[product.id] = setTimeout(async () => {
+      try {
+        const res = await cartApi.addToCart(product.id, quantity);
+        if (!res.success) {
+           showToast('Cart sync failed', 'error');
+           fetchServerCart(); // Rollback to server state if sync fails
+        }
+      } catch (e) {
+         console.error('Cart sync error:', e);
+      }
+    }, 300);
   }, [isAuthenticated, showToast]);
 
-  const removeFromCart = useCallback(async (productId: string) => {
+  const removeFromCart = useCallback((productId: string) => {
     if (!isAuthenticated) return;
 
-    const res = await cartApi.removeFromCart(productId);
-    if (res.success) {
-      fetchServerCart();
-      showToast('Item removed', 'success');
-    } else {
-      showToast('Failed to remove item', 'error');
-    }
-  }, [isAuthenticated]);
+    // 1. Optimistic UI Update
+    setCart(prev => {
+      const updatedItems = prev.items.filter(i => i.productId !== productId);
+      const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
+      return {
+        ...prev,
+        items: updatedItems,
+        subtotal,
+        total: subtotal + prev.deliveryFee - prev.discount
+      };
+    });
+
+    showToast('Item removed', 'success');
+
+    // 2. Background API Sync
+    setTimeout(async () => {
+       try {
+         const res = await cartApi.removeFromCart(productId);
+         if (!res.success) {
+            showToast('Failed to remove item', 'error');
+            fetchServerCart(); // Rollback
+         }
+       } catch (e) {
+          console.error('Remove item error:', e);
+       }
+    }, 100);
+  }, [isAuthenticated, showToast]);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     // 1. Calculate Difference

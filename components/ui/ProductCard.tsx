@@ -12,7 +12,8 @@ interface ProductCardProps {
   variant?: 'vertical' | 'horizontal';
 }
 
-export function ProductCard({ product, onPress, variant = 'vertical' }: ProductCardProps) {
+export const ProductCard = React.memo(
+  function ProductCardInner({ product, onPress, variant = 'vertical' }: ProductCardProps) {
   const { addToCart } = useCart();
   const { startAnimation } = useCartAnimation();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -89,6 +90,8 @@ export function ProductCard({ product, onPress, variant = 'vertical' }: ProductC
               source={{ uri: product.image || 'https://via.placeholder.com/150' }}
               style={{ width: 85, height: 85, borderRadius: 8 }}
               resizeMode="contain"
+              resizeMethod="resize"
+              fadeDuration={0}
             />
           </View>
 
@@ -194,6 +197,8 @@ export function ProductCard({ product, onPress, variant = 'vertical' }: ProductC
             source={{ uri: product.image || 'https://via.placeholder.com/150' }}
             style={{ width: '100%', height: 140, borderRadius: 8 }}
             resizeMode="contain"
+            resizeMethod="resize"
+            fadeDuration={0}
           />
         </View>
 
@@ -281,4 +286,8 @@ export function ProductCard({ product, onPress, variant = 'vertical' }: ProductC
       </TouchableOpacity>
     </Animated.View>
   );
-}
+  },
+  (prevProps, nextProps) => {
+    return prevProps.product.id === nextProps.product.id && prevProps.variant === nextProps.variant;
+  }
+);

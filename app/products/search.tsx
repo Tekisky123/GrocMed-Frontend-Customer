@@ -6,7 +6,7 @@ import { Colors } from '@/constants/colors';
 import { Product } from '@/types';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20;
@@ -120,6 +120,128 @@ export default function SearchScreen() {
 
   const statusBarHeight = Platform.OS === 'ios' ? 44 : 0;
 
+  const renderHeader = () => (
+    <Animated.View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 28, opacity: fadeAnim }}>
+      {/* Filters Section */}
+      <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 }}>
+            Filter by Category
+          </Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[{ name: 'All' }, ...categories]}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item, index }) => {
+                const isAll = index === 0;
+                const isSelected = isAll ? selectedCategory === null : selectedCategory === item.name;
+                return (
+                  <TouchableOpacity
+                    onPress={() => setSelectedCategory(isAll ? null : item.name)}
+                    activeOpacity={0.7}
+                    style={{
+                      marginRight: 10,
+                      paddingHorizontal: 18,
+                      paddingVertical: 8,
+                      borderRadius: 25,
+                      backgroundColor: isSelected ? Colors.primary : Colors.surface,
+                      borderWidth: 1,
+                      borderColor: isSelected ? Colors.primary : Colors.border,
+                    }}
+                  >
+                    <Text style={{
+                      fontWeight: '600',
+                      fontSize: 13,
+                      color: isSelected ? '#FFF' : Colors.textPrimary,
+                    }}>
+                      {isAll ? 'All' : item.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+            }}
+          />
+        </View>
+      </View>
+
+      {/* Results Header */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        marginBottom: 20,
+      }}>
+        <View>
+          <Text style={{
+            fontSize: 22,
+            fontWeight: '700',
+            color: Colors.textPrimary,
+            letterSpacing: -0.3,
+            marginBottom: 4,
+          }}>
+            Results {products.length > 0 && `(${products.length})`}
+          </Text>
+          <View style={{
+            width: 50,
+            height: 3,
+            backgroundColor: Colors.primary,
+            borderRadius: 2,
+          }} />
+        </View>
+
+        {(selectedCategory || searchQuery) && (
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedCategory(null);
+              setSearchQuery('');
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.error }}>
+              Clear All
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </Animated.View>
+  );
+
+  const renderEmpty = () => {
+    if (searching) {
+      return (
+        <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      );
+    }
+    return (
+      <View style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 40,
+        opacity: 0.8
+      }}>
+        <View style={{
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: Colors.gray100,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 16,
+        }}>
+          <Icon name={Icons.search.name} size={32} color={Colors.textTertiary} library={Icons.search.library} />
+        </View>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }}>
+          {searchQuery || selectedCategory ? 'No matches found' : 'Start searching...'}
+        </Text>
+        <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center' }}>
+          {searchQuery || selectedCategory ? 'Try checking your spelling or changing filters' : 'Find your favorite products'}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Search Header */}
@@ -134,7 +256,6 @@ export default function SearchScreen() {
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
-        // elevation: 4,
         zIndex: 1000,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -172,7 +293,6 @@ export default function SearchScreen() {
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.05,
             shadowRadius: 4,
-            // elevation: 2,
           }}>
             <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
             <TextInput
@@ -201,164 +321,32 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        <Animated.View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 28, opacity: fadeAnim }}>
-
-          {/* Filters Section */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 }}>
-                Filter by Category
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 20 }}
-              >
-                <TouchableOpacity
-                  onPress={() => setSelectedCategory(null)}
-                  activeOpacity={0.7}
-                  style={{
-                    marginRight: 10,
-                    paddingHorizontal: 18,
-                    paddingVertical: 8,
-                    borderRadius: 25,
-                    backgroundColor: selectedCategory === null ? Colors.primary : Colors.surface,
-                    borderWidth: 1,
-                    borderColor: selectedCategory === null ? Colors.primary : Colors.border,
-                  }}
-                >
-                  <Text style={{
-                    fontWeight: '600',
-                    fontSize: 13,
-                    color: selectedCategory === null ? '#FFF' : Colors.textPrimary,
-                  }}>
-                    All
-                  </Text>
-                </TouchableOpacity>
-                {categories.map((category, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setSelectedCategory(category.name)}
-                    activeOpacity={0.7}
-                    style={{
-                      marginRight: 10,
-                      paddingHorizontal: 18,
-                      paddingVertical: 8,
-                      borderRadius: 25,
-                      backgroundColor: selectedCategory === category.name ? Colors.primary : Colors.surface,
-                      borderWidth: 1,
-                      borderColor: selectedCategory === category.name ? Colors.primary : Colors.border,
-                    }}
-                  >
-                    <Text style={{
-                      fontWeight: '600',
-                      fontSize: 13,
-                      color: selectedCategory === category.name ? '#FFF' : Colors.textPrimary,
-                    }}>
-                      {category.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Results Header */}
-          <View style={{
-            flexDirection: 'row',
+      <FlatList
+        data={products}
+        numColumns={2}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        initialNumToRender={6}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        columnWrapperStyle={{ 
             justifyContent: 'space-between',
-            alignItems: 'baseline',
-            marginBottom: 20,
-          }}>
-            <View>
-              <Text style={{
-                fontSize: 22,
-                fontWeight: '700',
-                color: Colors.textPrimary,
-                letterSpacing: -0.3,
-                marginBottom: 4,
-              }}>
-                Results {products.length > 0 && `(${products.length})`}
-              </Text>
-              <View style={{
-                width: 50,
-                height: 3,
-                backgroundColor: Colors.primary,
-                borderRadius: 2,
-              }} />
-            </View>
-
-            {(selectedCategory || searchQuery) && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedCategory(null);
-                  setSearchQuery('');
-                }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.error }}>
-                  Clear All
-                </Text>
-              </TouchableOpacity>
-            )}
+            paddingHorizontal: SECTION_PADDING,
+            marginBottom: 20 
+        }}
+        renderItem={({ item }) => (
+          <View style={{ width: (width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2 }}>
+            <ProductCard
+              product={item}
+              onPress={() => handleProductPress(item)}
+            />
           </View>
-
-          {/* Product Grid */}
-          <View style={{ paddingBottom: 40 }}>
-            {searching ? (
-              <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-              </View>
-            ) : products.length === 0 ? (
-              <View style={{
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingTop: 40,
-                opacity: 0.8
-              }}>
-                <View style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: Colors.gray100,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}>
-                  <Icon name={Icons.search.name} size={32} color={Colors.textTertiary} library={Icons.search.library} />
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }}>
-                  {searchQuery || selectedCategory ? 'No matches found' : 'Start searching...'}
-                </Text>
-                <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center' }}>
-                  {searchQuery || selectedCategory ? 'Try checking your spelling or changing filters' : 'Find your favorite products'}
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={products}
-                numColumns={2}
-                scrollEnabled={false}
-                keyExtractor={(item) => item.id}
-                columnWrapperStyle={{ justifyContent: 'space-between' }}
-                renderItem={({ item }) => (
-                  <View style={{
-                    width: (width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2,
-                    marginBottom: 20,
-                  }}>
-                    <ProductCard
-                      product={item}
-                      onPress={() => handleProductPress(item)}
-                    />
-                  </View>
-                )}
-              />
-            )}
-          </View>
-
-        </Animated.View>
-      </ScrollView>
+        )}
+      />
     </View>
   );
 }

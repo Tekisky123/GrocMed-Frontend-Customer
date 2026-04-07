@@ -64,6 +64,10 @@ export default function CartScreen() {
           <FlatList
             data={cart.items}
             keyExtractor={(item) => item.id.toString()}
+            initialNumToRender={5}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
             contentContainerStyle={{ padding: 20, paddingBottom: 160, paddingTop: 100 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (

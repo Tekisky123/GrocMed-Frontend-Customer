@@ -8,7 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -258,6 +258,10 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
+                initialNumToRender={6}
+                maxToRenderPerBatch={4}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
                 columnWrapperStyle={{ paddingHorizontal: 16, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 20 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}

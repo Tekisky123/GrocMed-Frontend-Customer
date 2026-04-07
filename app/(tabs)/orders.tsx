@@ -142,6 +142,10 @@ export default function OrdersScreen() {
           <FlatList
             data={orders}
             keyExtractor={(item) => item.id}
+            initialNumToRender={5}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
             contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}

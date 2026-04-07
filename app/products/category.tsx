@@ -144,6 +144,10 @@ export default function CategoryScreen() {
             data={sortedProducts}
             numColumns={viewMode === 'grid' ? 2 : 1}
             keyExtractor={(item) => item.id}
+            initialNumToRender={6}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
             contentContainerStyle={{ padding: SECTION_PADDING, paddingTop: headerHeight + 20, paddingBottom: 24 }}
             columnWrapperStyle={viewMode === 'grid' ? { justifyContent: 'space-between', gap: 12 } : undefined}
             renderItem={({ item }) => (

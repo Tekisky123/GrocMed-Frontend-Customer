@@ -69,7 +69,7 @@ export default function RootLayout() {
           <CartAnimationProvider>
             <CartProvider>
               <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: true }} />
                 <StatusBar hidden />
                 <StickyCartBar />
               </ThemeProvider>

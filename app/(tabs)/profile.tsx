@@ -3,7 +3,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import React from 'react';
-import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const SECTION_PADDING = 20;
 
@@ -27,7 +27,11 @@ export default function ProfileScreen() {
   }, [user]);
 
   if (!user) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
 
   const menuItems = [

@@ -49,10 +49,10 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 ];
 
 const typeIcons: Record<Notification['type'], { name: string; library: 'material' | 'ionicons' | 'feather'; color: string }> = {
-  order: { name: Icons.orders.name, library: Icons.orders.library, color: Colors.info },
+  order: { name: 'receipt-long', library: 'material' as const, color: Colors.info },
   promotion: { name: 'local-offer', library: 'material' as const, color: Colors.warning },
   reminder: { name: 'schedule', library: 'material' as const, color: Colors.accent },
-  system: { name: Icons.settings.name, library: Icons.settings.library, color: Colors.textSecondary },
+  system: { name: 'settings', library: 'material' as const, color: Colors.textSecondary },
 };
 
 export default function NotificationsScreen() {

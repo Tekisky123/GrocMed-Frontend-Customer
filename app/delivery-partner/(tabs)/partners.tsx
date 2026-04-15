@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.infoLight,
   },
   editButton: {
-    backgroundColor: Colors.warningLight,
+    backgroundColor: `${Colors.warning}20`,
   },
   deleteButton: {
     backgroundColor: Colors.errorLight,

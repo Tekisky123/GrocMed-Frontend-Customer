@@ -1,4 +1,4 @@
-import { Product as ApiProduct, productApi } from '@/api/productApi';
+import { PackagingOption, Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
@@ -7,37 +7,62 @@ import { useToast } from '@/contexts/ToastContext';
 import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
-// Helper to map API product to UI product
+// Helper to map API product to UI product (for ProductCard / suggested)
 const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
-    const discount = apiProduct.mrp && apiProduct.offerPrice
+    let price = apiProduct.offerPrice || apiProduct.mrp || 0;
+    let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
+    let discount = apiProduct.mrp && apiProduct.offerPrice
         ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
         : 0;
+
+    if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
+        const firstOpt = apiProduct.packagingOptions[0];
+        price = firstOpt.salePrice || firstOpt.mrp || 0;
+        originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
+        if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
+            discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
+        }
+    }
 
     return {
         id: apiProduct._id,
         name: apiProduct.name,
         description: apiProduct.description,
-        price: apiProduct.offerPrice || apiProduct.mrp,
-        originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+        price,
+        originalPrice,
         discount: discount > 0 ? discount : undefined,
-        image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
+        packagingOptions: apiProduct.packagingOptions,
+        image: apiProduct.images?.length > 0 ? apiProduct.images[0] : '',
         images: apiProduct.images,
         categoryId: apiProduct.category,
         brandId: apiProduct.brand,
-        brand: apiProduct.brand, // Assuming brand name or object is passed
+        brand: apiProduct.brand,
         category: apiProduct.category,
         inStock: apiProduct.stock > 0 && apiProduct.isActive,
         stockQuantity: apiProduct.stock,
         unit: apiProduct.unitType,
+        unitType: apiProduct.unitType,
+        perUnitWeightVolume: apiProduct.perUnitWeightVolume,
+        gstRate: apiProduct.gstRate,
         minQuantity: apiProduct.minimumQuantity || 1,
         maxQuantity: 10,
-        rating: 4.5, // Placeholder if not in API
-        reviewCount: 127, // Placeholder if not in API
+        rating: 4.5,
+        reviewCount: 127,
         ingredients: [],
         nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
         manfDate: apiProduct.manfDate,
@@ -50,83 +75,103 @@ export default function ProductDetailScreen() {
     const { addToCart, getItemQuantity } = useCart();
     const { showToast } = useToast();
 
+    const [apiProduct, setApiProduct] = useState<ApiProduct | null>(null);
     const [product, setProduct] = useState<Product | null>(null);
     const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [quantity, setQuantity] = useState(1);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [selectedOption, setSelectedOption] = useState<PackagingOption | null>(null);
+    const [quantity, setQuantity] = useState(1);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const quantityInitialized = useRef(false);
 
     useEffect(() => {
         loadProduct();
     }, [id]);
 
     useEffect(() => {
-        if (product) {
+        if (product && !quantityInitialized.current) {
+            quantityInitialized.current = true;
             const cartQty = getItemQuantity(product.id);
-            setQuantity(cartQty > 0 ? cartQty : product.minQuantity);
-
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 400,
-                useNativeDriver: true,
-            }).start();
+            setQuantity(cartQty > 0 ? cartQty : (selectedOption?.minQty || product.minQuantity || 1));
+            Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
         }
-    }, [product]);
+    }, [product?.id]);
 
     const loadProduct = async () => {
         if (!id) return;
         setLoading(true);
         setError(null);
-
         try {
             const response = await productApi.getProductById(id);
             if (response.success && response.data) {
-                const mappedProduct = mapApiProductToUiProduct(response.data);
-                setProduct(mappedProduct);
+                setApiProduct(response.data);
+                setProduct(mapApiProductToUiProduct(response.data));
+
+                // Default to first packaging option if available
+                if (response.data.packagingOptions?.length) {
+                    setSelectedOption(response.data.packagingOptions[0]);
+                    setQuantity(response.data.packagingOptions[0].minQty || 1);
+                }
 
                 const suggestedResponse = await productApi.getSuggestedProducts(id);
                 if (suggestedResponse.success && Array.isArray(suggestedResponse.data)) {
-                    const suggested = suggestedResponse.data
-                        .map(mapApiProductToUiProduct);
-                    setSuggestedProducts(suggested);
+                    setSuggestedProducts(suggestedResponse.data.map(mapApiProductToUiProduct));
                 }
             } else {
                 setError('Product not found');
             }
         } catch (err) {
-            console.error('Error loading product:', err);
             setError('Failed to load product');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleQuantityChange = (newQuantity: number) => {
-        if (!product) return;
+    // Derived values from selected option or product fallback
+    const activePrice = selectedOption?.salePrice ?? product?.price ?? 0;
+    const activeMrp = selectedOption?.mrp ?? product?.price ?? 0;
+    const activeStock = selectedOption?.stock ?? product?.stockQuantity ?? 0;
+    const activeMinQty = selectedOption?.minQty ?? product?.minQuantity ?? 1;
+    const hasOptionDiscount = selectedOption ? selectedOption.salePrice < selectedOption.mrp : false;
+    const optionDiscount = hasOptionDiscount
+        ? Math.round(((selectedOption!.mrp - selectedOption!.salePrice) / selectedOption!.mrp) * 100)
+        : 0;
+    const isInStock = activeStock > 0 && (apiProduct?.isActive ?? true);
 
-        if (newQuantity < product.minQuantity) {
-            showToast(`Minimum quantity is ${product.minQuantity}`, 'info');
-            return;
-        }
-
-        if (newQuantity > product.stockQuantity) {
-            showToast(`Only ${product.stockQuantity} items available`, 'info');
-            return;
-        }
-
-        setQuantity(newQuantity);
+    const handleOptionSelect = (option: PackagingOption) => {
+        setSelectedOption(option);
+        setQuantity(option.minQty || 1);
     };
 
-    const handleAddToCart = async () => {
-        if (!product) return;
+    const handleQuantityChange = (newQty: number) => {
+        if (newQty < activeMinQty) {
+            showToast(`Minimum order is ${activeMinQty} pack${activeMinQty > 1 ? 's' : ''}`, 'info');
+            return;
+        }
+        if (newQty > activeStock) {
+            showToast(`Only ${activeStock} available`, 'info');
+            return;
+        }
+        setQuantity(newQty);
+    };
 
-        try {
-            await addToCart(product, quantity);
-            showToast(`Added ${quantity} ${product.unit} to cart`, 'success');
-        } catch (error) {
-            showToast('Failed to add to cart', 'error');
+    const handleAddToCart = () => {
+        if (!product || !isInStock) return;
+        if (selectedOption) {
+            // Build a product-like object with the option's price for the cart context
+            const optionProduct: Product = {
+                ...product,
+                id: product.id,
+                price: selectedOption.salePrice,
+                originalPrice: selectedOption.mrp > selectedOption.salePrice ? selectedOption.mrp : undefined,
+                minQuantity: selectedOption.minQty,
+                stockQuantity: selectedOption.stock,
+            };
+            addToCart(optionProduct, quantity, selectedOption._id);
+        } else {
+            addToCart(product, quantity);
         }
     };
 
@@ -156,327 +201,498 @@ export default function ProductDetailScreen() {
         );
     }
 
-    const displayImages = product.images && product.images.length > 0 ? product.images : [product.image];
-    const hasDiscount = product.discount && product.discount > 0;
+    const displayImages: string[] = (product.images && product.images.length > 0 ? product.images : [product.image]).filter(Boolean) as string[];
+    const hasPackagingOptions = (apiProduct?.packagingOptions?.length ?? 0) > 0;
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
             {/* Header */}
-            <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 14, // Increased slightly for better touch area
-                backgroundColor: Colors.background,
-                borderBottomWidth: 1,
-                borderBottomColor: Colors.border,
-            }}>
+            <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
                     <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
                 </TouchableOpacity>
-                <Text style={{ flex: 1, marginLeft: 12, fontSize: 18, fontWeight: '700', color: Colors.textPrimary }} numberOfLines={1}>
-                    {product.name}
-                </Text>
+                <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 <Animated.View style={{ opacity: fadeAnim }}>
 
-                    {/* Product Image Section - Consistent with ProductCard styles */}
-                    <View style={{ backgroundColor: '#F8F9FA', paddingVertical: 20, alignItems: 'center' }}>
-                        {hasDiscount && (
-                            <View style={{
-                                position: 'absolute',
-                                top: 16,
-                                left: 16,
-                                backgroundColor: Colors.error,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 8,
-                                zIndex: 1,
-                            }}>
-                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{product.discount}% OFF</Text>
+                    {/* Image Section */}
+                    <View style={styles.imageContainer}>
+                        {(optionDiscount > 0 || (product.discount ?? 0) > 0) && (
+                            <View style={styles.discountBadge}>
+                                <Text style={styles.discountBadgeText}>
+                                    {optionDiscount > 0 ? optionDiscount : product.discount}% OFF
+                                </Text>
                             </View>
                         )}
-
                         <ScrollView
                             horizontal
                             pagingEnabled
                             showsHorizontalScrollIndicator={false}
-                            onMomentumScrollEnd={(event) => {
-                                const index = Math.round(event.nativeEvent.contentOffset.x / width);
-                                setActiveImageIndex(index);
-                            }}
+                            onMomentumScrollEnd={(e) =>
+                                setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))
+                            }
                             snapToInterval={width}
                             decelerationRate="fast"
-                            contentContainerStyle={{ alignItems: 'center' }}
                         >
-                            {displayImages.map((imageUri, index) => (
+                            {displayImages.map((uri, index) => (
                                 <View key={index} style={{ width, alignItems: 'center', justifyContent: 'center' }}>
-                                    <Image
-                                        source={{ uri: imageUri }}
-                                        style={{ width: width - 32, height: 300 }}
-                                        resizeMode="contain"
-                                    />
+                                    <Image source={{ uri }} style={{ width: width - 32, height: 300 }} resizeMode="contain" />
                                 </View>
                             ))}
                         </ScrollView>
-
-                        {/* Pagination Dots */}
                         {displayImages.length > 1 && (
                             <View style={{ flexDirection: 'row', marginTop: 16, gap: 6 }}>
-                                {displayImages.map((_, index) => (
-                                    <View
-                                        key={index}
-                                        style={{
-                                            width: index === activeImageIndex ? 24 : 6,
-                                            height: 6,
-                                            borderRadius: 3,
-                                            backgroundColor: index === activeImageIndex ? Colors.primary : Colors.gray300,
-                                        }}
-                                    />
+                                {displayImages.map((_, i) => (
+                                    <View key={i} style={{
+                                        width: i === activeImageIndex ? 24 : 6, height: 6,
+                                        borderRadius: 3,
+                                        backgroundColor: i === activeImageIndex ? Colors.primary : Colors.gray300,
+                                    }} />
                                 ))}
                             </View>
                         )}
                     </View>
 
-                    {/* Details Container */}
-                    <View style={{ padding: 16 }}>
-                        {/* Title & Unit */}
-                        <View style={{ marginBottom: 16 }}>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.textPrimary, lineHeight: 28, marginBottom: 4 }}>
-                                {product.name}
-                            </Text>
-                            <Text style={{ fontSize: 14, color: Colors.textTertiary, fontWeight: '500' }}>
-                                {product.unit}
-                            </Text>
-                        </View>
+                    <View style={styles.contentPadding}>
 
-                        {/* Rating & Reviews */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                backgroundColor: '#FFF8E1',
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 6,
-                                marginRight: 8
-                            }}>
-                                <Icon name="star" size={16} color="#FFA500" library="material" />
-                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#F57C00', marginLeft: 4 }}>
-                                    {product.rating}
-                                </Text>
+                        {/* Title */}
+                        <Text style={styles.productName}>{product.name}</Text>
+                        {product.unit ? (
+                            <Text style={styles.productUnit}>{product.unit}</Text>
+                        ) : null}
+
+                        {/* ── Buying Options ────────────────────────────────────── */}
+                        {hasPackagingOptions && (
+                            <View style={styles.sectionBlock}>
+                                <Text style={styles.sectionLabel}>Choose How to Buy</Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ gap: 10, paddingRight: 4 }}
+                                >
+                                    {apiProduct!.packagingOptions!.map((opt) => {
+                                        const isSelected = selectedOption?._id === opt._id;
+                                        const outOfStock = opt.stock <= 0;
+                                        const optDiscount = opt.salePrice < opt.mrp
+                                            ? Math.round(((opt.mrp - opt.salePrice) / opt.mrp) * 100)
+                                            : 0;
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={opt._id}
+                                                onPress={() => !outOfStock && handleOptionSelect(opt)}
+                                                activeOpacity={0.8}
+                                                style={[
+                                                    styles.optionCard,
+                                                    isSelected && styles.optionCardSelected,
+                                                    outOfStock && styles.optionCardDisabled,
+                                                ]}
+                                            >
+                                                {/* Selected checkmark */}
+                                                {isSelected && (
+                                                    <View style={styles.optionCheck}>
+                                                        <Icon name="check" size={10} color="#fff" library="material" />
+                                                    </View>
+                                                )}
+
+                                                {/* Discount badge */}
+                                                {optDiscount > 0 && (
+                                                    <View style={styles.optionDiscountBadge}>
+                                                        <Text style={styles.optionDiscountText}>{optDiscount}% off</Text>
+                                                    </View>
+                                                )}
+
+                                                {/* Label */}
+                                                <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]} numberOfLines={2}>
+                                                    {opt.label}
+                                                </Text>
+
+                                                {/* Units */}
+                                                <Text style={styles.optionUnits}>
+                                                    {opt.unitsPerPack} unit{opt.unitsPerPack !== 1 ? 's' : ''} / pack
+                                                </Text>
+
+                                                {/* Prices */}
+                                                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 6 }}>
+                                                    <Text style={[styles.optionSalePrice, isSelected && { color: Colors.primary }]}>
+                                                        ₹{opt.salePrice}
+                                                    </Text>
+                                                    {opt.mrp > opt.salePrice && (
+                                                        <Text style={styles.optionMrp}>₹{opt.mrp}</Text>
+                                                    )}
+                                                </View>
+
+                                                {/* Min qty hint */}
+                                                {opt.minQty > 1 && (
+                                                    <Text style={styles.optionMinQty}>Min {opt.minQty} packs</Text>
+                                                )}
+
+                                                {/* Stock status */}
+                                                <View style={[
+                                                    styles.stockBadge,
+                                                    { backgroundColor: outOfStock ? '#FFEBEE' : '#E8F5E9' },
+                                                ]}>
+                                                    <Text style={[
+                                                        styles.stockBadgeText,
+                                                        { color: outOfStock ? Colors.error : Colors.success },
+                                                    ]}>
+                                                        {outOfStock ? 'Out of stock' : `${opt.stock} left`}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
                             </View>
-                            <Text style={{ fontSize: 13, color: Colors.textTertiary, fontWeight: '500' }}>
-                                {product.reviewCount} Ratings & Reviews
-                            </Text>
-                        </View>
+                        )}
 
-                        {/* Price & Stock Block - Enhanced Professional Look */}
-                        <View style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            backgroundColor: Colors.surface,
-                            borderRadius: 16,
-                            padding: 16,
-                            borderWidth: 1,
-                            borderColor: 'rgba(0,0,0,0.05)',
-                            marginBottom: 24,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.05,
-                            shadowRadius: 8
-                        }}>
+                        {/* ── Price & Stock Block ─────────────────────────────── */}
+                        <View style={styles.priceBlock}>
                             <View>
-                                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                                    <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginRight: 8 }}>
-                                        ₹{product.price}
-                                    </Text>
-                                    {hasDiscount && (
-                                        <Text style={{ fontSize: 14, color: Colors.textTertiary, textDecorationLine: 'line-through' }}>
-                                            ₹{product.originalPrice}
-                                        </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                                    <Text style={styles.priceMain}>₹{activePrice}</Text>
+                                    {hasOptionDiscount && (
+                                        <Text style={styles.priceMrp}>₹{activeMrp}</Text>
                                     )}
                                 </View>
-                                {hasDiscount && (
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.success, marginTop: 4 }}>
-                                        You save ₹{(product.originalPrice || 0) - product.price}
+                                {hasOptionDiscount && (
+                                    <Text style={styles.priceSavings}>
+                                        You save ₹{(activeMrp - activePrice).toFixed(2)} ({optionDiscount}% off)
+                                    </Text>
+                                )}
+                                {selectedOption && (
+                                    <Text style={styles.priceOptionHint}>
+                                        {selectedOption.label} · {selectedOption.unitsPerPack} unit{selectedOption.unitsPerPack !== 1 ? 's' : ''} per pack
                                     </Text>
                                 )}
                             </View>
-
                             <View style={{ alignItems: 'flex-end' }}>
-                                {product.inStock ? (
-                                    <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-                                        <Text style={{ color: Colors.success, fontSize: 12, fontWeight: '700' }}>IN STOCK</Text>
-                                    </View>
-                                ) : (
-                                    <View style={{ backgroundColor: '#FFEBEE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-                                        <Text style={{ color: Colors.error, fontSize: 12, fontWeight: '700' }}>OUT OF STOCK</Text>
-                                    </View>
+                                <View style={[styles.stockIndicator, { backgroundColor: isInStock ? '#E8F5E9' : '#FFEBEE' }]}>
+                                    <Text style={[styles.stockIndicatorText, { color: isInStock ? Colors.success : Colors.error }]}>
+                                        {isInStock ? 'IN STOCK' : 'OUT OF STOCK'}
+                                    </Text>
+                                </View>
+                                {isInStock && activeStock <= 10 && (
+                                    <Text style={styles.lowStockHint}>Only {activeStock} left!</Text>
                                 )}
-                                <Text style={{ fontSize: 11, color: Colors.textTertiary, marginTop: 4 }}>Inclusive of all taxes</Text>
+                                <Text style={styles.taxHint}>
+                                    Incl. all taxes {product.gstRate ? `(${product.gstRate}% GST)` : ''}
+                                </Text>
                             </View>
                         </View>
 
-                        {/* Quantity Selector - Large Touch Targets */}
-                        <View style={{ marginBottom: 24 }}>
-                            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 }}>
-                                Quantity
+                        {/* ── Quantity Selector ──────────────────────────────── */}
+                        <View style={styles.sectionBlock}>
+                            <Text style={styles.sectionLabel}>
+                                Quantity{selectedOption ? ` (packs)` : ''}
                             </Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    backgroundColor: '#F3F4F6',
-                                    borderRadius: 12,
-                                    padding: 4
-                                }}>
+                                <View style={styles.qtyRow}>
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity - 1)}
-                                        disabled={quantity <= product.minQuantity}
-                                        style={{
-                                            width: 44,
-                                            height: 44,
-                                            backgroundColor: '#fff',
-                                            borderRadius: 10,
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            shadowColor: "#000",
-                                            shadowOffset: { width: 0, height: 1 },
-                                            shadowOpacity: 0.1,
-                                            shadowRadius: 2,
-                                            opacity: quantity <= product.minQuantity ? 0.5 : 1
-                                        }}
+                                        disabled={quantity <= activeMinQty}
+                                        style={[styles.qtyBtn, { opacity: quantity <= activeMinQty ? 0.4 : 1 }]}
                                     >
                                         <Icon name="remove" size={20} color={Colors.textPrimary} library="material" />
                                     </TouchableOpacity>
-
-                                    <View style={{ width: 60, alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>{quantity}</Text>
+                                    <View style={{ width: 56, alignItems: 'center' }}>
+                                        <Text style={styles.qtyValue}>{quantity}</Text>
                                     </View>
-
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity + 1)}
-                                        disabled={quantity >= product.stockQuantity}
-                                        style={{
-                                            width: 44,
-                                            height: 44,
-                                            backgroundColor: Colors.primary,
-                                            borderRadius: 10,
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            opacity: quantity >= product.stockQuantity ? 0.5 : 1
-                                        }}
+                                        disabled={quantity >= activeStock}
+                                        style={[styles.qtyBtnPrimary, { opacity: quantity >= activeStock ? 0.4 : 1 }]}
                                     >
                                         <Icon name="add" size={20} color="#fff" library="material" />
                                     </TouchableOpacity>
                                 </View>
-
-                                {/* Total Calculation */}
-                                <View>
-                                    <Text style={{ fontSize: 12, color: Colors.textTertiary, textAlign: 'right' }}>Total</Text>
-                                    <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>₹{product.price * quantity}</Text>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={{ fontSize: 11, color: Colors.textTertiary }}>Total</Text>
+                                    <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary }}>
+                                        ₹{(activePrice * quantity).toFixed(2)}
+                                    </Text>
                                 </View>
+                            </View>
+                            {activeMinQty > 1 && (
+                                <Text style={styles.minQtyNote}>
+                                    ℹ️ Minimum order is {activeMinQty} pack{activeMinQty > 1 ? 's' : ''} for this option
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* ── Product Details ────────────────────────────────── */}
+                        <View style={styles.sectionBlock}>
+                            <Text style={styles.sectionLabel}>Product Details</Text>
+                            <View style={styles.detailsTable}>
+                                {product.unit ? (
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailKey}>Unit Type</Text>
+                                        <Text style={styles.detailVal}>{product.unit}</Text>
+                                    </View>
+                                ) : null}
+                                {apiProduct?.brand ? (
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailKey}>Brand</Text>
+                                        <Text style={styles.detailVal}>{apiProduct.brand}</Text>
+                                    </View>
+                                ) : null}
+                                {product.perUnitWeightVolume ? (
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailKey}>Net Weight/Vol</Text>
+                                        <Text style={styles.detailVal}>{product.perUnitWeightVolume}</Text>
+                                    </View>
+                                ) : null}
+                                {product.gstRate ? (
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailKey}>GST Rate</Text>
+                                        <Text style={styles.detailVal}>{product.gstRate}%</Text>
+                                    </View>
+                                ) : null}
+                                <View style={styles.detailRow}>
+                                    <Text style={styles.detailKey}>Availability</Text>
+                                    <Text style={[styles.detailVal, { color: isInStock ? Colors.success : Colors.error }]}>
+                                        {isInStock ? 'In Stock' : 'Out of Stock'}
+                                    </Text>
+                                </View>
+                                {apiProduct?.manfDate ? (
+                                    <View style={styles.detailRow}>
+                                        <Text style={styles.detailKey}>MFG Date</Text>
+                                        <Text style={styles.detailVal}>
+                                            {new Date(apiProduct.manfDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                                        </Text>
+                                    </View>
+                                ) : null}
+                                {apiProduct?.expiryDate ? (
+                                    <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
+                                        <Text style={styles.detailKey}>EXP Date</Text>
+                                        <Text style={styles.detailVal}>
+                                            {new Date(apiProduct.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                                        </Text>
+                                    </View>
+                                ) : null}
                             </View>
                         </View>
 
-                        {/* Product Highlights / Specs */}
-                        <View style={{ marginBottom: 24 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>
-                                Product Details
-                            </Text>
-                            <View style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 12, overflow: 'hidden' }}>
-                                <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, padding: 12 }}>
-                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Unit</Text>
-                                    <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{product.unit}</Text>
-                                </View>
-                                {/* Display Brand if is a string, checking since API might return ID */}
-                                {/* Only display if brand is defined and is a string for now, or use a safe method */}
-                                <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, padding: 12 }}>
-                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Availability</Text>
-                                    <Text style={{ flex: 1, color: Colors.success, fontSize: 13, fontWeight: '600' }}>In Stock</Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', padding: 12 }}>
-                                    <Text style={{ flex: 1, color: Colors.textTertiary, fontSize: 13 }}>Country of Origin</Text>
-                                    <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' }}>India</Text>
-                                </View>
+                        {/* ── Description ───────────────────────────────────── */}
+                        {product.description ? (
+                            <View style={styles.sectionBlock}>
+                                <Text style={styles.sectionLabel}>Description</Text>
+                                <Text style={styles.descText}>{product.description}</Text>
                             </View>
-                        </View>
+                        ) : null}
 
-                        {/* Description */}
-                        {product.description && (
-                            <View style={{ marginBottom: 32 }}>
-                                <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 }}>
-                                    Description
-                                </Text>
-                                <Text style={{ fontSize: 14, color: Colors.textSecondary, lineHeight: 22 }}>
-                                    {product.description}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Action Button */}
+                        {/* ── Add to Cart Button ─────────────────────────────── */}
                         <TouchableOpacity
                             onPress={handleAddToCart}
-                            disabled={!product.inStock}
-                            style={{
-                                backgroundColor: product.inStock ? Colors.primary : Colors.gray300,
-                                paddingVertical: 18,
-                                borderRadius: 16,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                shadowColor: product.inStock ? Colors.primary : 'transparent',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: product.inStock ? 0.25 : 0,
-                                shadowRadius: 8,
-                            }}
+                            disabled={!isInStock}
                             activeOpacity={0.85}
+                            style={[styles.addToCartBtn, { backgroundColor: isInStock ? Colors.primary : Colors.gray300 }]}
                         >
-                            <Text style={{
-                                fontSize: 16,
-                                fontWeight: '800',
-                                color: '#fff',
-                                letterSpacing: 0.5
-                            }}>
-                                {product.inStock ? 'ADD TO CART' : 'NOTIFY ME'}
+                            <Icon name="shopping-cart" size={20} color="#fff" library="material" />
+                            <Text style={styles.addToCartText}>
+                                {isInStock
+                                    ? selectedOption
+                                        ? `Add ${quantity} × ${selectedOption.label} — ₹${(activePrice * quantity).toFixed(2)}`
+                                        : 'ADD TO CART'
+                                    : 'OUT OF STOCK'}
                             </Text>
                         </TouchableOpacity>
-
                     </View>
-
-                    {/* Related Products Divider */}
-                    <View style={{ height: 12, backgroundColor: '#F3F4F6', marginBottom: 24 }} />
 
                     {/* Related Products */}
                     {suggestedProducts.length > 0 && (
-                        <View style={{ paddingBottom: 24 }}>
-                            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>
+                        <>
+                            <View style={{ height: 12, backgroundColor: '#F3F4F6', marginBottom: 24 }} />
+                            <View style={{ paddingBottom: 24 }}>
+                                <Text style={[styles.sectionLabel, { paddingHorizontal: 16, marginBottom: 16 }]}>
                                     You Might Also Like
                                 </Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                                >
+                                    {suggestedProducts.map((item) => (
+                                        <View key={item.id} style={{ width: 154 }}>
+                                            <ProductCard
+                                                product={item}
+                                                onPress={() => router.push(`/products/${item.id}`)}
+                                            />
+                                        </View>
+                                    ))}
+                                </ScrollView>
                             </View>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-                            >
-                                {suggestedProducts.map((item) => (
-                                    <View key={item.id} style={{ width: 154 }}>
-                                        <ProductCard
-                                            product={item}
-                                            onPress={() => router.push(`/products/${item.id}`)}
-                                        />
-                                    </View>
-                                ))}
-                            </ScrollView>
-                        </View>
+                        </>
                     )}
-
                 </Animated.View>
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        backgroundColor: Colors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    headerTitle: {
+        flex: 1,
+        marginLeft: 12,
+        fontSize: 18,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+    },
+    imageContainer: {
+        backgroundColor: '#F8F9FA',
+        paddingVertical: 20,
+        alignItems: 'center',
+    },
+    discountBadge: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        backgroundColor: Colors.error,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        zIndex: 1,
+    },
+    discountBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+    contentPadding: { padding: 16 },
+    productName: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, lineHeight: 28, marginBottom: 4 },
+    productUnit: { fontSize: 13, color: Colors.textTertiary, fontWeight: '500', marginBottom: 20 },
+
+    // Section
+    sectionBlock: { marginBottom: 24 },
+    sectionLabel: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 },
+
+    // Option Cards
+    optionCard: {
+        width: 148,
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: Colors.border,
+        backgroundColor: '#fff',
+        position: 'relative',
+    },
+    optionCardSelected: {
+        borderColor: Colors.primary,
+        backgroundColor: '#F0F7FF',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    optionCardDisabled: { opacity: 0.45 },
+    optionCheck: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: Colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    optionDiscountBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#FFF3E0',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginBottom: 8,
+    },
+    optionDiscountText: { fontSize: 10, fontWeight: '700', color: '#E65100' },
+    optionLabel: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, lineHeight: 18, marginBottom: 2 },
+    optionLabelSelected: { color: Colors.primary },
+    optionUnits: { fontSize: 11, color: Colors.textTertiary, fontWeight: '500' },
+    optionSalePrice: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+    optionMrp: { fontSize: 12, color: Colors.textTertiary, textDecorationLine: 'line-through' },
+    optionMinQty: { fontSize: 10, color: Colors.textTertiary, marginTop: 4 },
+    stockBadge: {
+        marginTop: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    stockBadgeText: { fontSize: 10, fontWeight: '700' },
+
+    // Price block
+    priceBlock: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: Colors.surface,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        marginBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+    },
+    priceMain: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
+    priceMrp: { fontSize: 14, color: Colors.textTertiary, textDecorationLine: 'line-through' },
+    priceSavings: { fontSize: 12, fontWeight: '700', color: Colors.success, marginTop: 2 },
+    priceOptionHint: { fontSize: 11, color: Colors.textTertiary, marginTop: 4 },
+    stockIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    stockIndicatorText: { fontSize: 12, fontWeight: '700' },
+    lowStockHint: { fontSize: 11, color: Colors.error, fontWeight: '600', marginTop: 4 },
+    taxHint: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
+
+    // Qty
+    qtyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4 },
+    qtyBtn: {
+        width: 44, height: 44, backgroundColor: '#fff', borderRadius: 10,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2,
+    },
+    qtyBtnPrimary: {
+        width: 44, height: 44, backgroundColor: Colors.primary, borderRadius: 10,
+        alignItems: 'center', justifyContent: 'center',
+    },
+    qtyValue: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+    minQtyNote: { fontSize: 11, color: Colors.textTertiary, marginTop: 10, lineHeight: 16 },
+
+    // Details table
+    detailsTable: { borderWidth: 1, borderColor: Colors.border, borderRadius: 12, overflow: 'hidden' },
+    detailRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+        padding: 12,
+    },
+    detailKey: { flex: 1, color: Colors.textTertiary, fontSize: 13 },
+    detailVal: { flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
+
+    // Description
+    descText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
+
+    // Add to cart
+    addToCartBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 18,
+        borderRadius: 16,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+    },
+    addToCartText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+});

@@ -26,37 +26,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const showToast = useCallback((msg: string, type: ToastType = 'info') => {
-        // Clear existing timeout to prevent early dismissal if spamming
+    // Declare hideToast first so showToast can reference it
+    const hideToast = useCallback(() => {
         if (hideTimeoutRef.current) {
             clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
         }
-
-        setMessage(msg);
-        setType(type);
-        setVisible(true);
-
-        // Animate In
-        Animated.parallel([
-            Animated.spring(slideAnim, {
-                toValue: Platform.OS === 'ios' ? 60 : 40, // Top offset
-                useNativeDriver: true,
-                friction: 5,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        // Auto-hide after delay
-        hideTimeoutRef.current = setTimeout(() => {
-            hideToast();
-        }, 3000);
-    }, []);
-
-    const hideToast = useCallback(() => {
         Animated.parallel([
             Animated.timing(slideAnim, {
                 toValue: -100,
@@ -71,7 +46,45 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         ]).start(() => {
             setVisible(false);
         });
-    }, []);
+    }, [slideAnim, opacityAnim]);
+
+    // Use a ref so showToast's setTimeout always calls the latest hideToast
+    const hideToastRef = useRef(hideToast);
+    hideToastRef.current = hideToast;
+
+    const showToast = useCallback((msg: string, toastType: ToastType = 'info') => {
+        // Clear existing timeout to prevent early dismissal if spamming
+        if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+        }
+
+        setMessage(msg);
+        setType(toastType);
+        setVisible(true);
+
+        // Stop any in-progress animations before starting new ones
+        slideAnim.stopAnimation();
+        opacityAnim.stopAnimation();
+
+        Animated.parallel([
+            Animated.spring(slideAnim, {
+                toValue: Platform.OS === 'ios' ? 60 : 40,
+                useNativeDriver: true,
+                friction: 5,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Auto-hide after delay — use ref to always call latest hideToast
+        hideTimeoutRef.current = setTimeout(() => {
+            hideToastRef.current();
+        }, 3000);
+    }, [slideAnim, opacityAnim]);
 
     // Get styles based on type
     const getToastStyle = () => {
@@ -110,8 +123,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <ToastContext.Provider value={{ showToast, hideToast }}>
             {children}
 
-            {/* Toast Component Overlay */}
+            {/* Toast Component Overlay — only intercepts touches when visible */}
             <Animated.View
+                pointerEvents={visible ? 'box-none' : 'none'}
                 style={[
                     styles.toastContainer,
                     {
@@ -120,31 +134,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     },
                 ]}
             >
-                <View style={[
-                    styles.toastCard,
-                    {
-                        borderLeftColor: styleConfig.borderLeftColor
-                    }
-                ]}>
-                    <View style={[styles.iconContainer, { backgroundColor: `${styleConfig.iconColor}15` }]}>
-                        {/* Using material library for standard icons */}
-                        <Icon
-                            name={styleConfig.icon}
-                            size={24}
-                            color={styleConfig.iconColor}
-                            library="material"
-                        />
+                {visible && (
+                    <View style={[
+                        styles.toastCard,
+                        { borderLeftColor: styleConfig.borderLeftColor }
+                    ]}>
+                        <View style={[styles.iconContainer, { backgroundColor: `${styleConfig.iconColor}15` }]}>
+                            <Icon
+                                name={styleConfig.icon}
+                                size={24}
+                                color={styleConfig.iconColor}
+                                library="material"
+                            />
+                        </View>
+                        <View style={styles.textContainer}>
+                            <Text style={styles.title}>{styleConfig.title}</Text>
+                            <Text style={styles.message} numberOfLines={2}>
+                                {message}
+                            </Text>
+                        </View>
+                        <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
+                            <Icon name="close" size={18} color={Colors.textTertiary} library="material" />
+                        </TouchableOpacity>
                     </View>
-                    <View style={styles.textContainer}>
-                        <Text style={styles.title}>{styleConfig.title}</Text>
-                        <Text style={styles.message} numberOfLines={2}>
-                            {message}
-                        </Text>
-                    </View>
-                    <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
-                        <Icon name="close" size={18} color={Colors.textTertiary} library="material" />
-                    </TouchableOpacity>
-                </View>
+                )}
             </Animated.View>
         </ToastContext.Provider>
     );

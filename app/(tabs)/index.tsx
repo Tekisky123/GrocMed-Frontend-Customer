@@ -17,16 +17,27 @@ const { width } = Dimensions.get('window');
 const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Product | null => {
     if (!apiProduct || !apiProduct._id) return null;
 
-    const discount = apiProduct.mrp && apiProduct.offerPrice
+    let price = apiProduct.offerPrice || apiProduct.mrp || 0;
+    let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
+    let discount = apiProduct.mrp && apiProduct.offerPrice
         ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
         : 0;
+
+    if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
+        const firstOpt = apiProduct.packagingOptions[0];
+        price = firstOpt.salePrice || firstOpt.mrp || 0;
+        originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
+        if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
+            discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
+        }
+    }
 
     return {
         id: apiProduct._id,
         name: apiProduct.name || 'Unknown Product',
         description: apiProduct.description || '',
-        price: apiProduct.offerPrice || apiProduct.mrp || 0,
-        originalPrice: apiProduct.offerPrice ? apiProduct.mrp : undefined,
+        price,
+        originalPrice,
         discount: discount > 0 ? discount : undefined,
         image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : 'https://via.placeholder.com/150',
         categoryId: apiProduct.category || '',
@@ -36,6 +47,9 @@ const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Pr
         inStock: (apiProduct.stock || 0) > 0 && !!apiProduct.isActive,
         stockQuantity: apiProduct.stock || 0,
         unit: apiProduct.unitType || 'unit',
+        unitType: apiProduct.unitType,
+        perUnitWeightVolume: apiProduct.perUnitWeightVolume,
+        gstRate: apiProduct.gstRate,
         minQuantity: apiProduct.minimumQuantity || 1,
         maxQuantity: 10,
         rating: 4.5,
@@ -53,27 +67,27 @@ const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Pr
 const HOME_BANNERS = [
     {
         id: 1,
-        title: 'Delivery in 4 Hours',
-        subtitle: 'Fast & Reliable Service',
-        color: '#4CAF50',
-        tag: 'Express Delivery',
-        description: 'Order now and get your groceries delivered within 4 hours'
+        title: 'Wholesale For All',
+        subtitle: 'Groceries & Medicines',
+        color: '#4361EE',
+        tag: 'GrocMed Choice',
+        description: 'Get deep discounts on premium groceries and essential medical supplies direct to your door.'
     },
     {
         id: 2,
-        title: 'Business to Business',
-        subtitle: 'Wholesale Solutions',
-        color: '#2196F3',
-        tag: 'B2B Partner',
-        description: 'Special pricing and bulk orders for businesses'
+        title: 'Bulk Buy & Save',
+        subtitle: 'Cartons & Multi-packs',
+        color: '#7209B7',
+        tag: 'Volume Deal',
+        description: 'Unlock massive savings with our unique multi-packaging buying options. Perfect for shops and families.'
     },
     {
         id: 3,
-        title: 'Quality Assured',
-        subtitle: 'Fresh & Organic',
-        color: '#FF9800',
-        tag: 'Premium Quality',
-        description: '100% quality guarantee on all fresh produce'
+        title: 'Trusted Quality',
+        subtitle: 'Verified & Authentic',
+        color: '#EE6C4D',
+        tag: 'Premium Only',
+        description: 'Every product is 100% genuine and quality checked for your peace of mind.'
     },
 ];
 
@@ -103,7 +117,7 @@ export default function HomeScreen() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [isAutoPlay, width]);
+    }, [isAutoPlay]);
 
     const loadData = async () => {
         setError(null);
@@ -187,10 +201,9 @@ export default function HomeScreen() {
                     />
 
                     <TouchableOpacity
-                        ref={(view) => {
-                            view?.measureInWindow((x, y, width, height) => {
-                                setCartIconPosition({ x, y, width, height });
-                            });
+                        onLayout={(e) => {
+                            const { x, y, width: w, height: h } = e.nativeEvent.layout;
+                            setCartIconPosition({ x, y, width: w, height: h });
                         }}
                         onPress={() => router.push('/(tabs)/cart')}
                         style={{

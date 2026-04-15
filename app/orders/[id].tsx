@@ -16,24 +16,32 @@ export default function OrderDetailsScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const truckAnim = useRef(new Animated.Value(0)).current;
+  const truckLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (id) fetchDetails();
   }, [id]);
 
   useEffect(() => {
-    Animated.parallel([
+    const entranceAnim = Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true, easing: Easing.out(Easing.cubic) })
-    ]).start();
+    ]);
+    entranceAnim.start();
 
-    // Loop Truck Animation
-    Animated.loop(
+    // Store loop ref so we can stop it on unmount (prevents memory leak)
+    truckLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(truckAnim, { toValue: 1, duration: 3000, useNativeDriver: true, easing: Easing.linear }),
         Animated.timing(truckAnim, { toValue: 0, duration: 0, useNativeDriver: true })
       ])
-    ).start();
+    );
+    truckLoopRef.current.start();
+
+    return () => {
+      truckLoopRef.current?.stop();
+      entranceAnim.stop();
+    };
   }, []);
 
   const fetchDetails = async () => {

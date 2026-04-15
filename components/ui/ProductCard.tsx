@@ -30,22 +30,27 @@ export const ProductCard = React.memo(
 
   const [isAdding, setIsAdding] = React.useState(false);
 
-  const handleAddToCart = async () => {
-    if (product.inStock && !isAdding) {
-      setIsAdding(true);
+  const handleAddToCart = () => {
+    if (!product.inStock || isAdding) return;
 
-      imageRef.current?.measureInWindow((x, y, width, height) => {
-        startAnimation({ x, y, width, height }, product.image, async () => { });
-      });
+    setIsAdding(true);
 
-      Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
-      ]).start();
+    // Kick off fly-to-cart animation immediately
+    imageRef.current?.measureInWindow((x, y, width, height) => {
+      startAnimation({ x, y, width, height }, product.image, () => {});
+    });
 
-      await addToCart(product, product.minQuantity || 1);
-      setIsAdding(false);
-    }
+    // Scale feedback animation
+    Animated.sequence([
+      Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
+    ]).start();
+
+    // addToCart is synchronous (optimistic update), NOT async
+    addToCart(product, product.minQuantity || 1);
+
+    // Reset adding flag after brief delay (for visual feedback)
+    setTimeout(() => setIsAdding(false), 500);
   };
 
   const hasDiscount = product.discount && product.discount > 0;
@@ -103,16 +108,14 @@ export const ProductCard = React.memo(
               </Text>
               <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
 
-              {/* Rating */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                <Icon name="star" size={14} color="#FFA500" library="material" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textPrimary, marginLeft: 4 }}>
-                  {product.rating || 4.5}
-                </Text>
-                <Text style={{ fontSize: 11, color: Colors.textTertiary, marginLeft: 4 }}>
-                  ({product.reviewCount || 0})
-                </Text>
-              </View>
+              {/* Buying Options Tag */}
+              {product.packagingOptions && product.packagingOptions.length > 1 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  <View style={{ backgroundColor: '#E3F2FD', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#1565C0' }}>{product.packagingOptions.length} options</Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -215,25 +218,23 @@ export const ProductCard = React.memo(
           {/* Unit */}
           <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
 
-          {/* Rating */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#FFF8E1',
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
-            }}>
-              <Icon name="star" size={12} color="#FFA500" library="material" />
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#F57C00', marginLeft: 3 }}>
-                {product.rating || 4.5}
-              </Text>
+          {/* Buying Options Tag */}
+          {product.packagingOptions && product.packagingOptions.length > 1 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#E3F2FD',
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 6,
+              }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1565C0' }}>
+                  {product.packagingOptions.length} options
+                </Text>
+              </View>
             </View>
-            <Text style={{ fontSize: 10, color: Colors.textTertiary, marginLeft: 6 }}>
-              ({product.reviewCount || 0})
-            </Text>
-          </View>
+          )}
 
           {/* Price and Add Button */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>

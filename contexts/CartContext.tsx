@@ -1,13 +1,13 @@
 import { cartApi } from '@/api/cartApi';
 import { Cart, CartItem, Product } from '@/types';
 import { router } from 'expo-router';
-import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from 'react';
-import { useAuth } from './AuthContext'; // Import Auth Context
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
 interface CartContextType {
   cart: Cart;
-  addToCart: (product: Product, quantity: number) => void;
+  addToCart: (product: Product, quantity: number, packagingOptionId?: string) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -19,278 +19,301 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const DELIVERY_FEE = 0; // Free delivery as requested
-const FREE_DELIVERY_THRESHOLD = 0; // Always free
+const DELIVERY_FEE = 0;
+
+const emptyCart: Cart = {
+  items: [],
+  subtotal: 0,
+  deliveryFee: DELIVERY_FEE,
+  discount: 0,
+  total: 0,
+};
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<Cart>({
-    items: [],
-    subtotal: 0,
-    deliveryFee: DELIVERY_FEE,
-    discount: 0,
-    total: 0,
-  });
+  const [cart, setCart] = useState<Cart>(emptyCart);
 
-  const apiTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Single ref for all pending API debounce timers, keyed by productId
+  const apiTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const { showToast } = useToast();
-  const { isAuthenticated } = useAuth(); // Check auth status
+  const { isAuthenticated } = useAuth();
 
-  // Fetch cart from server when user is authenticated
+  // Stable helper to build cart from items
+  const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string): Cart => {
+    const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+    const total = subtotal - discount;
+    return { items, subtotal, deliveryFee: 0, discount, total, couponCode };
+  }, []);
+
+  // Stable fetchServerCart — uses functional setState so it doesn't need cart in deps
+  const fetchServerCart = useCallback(async () => {
+    try {
+      const res = await cartApi.getCart();
+      if (res.success && res.data?.items) {
+        const mappedItems: CartItem[] = res.data.items.map((i: any) => {
+          const product = i.product;
+          
+          let price = i.price || product?.offerPrice || product?.mrp || 0;
+          let packagingOptionLabel;
+
+          if (i.packagingOptionId && product?.packagingOptions) {
+             const packOpt = product.packagingOptions.find((p:any) => String(p._id) === String(i.packagingOptionId) || p.id === i.packagingOptionId);
+             if (packOpt) {
+                price = packOpt.salePrice || packOpt.mrp || price;
+                packagingOptionLabel = packOpt.label;
+             }
+          }
+
+          return {
+            id: i._id || i.id || String(Date.now()),
+            productId: product?._id || product?.id || '',
+            packagingOptionId: i.packagingOptionId,
+            packagingOptionLabel,
+            product: {
+              ...product,
+              id: product?._id || product?.id,
+              image:
+                product?.images?.[0] ||
+                product?.image ||
+                'https://via.placeholder.com/150',
+            },
+            quantity: i.quantity,
+            price,
+            total: price * i.quantity,
+          };
+        });
+        setCart(prev => buildCart(mappedItems, prev.discount, prev.couponCode));
+      }
+    } catch (e) {
+      console.error('fetchServerCart error:', e);
+    }
+  }, [buildCart]);
+
+  // Load cart when user authenticates
   useEffect(() => {
     if (isAuthenticated) {
       fetchServerCart();
     } else {
-      // Clear cart or check local storage if we wanted to support guest cart (but requirement says Force Login)
-      // For now, let's keep it empty or persist locally if needed. 
-      // Based on "Navigate to login if not logged in", we imply strict auth cart.
-      setCart({ items: [], subtotal: 0, deliveryFee: DELIVERY_FEE, discount: 0, total: 0 });
+      setCart(emptyCart);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchServerCart]);
 
-  const fetchServerCart = async () => {
-    const res = await cartApi.getCart();
-    if (res.success && res.data) {
-      // Assuming res.data.items matches our CartItem structure, or map it
-      // We need to ensure the server response matches our UI Cart structure
-      // For this implementation, we'll try to map it or assume structure.
-      // If server returns raw items, we might need to calculate totals here or trust server totals.
-
-      // Let's assume for now we construct the cart from items if server just returns items
-      // Or if server returns full cart object
-      // Mapping logic might be needed here depending on backend response.
-      // For simplicity, let's assume we can map the items.
-
-      // MOCK: Since we don't know exact backend shape, let's just assume it returns { items: [] } 
-      // and we recalculate to be safe, or direct set if properties match.
-      // Real backend probably returns list of { product, quantity }.
-
-      // For now, let's just recalculate based on items if they have product details
-      // If not, we might need to fetch product details. 
-      // Assuming backend returns populated product.
-
-      if (res.data.items) {
-        const mappedItems = res.data.items.map((i: any) => ({
-          id: i._id || i.id,
-          productId: i.product._id || i.product.id,
-          product: {
-            ...i.product,
-            id: i.product._id || i.product.id,
-            image: i.product.images?.[0] || i.product.image || 'https://via.placeholder.com/150'
-          },
-          quantity: i.quantity,
-          price: i.product.offerPrice || i.product.mrp || i.price,
-          total: (i.product.offerPrice || i.product.mrp || i.price) * i.quantity
-        }));
-        calculateCart(mappedItems);
-      }
-    }
-  };
-
-
-  const calculateCart = useCallback((items: CartItem[], discount: number = 0, couponCode?: string) => {
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const deliveryFee = 0; // Free Delivery
-    const total = subtotal + deliveryFee - discount;
-
-    const newCart = {
-      items,
-      subtotal,
-      deliveryFee,
-      discount,
-      total,
-      couponCode,
+  // Clean up all debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      apiTimers.current.forEach(t => clearTimeout(t));
+      apiTimers.current.clear();
     };
-
-    setCart(newCart);
-    return newCart;
   }, []);
 
-  const addToCart = useCallback((product: Product, quantity: number) => {
-    if (!isAuthenticated) {
-      showToast('Please login to add items to cart', 'info');
-      router.push('/auth/login');
-      return;
-    }
+  const addToCart = useCallback(
+    (product: Product, quantity: number, packagingOptionId?: string) => {
+      if (!isAuthenticated) {
+        showToast('Please login to add items to cart', 'info');
+        router.push('/auth/login');
+        return;
+      }
 
-    // 1. Optimistic UI Update (Immediate)
-    setCart(prev => {
-      const existingItem = prev.items.find(i => i.productId === product.id);
-      let updatedItems;
+      // Cart key = productId + optionId (so same product in different packs = separate lines)
+      const itemKey = packagingOptionId ? `${product.id}_${packagingOptionId}` : product.id;
 
-      if (existingItem) {
-        updatedItems = prev.items.map(item =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
+      // 1. Optimistic Update
+      setCart(prev => {
+        const existing = prev.items.find(i => (i as any).itemKey === itemKey || (!packagingOptionId && i.productId === product.id && !(i as any).packagingOptionId));
+        let updatedItems: CartItem[];
+
+        if (existing) {
+          updatedItems = prev.items.map(item =>
+            (item as any).itemKey === itemKey
+              ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
+              : item
+          );
+        } else {
+          let price = product.price || 0;
+          let packagingOptionLabel;
+          
+          if (packagingOptionId && product.packagingOptions) {
+             const packOpt = product.packagingOptions.find((p:any) => String(p._id) === String(packagingOptionId) || p.id === packagingOptionId);
+             if (packOpt) {
+                price = packOpt.salePrice || packOpt.mrp || price;
+                packagingOptionLabel = packOpt.label;
+             }
+          }
+
+          updatedItems = [
+            ...prev.items,
+            {
+              id: Date.now().toString(),
+              productId: product.id,
+              product,
+              quantity,
+              price,
+              total: price * quantity,
+              // Extra metadata
+              itemKey,
+              packagingOptionId,
+              packagingOptionLabel
+            } as any,
+          ];
+        }
+
+        return buildCart(updatedItems, prev.discount, prev.couponCode);
+      });
+
+      showToast(`${product.name} added to cart`, 'success');
+
+      // 2. Debounced API Sync
+      const existing = apiTimers.current.get(itemKey);
+      if (existing) clearTimeout(existing);
+
+      const timer = setTimeout(async () => {
+        apiTimers.current.delete(itemKey);
+        try {
+          const res = await cartApi.addToCart(product.id, quantity, packagingOptionId);
+          if (!res.success) {
+            fetchServerCart();
+          }
+        } catch (e) {
+          console.error('addToCart sync error:', e);
+          fetchServerCart();
+        }
+      }, 400);
+
+      apiTimers.current.set(itemKey, timer);
+    },
+    [isAuthenticated, showToast, buildCart, fetchServerCart]
+  );
+
+  const removeFromCart = useCallback(
+    (productId: string) => {
+      if (!isAuthenticated) return;
+
+      // 1. Optimistic Update
+      setCart(prev => {
+        const updatedItems = prev.items.filter(i => i.productId !== productId);
+        return buildCart(updatedItems, prev.discount, prev.couponCode);
+      });
+
+      showToast('Item removed from cart', 'info');
+
+      // 2. Background API Sync (no debounce needed for removes)
+      const timer = setTimeout(async () => {
+        try {
+          const res = await cartApi.removeFromCart(productId);
+          if (!res.success) {
+            fetchServerCart(); // Rollback silently
+          }
+        } catch (e) {
+          console.error('removeFromCart sync error:', e);
+          fetchServerCart();
+        }
+      }, 100);
+
+      // Store timer in case component unmounts
+      apiTimers.current.set(`remove_${productId}`, timer);
+    },
+    [isAuthenticated, showToast, buildCart, fetchServerCart]
+  );
+
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number) => {
+      // We need to read current cart state without adding it to deps.
+      // Use functional setState to get current state.
+      let diff = 0;
+      let minQty = 1;
+      let shouldRemove = false;
+
+      setCart(prev => {
+        const currentItem = prev.items.find(i => i.productId === productId);
+        if (!currentItem) return prev;
+
+        minQty = currentItem.product?.minQuantity || 1;
+
+        if (quantity <= 0) {
+          shouldRemove = true;
+          return prev; // Remove handled below separately
+        }
+
+        if (quantity < minQty && quantity > 0) {
+          // Enforce min quantity — just return prev unchanged, show toast outside
+          return prev;
+        }
+
+        diff = quantity - currentItem.quantity;
+        if (diff === 0) return prev;
+
+        const updatedItems = prev.items.map(item =>
+          item.productId === productId
+            ? { ...item, quantity, total: item.price * quantity }
             : item
         );
-      } else {
-        updatedItems = [...prev.items, {
-          id: Date.now().toString(),
-          productId: product.id,
-          product,
-          quantity,
-          price: product.price,
-          total: product.price * quantity
-        }];
+        return buildCart(updatedItems, prev.discount, prev.couponCode);
+      });
+
+      // Enforce minimum outside of setCart
+      if (quantity > 0 && quantity < minQty) {
+        showToast(`Minimum order quantity is ${minQty}`, 'info');
+        return;
       }
 
-      const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
-      const total = subtotal + prev.deliveryFee - prev.discount;
-
-      return {
-        ...prev,
-        items: updatedItems,
-        subtotal,
-        total
-      };
-    });
-
-    showToast(`Added ${product.name} to cart`, 'success');
-
-    // 2. Background API Sync
-    if (apiTimeoutRefs.current[product.id]) {
-      clearTimeout(apiTimeoutRefs.current[product.id]);
-    }
-
-    apiTimeoutRefs.current[product.id] = setTimeout(async () => {
-      try {
-        const res = await cartApi.addToCart(product.id, quantity);
-        if (!res.success) {
-           showToast('Cart sync failed', 'error');
-           fetchServerCart(); // Rollback to server state if sync fails
-        }
-      } catch (e) {
-         console.error('Cart sync error:', e);
+      if (shouldRemove) {
+        removeFromCart(productId);
+        return;
       }
-    }, 300);
-  }, [isAuthenticated, showToast]);
 
-  const removeFromCart = useCallback((productId: string) => {
-    if (!isAuthenticated) return;
+      if (diff === 0 || !isAuthenticated) return;
 
-    // 1. Optimistic UI Update
-    setCart(prev => {
-      const updatedItems = prev.items.filter(i => i.productId !== productId);
-      const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
-      return {
-        ...prev,
-        items: updatedItems,
-        subtotal,
-        total: subtotal + prev.deliveryFee - prev.discount
-      };
-    });
+      // Debounced quantity API sync
+      const existing = apiTimers.current.get(productId);
+      if (existing) clearTimeout(existing);
 
-    showToast('Item removed', 'success');
-
-    // 2. Background API Sync
-    setTimeout(async () => {
-       try {
-         const res = await cartApi.removeFromCart(productId);
-         if (!res.success) {
-            showToast('Failed to remove item', 'error');
-            fetchServerCart(); // Rollback
-         }
-       } catch (e) {
-          console.error('Remove item error:', e);
-       }
-    }, 100);
-  }, [isAuthenticated, showToast]);
-
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
-    // 1. Calculate Difference
-    const currentItem = cart.items.find(i => i.productId === productId);
-    if (!currentItem) return;
-
-    // Check minimum quantity requirement
-    const minQty = currentItem.product.minQuantity || 1;
-
-    // Prevent going below minimum quantity
-    if (quantity < minQty && quantity > 0) {
-      showToast(`Minimum order quantity for this product is ${minQty}`, 'info');
-      return;
-    }
-
-    // Decrement from minimum to 0 or manual removal
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-
-    const diff = quantity - currentItem.quantity;
-    if (diff === 0) return;
-
-    // 2. Optimistic UI Update (Fast) with Recalculation
-    setCart(prev => {
-      const updatedItems = prev.items.map(item =>
-        item.productId === productId
-          ? { ...item, quantity, total: item.price * quantity }
-          : item
-      ).filter(Boolean) as CartItem[];
-
-      // Recalculate Totals
-      const subtotal = updatedItems.reduce((sum, i) => sum + i.total, 0);
-      const deliveryFee = 0; // Free Delivery
-      const total = subtotal + deliveryFee - prev.discount;
-
-      return {
-        ...prev,
-        items: updatedItems,
-        subtotal,
-        deliveryFee,
-        total
-      };
-    });
-
-    // 3. API Sync (Properly Debounced)
-    if (isAuthenticated) {
-      if (apiTimeoutRefs.current[productId]) {
-        clearTimeout(apiTimeoutRefs.current[productId]);
-      }
-      
-      apiTimeoutRefs.current[productId] = setTimeout(async () => {
+      const timer = setTimeout(async () => {
+        apiTimers.current.delete(productId);
         try {
           await cartApi.addToCart(productId, diff);
         } catch (e) {
-          console.error("Failed to sync cart quantity", e);
+          console.error('updateQuantity sync error:', e);
+          fetchServerCart();
         }
-      }, 500); // 500ms debounce
-    }
-  }, [cart.items, isAuthenticated, removeFromCart, showToast]);
+      }, 500);
+
+      apiTimers.current.set(productId, timer);
+    },
+    [isAuthenticated, buildCart, removeFromCart, showToast, fetchServerCart]
+  );
 
   const clearCart = useCallback(async () => {
-    // Optimistic clear
-    setCart({
-      items: [],
-      subtotal: 0,
-      deliveryFee: DELIVERY_FEE,
-      discount: 0,
-      total: 0,
-    });
-
-    // Server clear
+    setCart(emptyCart);
     if (isAuthenticated) {
-      await cartApi.clearCart();
+      try {
+        await cartApi.clearCart();
+      } catch (e) {
+        console.error('clearCart error:', e);
+      }
     }
   }, [isAuthenticated]);
 
-  const applyCoupon = useCallback((code: string): boolean => {
-    // ... enable coupon logic if API supports it
+  const applyCoupon = useCallback((_code: string): boolean => {
     return false;
   }, []);
 
   const removeCoupon = useCallback(() => {
-    // ...
-  }, []);
+    setCart(prev => buildCart(prev.items, 0, undefined));
+  }, [buildCart]);
 
   const getItemCount = useCallback(() => {
     return cart.items.reduce((sum, item) => sum + item.quantity, 0);
   }, [cart.items]);
 
-  const getItemQuantity = useCallback((productId: string) => {
-    const item = cart.items.find(item => item.productId === productId || (item.product && item.product.id === productId));
-    return item ? item.quantity : 0;
-  }, [cart.items]);
+  const getItemQuantity = useCallback(
+    (productId: string) => {
+      const item = cart.items.find(
+        i => i.productId === productId || i.product?.id === productId
+      );
+      return item ? item.quantity : 0;
+    },
+    [cart.items]
+  );
 
   return (
     <CartContext.Provider
@@ -318,4 +341,3 @@ export function useCart() {
   }
   return context;
 }
-

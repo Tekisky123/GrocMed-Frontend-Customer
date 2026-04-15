@@ -1,5 +1,16 @@
 import axiosInstance from './axiosInstance';
 
+// Packaging option type
+export interface PackagingOption {
+  _id: string;
+  label: string;
+  unitsPerPack: number;
+  mrp: number;
+  salePrice: number;
+  minQty: number;
+  stock: number;
+}
+
 // Product types
 export interface Product {
   _id: string;
@@ -17,10 +28,12 @@ export interface Product {
   minimumQuantity?: number;
   images: string[];
   isActive: boolean;
+  gstRate?: number;
   createdAt: string;
   updatedAt?: string;
   manfDate?: string;
   expiryDate?: string;
+  packagingOptions?: PackagingOption[];
 }
 
 export interface ApiResponse<T> {
@@ -28,7 +41,7 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
   count?: number;
-  errorDetails?: any; // For debugging purposes
+  errorDetails?: any;
 }
 
 // Product API functions

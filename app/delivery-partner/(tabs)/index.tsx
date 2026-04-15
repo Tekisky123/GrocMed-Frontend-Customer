@@ -6,7 +6,7 @@ import { Alert, Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View }
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DeliveryPartnerDashboard() {
-  const { partner, logout } = useDeliveryPartner();
+  const { deliveryPartner: partner, logout } = useDeliveryPartner();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {

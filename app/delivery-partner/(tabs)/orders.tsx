@@ -27,14 +27,12 @@ const MOCK_ORDERS: Order[] = [
     paymentMethod: 'cod',
     paymentStatus: 'pending',
     address: {
-      id: 'a1',
-      type: 'home',
-      name: 'John Doe',
-      phone: '+91 9876543210',
-      addressLine1: '123 Main Street',
+    id: 'a1',
+      type: 'Home' as const,
+      street: '123 Main Street',
       city: 'Mumbai',
       state: 'Maharashtra',
-      pincode: '400001',
+      zip: '400001',
       isDefault: true,
     },
     placedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
@@ -52,14 +50,12 @@ const MOCK_ORDERS: Order[] = [
     paymentMethod: 'upi',
     paymentStatus: 'completed',
     address: {
-      id: 'a2',
-      type: 'work',
-      name: 'Jane Smith',
-      phone: '+91 9876543211',
-      addressLine1: '456 Business Park',
+    id: 'a2',
+      type: 'Work' as const,
+      street: '456 Business Park',
       city: 'Delhi',
       state: 'Delhi',
-      pincode: '110001',
+      zip: '110001',
       isDefault: false,
     },
     placedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
@@ -77,14 +73,12 @@ const MOCK_ORDERS: Order[] = [
     paymentMethod: 'card',
     paymentStatus: 'completed',
     address: {
-      id: 'a3',
-      type: 'home',
-      name: 'Bob Johnson',
-      phone: '+91 9876543212',
-      addressLine1: '789 Residential Area',
+    id: 'a3',
+      type: 'Home' as const,
+      street: '789 Residential Area',
       city: 'Bangalore',
       state: 'Karnataka',
-      pincode: '560001',
+      zip: '560001',
       isDefault: true,
     },
     placedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
@@ -102,14 +96,12 @@ const MOCK_ORDERS: Order[] = [
     paymentMethod: 'upi',
     paymentStatus: 'completed',
     address: {
-      id: 'a4',
-      type: 'home',
-      name: 'Alice Brown',
-      phone: '+91 9876543213',
-      addressLine1: '321 Street Name',
+    id: 'a4',
+      type: 'Home' as const,
+      street: '321 Street Name',
       city: 'Pune',
       state: 'Maharashtra',
-      pincode: '411001',
+      zip: '411001',
       isDefault: true,
     },
     placedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
@@ -127,14 +119,12 @@ const MOCK_ORDERS: Order[] = [
     paymentMethod: 'cod',
     paymentStatus: 'completed',
     address: {
-      id: 'a5',
-      type: 'home',
-      name: 'Charlie Wilson',
-      phone: '+91 9876543214',
-      addressLine1: '654 Avenue Road',
+    id: 'a5',
+      type: 'Home' as const,
+      street: '654 Avenue Road',
       city: 'Hyderabad',
       state: 'Telangana',
-      pincode: '500001',
+      zip: '500001',
       isDefault: true,
     },
     placedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
@@ -280,16 +270,16 @@ export default function OrdersScreen() {
                   <View style={styles.orderDetails}>
                     <View style={styles.orderDetailRow}>
                       <Icon name="person" size={16} color={Colors.textSecondary} library="material" />
-                      <Text style={styles.orderDetailText}>{order.address.name}</Text>
+                      <Text style={styles.orderDetailText}>{order.address?.city}, {order.address?.state}</Text>
                     </View>
                     <View style={styles.orderDetailRow}>
                       <Icon name="phone" size={16} color={Colors.textSecondary} library="material" />
-                      <Text style={styles.orderDetailText}>{order.address.phone}</Text>
+                      <Text style={styles.orderDetailText}>{order.address?.zip || 'N/A'}</Text>
                     </View>
                     <View style={styles.orderDetailRow}>
                       <Icon name="location-on" size={16} color={Colors.textSecondary} library="material" />
                       <Text style={styles.orderDetailText} numberOfLines={1}>
-                        {order.address.addressLine1}, {order.address.city}, {order.address.pincode}
+                        {order.address?.street}, {order.address?.city}, {order.address?.zip}
                       </Text>
                     </View>
                     <View style={styles.orderDetailRow}>

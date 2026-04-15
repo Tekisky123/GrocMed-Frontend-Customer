@@ -11,9 +11,13 @@ export const cartApi = {
         }
     },
 
-    addToCart: async (productId: string, quantity: number) => {
+    addToCart: async (productId: string, quantity: number, packagingOptionId?: string) => {
         try {
-            const response = await axiosInstance.post('/cart/add', { productId, quantity });
+            const response = await axiosInstance.post('/cart/add', {
+                productId,
+                quantity,
+                ...(packagingOptionId && { packagingOptionId }),
+            });
             return response.data;
         } catch (error: any) {
             console.error("Add Cart Error", error);

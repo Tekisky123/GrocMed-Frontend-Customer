@@ -35,11 +35,13 @@ export interface Product {
   barcode?: string;
   notifyCustomers?: boolean;
   isOffer?: boolean;
+  gstRate?: number;
   createdBy?: {
     _id: string;
     name: string;
     email?: string;
   };
+  packagingOptions?: any[];
 }
 
 export interface NutritionInfo {
@@ -89,6 +91,8 @@ export interface CartItem {
   quantity: number;
   price: number;
   total: number;
+  packagingOptionId?: string;
+  packagingOptionLabel?: string;
 }
 
 export interface Cart {

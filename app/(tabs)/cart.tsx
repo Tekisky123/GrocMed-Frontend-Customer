@@ -10,6 +10,15 @@ export default function CartScreen() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
+  const totalGST = cart.items.reduce((sum, item) => {
+    const gstRate = item.product?.gstRate || 0;
+    if (gstRate > 0) {
+      const taxable = item.total / (1 + gstRate / 100);
+      return sum + (item.total - taxable);
+    }
+    return sum;
+  }, 0);
+
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -103,7 +112,8 @@ export default function CartScreen() {
                       </TouchableOpacity>
                     </View>
                     <Text style={{ fontSize: 13, color: Colors.textSecondary, marginTop: 4, fontWeight: '500' }}>
-                      {item.product.unit || 'Unit'} • ₹{item.price}
+                      {item.packagingOptionLabel ? item.packagingOptionLabel : (item.product.unit || 'Unit')}
+                      {item.product.perUnitWeightVolume && item.packagingOptionLabel?.toLowerCase() !== item.product.perUnitWeightVolume.toLowerCase() ? ` (${item.product.perUnitWeightVolume})` : ''} • ₹{item.price}
                     </Text>
                   </View>
 
@@ -153,6 +163,12 @@ export default function CartScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
                         <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>Discount</Text>
                         <Text style={{ fontWeight: '700', color: Colors.success, fontSize: 15 }}>-₹{cart.discount}</Text>
+                      </View>
+                    )}
+                    {totalGST > 0 && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
+                        <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>GST (Incl.)</Text>
+                        <Text style={{ fontWeight: '600', color: Colors.textPrimary, fontSize: 13 }}>₹{totalGST.toFixed(2)}</Text>
                       </View>
                     )}
                     <View style={{ height: 1, borderColor: Colors.gray200, borderWidth: 1, borderStyle: 'dashed', borderRadius: 1, marginVertical: 16 }} />

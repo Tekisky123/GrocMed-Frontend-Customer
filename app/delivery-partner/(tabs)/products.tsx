@@ -172,7 +172,7 @@ export default function ProductsScreen() {
                       <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
                       <Text style={styles.productCategory}>{product.category}</Text>
                       <View style={styles.productMeta}>
-                        <Text style={styles.productPrice}>₹{product.price}</Text>
+                        <Text style={styles.productPrice}>₹{product.offerPrice || product.mrp}</Text>
                         {product.stock > 0 && (
                           <Text style={styles.stockText}>{product.stock} in stock</Text>
                         )}

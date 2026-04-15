@@ -362,15 +362,11 @@ export const MOCK_USER: User = {
   addresses: [
     {
       id: 'a1',
-      type: 'home',
-      name: 'John Doe',
-      phone: '+91 9876543210',
-      addressLine1: '123, Main Street',
-      addressLine2: 'Near City Mall',
+      type: 'Home' as const,
+      street: '123, Main Street, Near City Mall',
       city: 'Mumbai',
       state: 'Maharashtra',
-      pincode: '400001',
-      landmark: 'Opposite Bank',
+      zip: '400001',
       isDefault: true,
     },
   ],

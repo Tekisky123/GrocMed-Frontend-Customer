@@ -116,6 +116,31 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Inbox',
+          tabBarIcon: ({ color, focused }) => (
+            <Icon
+              name={Icons.notifications.name}
+              size={focused ? 26 : 24}
+              color={color}
+              library={Icons.notifications.library}
+            />
+          ),
+          tabBarLabel: ({ color, focused }) => (
+            <Text style={{
+              fontSize: 12,
+              fontWeight: focused ? '700' : '500',
+              color: color,
+              marginTop: 4,
+              letterSpacing: 0.2,
+            }}>
+              Inbox
+            </Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',

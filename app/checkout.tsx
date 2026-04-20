@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Address, PaymentMethod } from '@/types';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -27,6 +28,7 @@ const SECTION_PADDING = 20;
 export default function CheckoutScreen() {
     const { cart, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
+    const { showToast } = useToast();
 
     const totalGST = cart.items.reduce((sum, item) => {
         const gstRate = item.product?.gstRate || 0;
@@ -85,11 +87,11 @@ export default function CheckoutScreen() {
     // ── Save new address ──────────────────────────────────────────────────────
     const handleSaveAddress = async () => {
         if (!newStreet.trim()) {
-            alert('Please enter your street address');
+            showToast('Please enter your street address', 'info');
             return;
         }
         if (!selectedPincode) {
-            alert('Please select a delivery pincode');
+            showToast('Please select a delivery pincode', 'info');
             return;
         }
 
@@ -122,7 +124,7 @@ export default function CheckoutScreen() {
     const handlePlaceOrder = async () => {
         const addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
         if (!addressObject) {
-            alert('Please select or add a delivery address');
+            showToast('Please select or add a delivery address', 'info');
             return;
         }
 
@@ -131,8 +133,8 @@ export default function CheckoutScreen() {
             return item.quantity < minQty;
         });
         if (invalidItems.length > 0) {
-            const names = invalidItems.map(i => `${i.product.name} (min: ${i.product.minQuantity || 1})`).join('\n');
-            alert(`Items below minimum quantity:\n\n${names}`);
+            const names = invalidItems.map(i => i.product.name).join(', ');
+            showToast(`Some items are below minimum quantity: ${names}`, 'error');
             return;
         }
 
@@ -163,11 +165,11 @@ export default function CheckoutScreen() {
                     },
                 });
             } else {
-                alert(res.message || 'Failed to place order');
+                showToast(res.message || 'Failed to place order', 'error');
             }
         } catch (error) {
             console.error('Place order error:', error);
-            alert('An error occurred while placing order');
+            showToast('An error occurred while placing order', 'error');
         } finally {
             setLoading(false);
         }

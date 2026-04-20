@@ -33,19 +33,13 @@ export function StickyCartBar() {
 
     const showBar = useCallback(() => {
         isShown.current = true;
-        if (timerRef.current) clearTimeout(timerRef.current);
-
         Animated.spring(slideAnim, {
             toValue: 0,
             friction: 8,
-            tension: 40,
+            tension: 45,
             useNativeDriver: true,
         }).start();
-
-        timerRef.current = setTimeout(() => {
-            hideBar();
-        }, 3000);
-    }, [slideAnim, hideBar]);
+    }, [slideAnim]);
 
     useEffect(() => {
         if (cart.items.length > 0 && !isRouteHidden) {
@@ -53,10 +47,6 @@ export function StickyCartBar() {
         } else {
             hideBar();
         }
-        // Cleanup timer on unmount
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
     }, [cart.items.length, isRouteHidden, showBar, hideBar]);
 
     if (cart.items.length === 0) return null;
@@ -70,10 +60,11 @@ export function StickyCartBar() {
                 right: 20,
                 transform: [{ translateY: slideAnim }],
                 zIndex: 9999,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3,
-                shadowRadius: 16,
+                shadowColor: Colors.primary,
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.25,
+                shadowRadius: 20,
+                elevation: 10,
             }}
         >
             <TouchableOpacity

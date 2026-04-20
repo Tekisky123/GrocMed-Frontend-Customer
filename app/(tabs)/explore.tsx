@@ -2,15 +2,16 @@ import { Category, categoryApi } from '@/api/categoryApi';
 import { Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { Colors } from '@/constants/colors';
 import { Product } from '@/types';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-const SECTION_PADDING = 16; // Standardized to 16px
+const SECTION_PADDING = 20; // Standardized to 20px consistently
 const ITEM_SPACING = 12;
 
 // Robust mapping function consistent with other pages
@@ -117,14 +118,6 @@ export default function ExploreScreen() {
     });
   };
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
       <View style={{ flex: 1 }}>
@@ -173,7 +166,22 @@ export default function ExploreScreen() {
           contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
         >
-          <Animated.View style={{ opacity: fadeAnim }}>
+          {loading && !refreshing ? (
+            <View style={{ padding: SECTION_PADDING }}>
+              <View style={{ marginBottom: 24 }}>
+                <SkeletonLoader width={120} height={24} style={{ marginBottom: 20 }} />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <View key={i} style={{ width: (width - (SECTION_PADDING * 2) - (ITEM_SPACING * 2)) / 3, marginBottom: 20, alignItems: 'center' }}>
+                      <SkeletonLoader width="100%" height={(width - (SECTION_PADDING * 2) - (ITEM_SPACING * 2)) / 3} borderRadius={20} />
+                      <SkeletonLoader width="80%" height={12} style={{ marginTop: 8 }} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : (
+            <Animated.View style={{ opacity: fadeAnim }}>
 
             {/* Categories Section */}
             <View style={{ marginTop: 24, paddingHorizontal: SECTION_PADDING }}>
@@ -277,6 +285,7 @@ export default function ExploreScreen() {
             )}
 
           </Animated.View>
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>

@@ -4,6 +4,8 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
+import { mapApiProductToUiProduct, mapApiProductsToUiProducts } from '@/utils/productHelper';
+import { formatSafeDate } from '@/utils/dateHelper';
 import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -21,54 +23,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-
-// Helper to map API product to UI product (for ProductCard / suggested)
-const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
-    let price = apiProduct.offerPrice || apiProduct.mrp || 0;
-    let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
-    let discount = apiProduct.mrp && apiProduct.offerPrice
-        ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
-        : 0;
-
-    if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
-        const firstOpt = apiProduct.packagingOptions[0];
-        price = firstOpt.salePrice || firstOpt.mrp || 0;
-        originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
-        if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
-            discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
-        }
-    }
-
-    return {
-        id: apiProduct._id,
-        name: apiProduct.name,
-        description: apiProduct.description,
-        price,
-        originalPrice,
-        discount: discount > 0 ? discount : undefined,
-        packagingOptions: apiProduct.packagingOptions,
-        image: apiProduct.images?.length > 0 ? apiProduct.images[0] : '',
-        images: apiProduct.images,
-        categoryId: apiProduct.category,
-        brandId: apiProduct.brand,
-        brand: apiProduct.brand,
-        category: apiProduct.category,
-        inStock: apiProduct.stock > 0 && apiProduct.isActive,
-        stockQuantity: apiProduct.stock,
-        unit: apiProduct.unitType,
-        unitType: apiProduct.unitType,
-        perUnitWeightVolume: apiProduct.perUnitWeightVolume,
-        gstRate: apiProduct.gstRate,
-        minQuantity: apiProduct.minimumQuantity || 1,
-        maxQuantity: 10,
-        rating: 4.5,
-        reviewCount: 127,
-        ingredients: [],
-        nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        manfDate: apiProduct.manfDate,
-        expiryDate: apiProduct.expiryDate,
-    };
-};
 
 export default function ProductDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -202,6 +156,7 @@ export default function ProductDetailScreen() {
     }
 
     const displayImages: string[] = (product.images && product.images.length > 0 ? product.images : [product.image]).filter(Boolean) as string[];
+    if (displayImages.length === 0) displayImages.push('https://via.placeholder.com/400?text=Product+Image');
     const hasPackagingOptions = (apiProduct?.packagingOptions?.length ?? 0) > 0;
 
     return (
@@ -460,7 +415,7 @@ export default function ProductDetailScreen() {
                                     <View style={styles.detailRow}>
                                         <Text style={styles.detailKey}>MFG Date</Text>
                                         <Text style={styles.detailVal}>
-                                            {new Date(apiProduct.manfDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                                            {formatSafeDate(apiProduct.manfDate)}
                                         </Text>
                                     </View>
                                 ) : null}
@@ -468,7 +423,7 @@ export default function ProductDetailScreen() {
                                     <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
                                         <Text style={styles.detailKey}>EXP Date</Text>
                                         <Text style={styles.detailVal}>
-                                            {new Date(apiProduct.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                                            {formatSafeDate(apiProduct.expiryDate)}
                                         </Text>
                                     </View>
                                 ) : null}

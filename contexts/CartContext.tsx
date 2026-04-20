@@ -1,9 +1,11 @@
 import { cartApi } from '@/api/cartApi';
 import { Cart, CartItem, Product } from '@/types';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { mapApiProductToUiProduct } from '@/utils/productHelper';
 
 interface CartContextType {
   cart: Cart;
@@ -40,7 +42,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Stable helper to build cart from items
   const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string): Cart => {
-    const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+    const subtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
     const total = subtotal - discount;
     return { items, subtotal, deliveryFee: 0, discount, total, couponCode };
   }, []);
@@ -51,37 +53,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await cartApi.getCart();
       if (res.success && res.data?.items) {
         const mappedItems: CartItem[] = res.data.items.map((i: any) => {
-          const product = i.product;
+          const apiProd = i.product;
+          const uiProd = mapApiProductToUiProduct(apiProd);
           
-          let price = i.price || product?.offerPrice || product?.mrp || 0;
+          if (!uiProd) return null;
+
+          let price = Number(i.price) || uiProd.price || 0;
           let packagingOptionLabel;
 
-          if (i.packagingOptionId && product?.packagingOptions) {
-             const packOpt = product.packagingOptions.find((p:any) => String(p._id) === String(i.packagingOptionId) || p.id === i.packagingOptionId);
+          if (i.packagingOptionId && apiProd?.packagingOptions) {
+             const packOpt = apiProd.packagingOptions.find((p:any) => String(p._id) === String(i.packagingOptionId) || p.id === i.packagingOptionId);
              if (packOpt) {
-                price = packOpt.salePrice || packOpt.mrp || price;
+                price = Number(packOpt.salePrice) || Number(packOpt.mrp) || price;
                 packagingOptionLabel = packOpt.label;
              }
           }
 
           return {
-            id: i._id || i.id || String(Date.now()),
-            productId: product?._id || product?.id || '',
+            id: String(i._id || i.id || Date.now()),
+            productId: String(uiProd.id),
             packagingOptionId: i.packagingOptionId,
             packagingOptionLabel,
-            product: {
-              ...product,
-              id: product?._id || product?.id,
-              image:
-                product?.images?.[0] ||
-                product?.image ||
-                'https://via.placeholder.com/150',
-            },
-            quantity: i.quantity,
-            price,
-            total: price * i.quantity,
+            product: uiProd,
+            quantity: Number(i.quantity || 1),
+            price: Number(price),
+            total: Number(price) * Number(i.quantity || 1),
           };
-        });
+        }).filter((item: any) => item !== null);
+
         setCart(prev => buildCart(mappedItems, prev.discount, prev.couponCode));
       }
     } catch (e) {

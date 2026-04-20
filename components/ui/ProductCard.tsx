@@ -31,14 +31,19 @@ export const ProductCard = React.memo(
   const [isAdding, setIsAdding] = React.useState(false);
 
   const handleAddToCart = () => {
-    if (!product.inStock || isAdding) return;
+    if (!product || !product.inStock || isAdding) return;
 
     setIsAdding(true);
 
     // Kick off fly-to-cart animation immediately
-    imageRef.current?.measureInWindow((x, y, width, height) => {
-      startAnimation({ x, y, width, height }, product.image, () => {});
-    });
+    if (imageRef.current) {
+      imageRef.current.measureInWindow((x, y, width, height) => {
+        // Only run if we actually got valid measurements
+        if (x !== undefined && y !== undefined && width > 0) {
+          startAnimation({ x, y, width, height }, product.image || 'https://via.placeholder.com/150', () => {});
+        }
+      });
+    }
 
     // Scale feedback animation
     Animated.sequence([
@@ -46,8 +51,12 @@ export const ProductCard = React.memo(
       Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
     ]).start();
 
-    // addToCart is synchronous (optimistic update), NOT async
-    addToCart(product, product.minQuantity || 1);
+    // addToCart handles authentication internally and synchronous optimistic updates
+    try {
+      addToCart(product, product.minQuantity || 1);
+    } catch (error) {
+      console.warn('Failed to add to cart:', error);
+    }
 
     // Reset adding flag after brief delay (for visual feedback)
     setTimeout(() => setIsAdding(false), 500);
@@ -67,11 +76,12 @@ export const ProductCard = React.memo(
             padding: 12,
             flexDirection: 'row',
             borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.06)',
-            shadowColor: Colors.shadow,
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
+            borderColor: 'rgba(0,0,0,0.04)',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 10,
+            elevation: 3,
             marginBottom: 12,
           }}
         >
@@ -167,11 +177,12 @@ export const ProductCard = React.memo(
           borderRadius: 18,
           padding: 10,
           borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.06)',
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 10,
+          borderColor: 'rgba(0,0,0,0.04)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          elevation: 4,
         }}
       >
         {/* Discount Badge */}

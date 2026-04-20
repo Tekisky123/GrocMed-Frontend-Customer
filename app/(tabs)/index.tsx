@@ -5,64 +5,15 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
 import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { useCart } from '@/contexts/CartContext';
+import { mapApiProductToUiProduct, mapApiProductsToUiProducts } from '@/utils/productHelper';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { Product } from '@/types';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { ActivityIndicator, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-
-// Safe mapping function
-const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefined): Product | null => {
-    if (!apiProduct || !apiProduct._id) return null;
-
-    let price = apiProduct.offerPrice || apiProduct.mrp || 0;
-    let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
-    let discount = apiProduct.mrp && apiProduct.offerPrice
-        ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
-        : 0;
-
-    if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
-        const firstOpt = apiProduct.packagingOptions[0];
-        price = firstOpt.salePrice || firstOpt.mrp || 0;
-        originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
-        if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
-            discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
-        }
-    }
-
-    return {
-        id: apiProduct._id,
-        name: apiProduct.name || 'Unknown Product',
-        description: apiProduct.description || '',
-        price,
-        originalPrice,
-        discount: discount > 0 ? discount : undefined,
-        image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : 'https://via.placeholder.com/150',
-        categoryId: apiProduct.category || '',
-        brandId: apiProduct.brand || '',
-        brand: apiProduct.brand || 'Unknown Brand',
-        category: apiProduct.category || 'Uncategorized',
-        inStock: (apiProduct.stock || 0) > 0 && !!apiProduct.isActive,
-        stockQuantity: apiProduct.stock || 0,
-        unit: apiProduct.unitType || 'unit',
-        unitType: apiProduct.unitType,
-        perUnitWeightVolume: apiProduct.perUnitWeightVolume,
-        gstRate: apiProduct.gstRate,
-        minQuantity: apiProduct.minimumQuantity || 1,
-        maxQuantity: 10,
-        rating: 4.5,
-        reviewCount: 0,
-        ingredients: [],
-        nutrition: {
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-        }
-    };
-};
 
 const HOME_BANNERS = [
     {
@@ -120,29 +71,24 @@ export default function HomeScreen() {
     }, [isAutoPlay]);
 
     const loadData = async () => {
-        setError(null);
         try {
             const [productsRes, categoriesRes] = await Promise.all([
-                productApi.getAllProducts().catch(e => ({ success: false, data: [] as ApiProduct[], message: 'Failed to fetch products' })),
-                categoryApi.getAllCategories().catch(e => ({ success: false, data: [] as Category[], message: 'Failed to fetch categories' })),
+                productApi.getAllProducts().catch(() => ({ success: false, data: [] as ApiProduct[] })),
+                categoryApi.getAllCategories().catch(() => ({ success: false, data: [] as Category[] })),
             ]);
 
             if (productsRes.success && Array.isArray(productsRes.data)) {
-                const validProducts = productsRes.data
-                    .map(mapApiProductToUiProduct)
-                    .filter((p): p is Product => p !== null);
-                setProducts(validProducts);
-            } else {
-                if (products.length === 0) setError('Unable to load products');
+                setProducts(mapApiProductsToUiProducts(productsRes.data));
+            } else if (products.length === 0) {
+                setError('Unable to load products');
             }
 
             if (categoriesRes.success && Array.isArray(categoriesRes.data)) {
-                const validCategories = categoriesRes.data.filter(c => c && c.name);
-                setCategories(validCategories);
+                setCategories(categoriesRes.data.filter(c => c && c.name));
             }
         } catch (err) {
             console.error('Error loading home data:', err);
-            if (products.length === 0) setError('Failed to connect to server');
+            if (products.length === 0) setError('Connection error');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -159,7 +105,7 @@ export default function HomeScreen() {
     };
 
     const handleProductPress = (product: Product) => {
-        if (!product || !product.id) return;
+        if (!product?.id) return;
         router.push({
             pathname: '/products/[id]',
             params: { id: product.id },
@@ -173,14 +119,6 @@ export default function HomeScreen() {
             params: { categoryName: category.name },
         });
     };
-
-    if (loading && !refreshing) {
-        return (
-            <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-            </View>
-        );
-    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
@@ -199,6 +137,20 @@ export default function HomeScreen() {
                         style={{ width: 190, height: 70 }}
                         resizeMode="contain"
                     />
+
+                    <TouchableOpacity
+                        onPress={() => router.push('/(tabs)/notifications')}
+                        style={{
+                            marginRight: 12,
+                            padding: 10,
+                            backgroundColor: Colors.surface,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: Colors.border,
+                        }}
+                    >
+                        <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         onLayout={(e) => {
@@ -267,7 +219,7 @@ export default function HomeScreen() {
 
             {/* Main FlatList Container to prevent UI Thread Blocking on deep mapping arrays */}
             <FlatList
-                data={error ? [] : products}
+                data={loading || error ? [] : products}
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
@@ -275,84 +227,121 @@ export default function HomeScreen() {
                 maxToRenderPerBatch={4}
                 windowSize={5}
                 removeClippedSubviews={Platform.OS === 'android'}
-                columnWrapperStyle={{ paddingHorizontal: 16, gap: 12, marginBottom: 12 }}
+                columnWrapperStyle={{ paddingHorizontal: 20, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 20 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+                ListEmptyComponent={loading && !refreshing ? () => (
+                    <View style={{ gap: 12 }}>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                        </View>
+                    </View>
+                ) : null}
                 ListHeaderComponent={() => (
                     <>
                         {/* Auto-Sliding Banner */}
                         <View style={{ marginTop: 16, marginBottom: 20 }}>
-                            <ScrollView
-                                ref={scrollViewRef}
-                                horizontal
-                                pagingEnabled
-                                showsHorizontalScrollIndicator={false}
-                                onScrollBeginDrag={() => setIsAutoPlay(false)}
-                                onMomentumScrollEnd={(event) => {
-                                    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-                                    setCurrentBanner(slideIndex);
-                                    setIsAutoPlay(true);
-                                }}
-                                snapToInterval={width}
-                                decelerationRate="fast"
-                            >
-                                {HOME_BANNERS.map((banner) => (
-                                    <View key={banner.id} style={{ width: width, paddingHorizontal: 16 }}>
-                                        <View style={{
-                                            height: 210, backgroundColor: banner.color, borderRadius: 20, padding: 24,
-                                            justifyContent: 'space-between', shadowColor: banner.color, shadowOffset: { width: 0, height: 8 },
-                                            shadowOpacity: 0.4, shadowRadius: 12, overflow: 'hidden',
-                                        }}>
-                                            <View style={{ position: 'absolute', right: -60, top: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                                            <View style={{ position: 'absolute', right: 20, bottom: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                                            <View>
-                                                <View style={{ backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 }}>
-                                                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>{banner.tag}</Text>
+                            {loading && !refreshing ? (
+                                <View style={{ paddingHorizontal: 20 }}>
+                                    <SkeletonLoader height={210} borderRadius={20} />
+                                </View>
+                            ) : (
+                                <>
+                                    <ScrollView
+                                        ref={scrollViewRef}
+                                        horizontal
+                                        pagingEnabled
+                                        showsHorizontalScrollIndicator={false}
+                                        onScrollBeginDrag={() => setIsAutoPlay(false)}
+                                        onMomentumScrollEnd={(event) => {
+                                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+                                            setCurrentBanner(slideIndex);
+                                            setIsAutoPlay(true);
+                                        }}
+                                        snapToInterval={width}
+                                        decelerationRate="fast"
+                                    >
+                                        {HOME_BANNERS.map((banner) => (
+                                            <View key={banner.id} style={{ width: width, paddingHorizontal: 20 }}>
+                                                <View style={{
+                                                    height: 210, backgroundColor: banner.color, borderRadius: 20, padding: 24,
+                                                    justifyContent: 'space-between', shadowColor: banner.color, shadowOffset: { width: 0, height: 8 },
+                                                    shadowOpacity: 0.4, shadowRadius: 12, overflow: 'hidden',
+                                                }}>
+                                                    <View style={{ position: 'absolute', right: -60, top: -60, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                                                    <View style={{ position: 'absolute', right: 20, bottom: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                                                    <View>
+                                                        <View style={{ backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 }}>
+                                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>{banner.tag}</Text>
+                                                        </View>
+                                                        <Text style={{ fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, lineHeight: 36 }}>{banner.title}</Text>
+                                                        <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginBottom: 8 }}>{banner.subtitle}</Text>
+                                                        <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18 }}>{banner.description}</Text>
+                                                    </View>
                                                 </View>
-                                                <Text style={{ fontSize: 30, fontWeight: '800', color: '#fff', marginBottom: 8, lineHeight: 36 }}>{banner.title}</Text>
-                                                <Text style={{ fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.95)', marginBottom: 8 }}>{banner.subtitle}</Text>
-                                                <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.85)', lineHeight: 18 }}>{banner.description}</Text>
                                             </View>
-                                        </View>
-                                    </View>
-                                ))}
-                            </ScrollView>
+                                        ))}
+                                    </ScrollView>
 
-                            {/* Pagination Dots */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
-                                {HOME_BANNERS.map((_, index) => (
-                                    <View key={index} style={{ width: index === currentBanner ? 28 : 8, height: 8, borderRadius: 4, backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300 }} />
-                                ))}
-                            </View>
+                                    {/* Pagination Dots */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
+                                        {HOME_BANNERS.map((_, index) => (
+                                            <View key={index} style={{ width: index === currentBanner ? 28 : 8, height: 8, borderRadius: 4, backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300 }} />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
                         </View>
 
                         {/* Categories List */}
                         <View style={{ marginBottom: 20 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 14 }}>
                                 <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Shop by Category</Text>
                                 <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
                                     <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>See All</Text>
                                 </TouchableOpacity>
                             </View>
 
-                            <FlatList
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
-                                data={categories.filter(c => c)}
-                                keyExtractor={(item, index) => index.toString()}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity style={{ alignItems: 'center', width: 75 }} onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
-                                        <View style={{ width: 75, height: 75, borderRadius: 38, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 5 }}>
-                                            {item.image ? <Image source={{ uri: item.image }} style={{ width: 52, height: 52 }} resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
+                            {loading && !refreshing ? (
+                                <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 14 }}>
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <View key={i} style={{ alignItems: 'center' }}>
+                                            <SkeletonLoader width={75} height={75} borderRadius={38} />
+                                            <SkeletonLoader width={60} height={12} style={{ marginTop: 8 }} />
                                         </View>
-                                        <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>{item.name || 'Unknown'}</Text>
-                                    </TouchableOpacity>
-                                )}
-                            />
+                                    ))}
+                                </View>
+                            ) : (
+                                <FlatList
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+                                    data={categories.filter(c => c)}
+                                    keyExtractor={(item, index) => index.toString()}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity style={{ alignItems: 'center', width: 75 }} onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
+                                            <View style={{ width: 75, height: 75, borderRadius: 38, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 5 }}>
+                                                {item.image ? <Image source={{ uri: item.image }} style={{ width: 52, height: 52 }} resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
+                                            </View>
+                                            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>{item.name || 'Unknown'}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                />
+                            )}
                         </View>
 
-                        {/* Popular Products List */}
+                        {/* Popular Products List Header */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 14 }}>
+                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Top Picks for You</Text>
+                        </View>
+                    </>
+                )}
+            />
                         {products.length > 0 && (
                             <View style={{ marginBottom: 20 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>

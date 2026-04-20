@@ -76,4 +76,17 @@ export const customerApi = {
             return { success: false, message: 'Failed to sync token' };
         }
     },
+    
+    getNotifications: async (page = 1, limit = 20): Promise<{ success: boolean; notifications: any[]; total?: number; message?: string }> => {
+        try {
+            const response = await axiosInstance.get(`/customer/notifications?page=${page}&limit=${limit}`);
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                notifications: [],
+                message: error.response?.data?.message || 'Failed to fetch notifications',
+            };
+        }
+    },
 };

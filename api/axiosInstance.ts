@@ -62,10 +62,12 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        await AsyncStorage.removeItem(TOKEN_KEY);
-        await AsyncStorage.removeItem(USER_DATA_KEY);
-      } catch {
-        // Error clearing storage
+        console.warn('Unauthorized request detected, clearing session...');
+        await AsyncStorage.multiRemove([TOKEN_KEY, USER_DATA_KEY, DELIVERY_PARTNER_DATA_KEY]);
+        // Note: Actual navigation redirect is often best handled by a Root Navigation listener 
+        // but clearing state here triggers AuthContext re-evaluation.
+      } catch (e) {
+        console.error('Error during 401 session cleanup:', e);
       }
     }
 

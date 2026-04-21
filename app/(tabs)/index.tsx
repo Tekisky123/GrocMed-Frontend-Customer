@@ -122,7 +122,6 @@ export default function HomeScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
-            {/* Header with Logo and Search */}
             <View style={{
                 backgroundColor: Colors.background,
                 paddingHorizontal: 16,
@@ -130,7 +129,6 @@ export default function HomeScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: Colors.border,
             }}>
-                {/* Logo and Cart Row */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                     <Image
                         source={require('@/assets/images/logo-removebg-preview.png')}
@@ -138,60 +136,61 @@ export default function HomeScreen() {
                         resizeMode="contain"
                     />
 
-                    <TouchableOpacity
-                        onPress={() => router.push('/(tabs)/notifications')}
-                        style={{
-                            marginRight: 12,
-                            padding: 10,
-                            backgroundColor: Colors.surface,
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: Colors.border,
-                        }}
-                    >
-                        <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(tabs)/notifications')}
+                            style={{
+                                marginRight: 12,
+                                padding: 10,
+                                backgroundColor: Colors.surface,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: Colors.border,
+                            }}
+                        >
+                            <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onLayout={(e) => {
-                            const { x, y, width: w, height: h } = e.nativeEvent.layout;
-                            setCartIconPosition({ x, y, width: w, height: h });
-                        }}
-                        onPress={() => router.push('/(tabs)/cart')}
-                        style={{
-                            position: 'relative',
-                            padding: 10,
-                            backgroundColor: Colors.surface,
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: Colors.border,
-                        }}
-                    >
-                        <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
-                        {getItemCount() > 0 && (
-                            <View style={{
-                                position: 'absolute',
-                                top: -4,
-                                right: -4,
-                                backgroundColor: Colors.error,
-                                borderRadius: 10,
-                                minWidth: 20,
-                                height: 20,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                paddingHorizontal: 4,
-                                borderWidth: 2,
-                                borderColor: Colors.background,
-                            }}>
-                                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
-                                    {getItemCount() > 99 ? '99+' : getItemCount()}
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onLayout={(e) => {
+                                const { x, y, width: w, height: h } = e.nativeEvent.layout;
+                                setCartIconPosition({ x, y, width: w, height: h });
+                            }}
+                            onPress={() => router.push('/(tabs)/cart')}
+                            style={{
+                                position: 'relative',
+                                padding: 10,
+                                backgroundColor: Colors.surface,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: Colors.border,
+                            }}
+                        >
+                            <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
+                            {getItemCount() > 0 && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: -4,
+                                    right: -4,
+                                    backgroundColor: Colors.error,
+                                    borderRadius: 10,
+                                    minWidth: 20,
+                                    height: 20,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    paddingHorizontal: 4,
+                                    borderWidth: 2,
+                                    borderColor: Colors.background,
+                                }}>
+                                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
+                                        {getItemCount() > 99 ? '99+' : getItemCount()}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                {/* Search Bar */}
                 <TouchableOpacity
                     onPress={() => router.push('/products/search')}
                     activeOpacity={0.8}
@@ -217,7 +216,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Main FlatList Container to prevent UI Thread Blocking on deep mapping arrays */}
             <FlatList
                 data={loading || error ? [] : products}
                 keyExtractor={(item) => item.id.toString()}
@@ -228,24 +226,32 @@ export default function HomeScreen() {
                 windowSize={5}
                 removeClippedSubviews={Platform.OS === 'android'}
                 columnWrapperStyle={{ paddingHorizontal: 20, gap: 12, marginBottom: 12 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
                 ListEmptyComponent={loading && !refreshing ? () => (
                     <View style={{ gap: 12 }}>
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
-                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
                         </View>
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
-                            <SkeletonLoader height={220} width={(width - 48) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
+                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
                         </View>
+                    </View>
+                ) : error ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                        <Icon name="error-outline" size={48} color={Colors.error} library="material" />
+                        <Text style={{ color: Colors.textSecondary, textAlign: 'center', marginTop: 16, fontSize: 16 }}>{error}</Text>
+                        <TouchableOpacity onPress={onRefresh} style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: Colors.primary, borderRadius: 12 }}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>Retry</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : null}
                 ListHeaderComponent={() => (
-                    <>
-                        {/* Auto-Sliding Banner */}
-                        <View style={{ marginTop: 16, marginBottom: 20 }}>
+                    <View style={{ paddingBottom: 12 }}>
+                        {/* Banner Section */}
+                        <View style={{ marginTop: 16, marginBottom: 24 }}>
                             {loading && !refreshing ? (
                                 <View style={{ paddingHorizontal: 20 }}>
                                     <SkeletonLoader height={210} borderRadius={20} />
@@ -287,8 +293,6 @@ export default function HomeScreen() {
                                             </View>
                                         ))}
                                     </ScrollView>
-
-                                    {/* Pagination Dots */}
                                     <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16, gap: 8 }}>
                                         {HOME_BANNERS.map((_, index) => (
                                             <View key={index} style={{ width: index === currentBanner ? 28 : 8, height: 8, borderRadius: 4, backgroundColor: index === currentBanner ? Colors.primary : Colors.gray300 }} />
@@ -298,12 +302,12 @@ export default function HomeScreen() {
                             )}
                         </View>
 
-                        {/* Categories List */}
-                        <View style={{ marginBottom: 20 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 14 }}>
-                                <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Shop by Category</Text>
+                        {/* Categories Section */}
+                        <View style={{ marginBottom: 24 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 }}>
+                                <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 }}>Shop by Category</Text>
                                 <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-                                    <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>See All</Text>
+                                    <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 14 }}>See All</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -325,40 +329,33 @@ export default function HomeScreen() {
                                     keyExtractor={(item, index) => index.toString()}
                                     renderItem={({ item }) => (
                                         <TouchableOpacity style={{ alignItems: 'center', width: 75 }} onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
-                                            <View style={{ width: 75, height: 75, borderRadius: 38, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', marginBottom: 8, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 5 }}>
+                                            <View style={{ width: 75, height: 75, borderRadius: 38, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 }}>
                                                 {item.image ? <Image source={{ uri: item.image }} style={{ width: 52, height: 52 }} resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
                                             </View>
-                                            <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>{item.name || 'Unknown'}</Text>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', lineHeight: 16 }} numberOfLines={2}>{item.name}</Text>
                                         </TouchableOpacity>
                                     )}
                                 />
                             )}
                         </View>
 
-                        {/* Popular Products List Header */}
-                        <View style={{ paddingHorizontal: 20, marginBottom: 14 }}>
-                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Top Picks for You</Text>
-                        </View>
-                    </>
-                )}
-            />
+                        {/* Recent/Popular Products Section */}
                         {products.length > 0 && (
-                            <View style={{ marginBottom: 20 }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
-                                    <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>Popular Products</Text>
+                            <View style={{ marginBottom: 32 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 }}>
+                                    <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 }}>Top Picks for You</Text>
                                     <TouchableOpacity onPress={() => router.push('/products/search')}>
-                                        <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 13 }}>View All</Text>
+                                        <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 14 }}>View All</Text>
                                     </TouchableOpacity>
                                 </View>
-
                                 <FlatList
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-                                    data={products.slice(0, 6)}
-                                    keyExtractor={(item) => item.id.toString()}
+                                    contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+                                    data={products.slice(0, 8)}
+                                    keyExtractor={(item) => `popular_${item.id}`}
                                     renderItem={({ item }) => (
-                                        <View style={{ width: 160 }}>
+                                        <View style={{ width: width * 0.44 }}>
                                             <ProductCard product={item} onPress={() => handleProductPress(item)} />
                                         </View>
                                     )}
@@ -366,20 +363,14 @@ export default function HomeScreen() {
                             </View>
                         )}
 
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14 }}>
-                            <Text style={{ fontSize: 19, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 }}>All Products</Text>
+                        {/* All Products Header */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                            <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 }}>All Products</Text>
                         </View>
-                        
-                        {error && (
-                            <View style={{ padding: 20, alignItems: 'center' }}>
-                                <Icon name="error-outline" size={32} color={Colors.error} library="material" />
-                                <Text style={{ color: Colors.error, textAlign: 'center', marginTop: 10, fontSize: 14 }}>{error}</Text>
-                            </View>
-                        )}
-                    </>
+                    </View>
                 )}
                 renderItem={({ item }) => (
-                    <View style={{ flex: 1, maxWidth: (width - 44) / 2 }}>
+                    <View style={{ flex: 1, paddingHorizontal: 10, marginBottom: 8 }}>
                         <ProductCard product={item} onPress={() => handleProductPress(item)} />
                     </View>
                 )}

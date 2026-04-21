@@ -68,7 +68,7 @@ export default function NotificationsScreen() {
             <View style={styles.iconContainer}>
                 <View style={styles.iconCircle}>
                     <Icon name="notifications" size={20} color={Colors.primary} library="material" />
-                </div>
+                </View>
             </View>
             <View style={styles.contentContainer}>
                 <View style={styles.topRow}>

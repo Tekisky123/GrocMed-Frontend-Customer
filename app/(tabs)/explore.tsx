@@ -283,7 +283,6 @@ export default function ExploreScreen() {
                 </View>
               </View>
             )}
-
           </Animated.View>
           )}
         </ScrollView>

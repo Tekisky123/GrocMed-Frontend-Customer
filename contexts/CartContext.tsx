@@ -113,6 +113,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
       // Cart key = productId + optionId (so same product in different packs = separate lines)
       const itemKey = packagingOptionId ? `${product.id}_${packagingOptionId}` : product.id;
 
@@ -229,9 +231,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         minQty = currentItem.product?.minQuantity || 1;
 
         if (quantity <= 0) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           shouldRemove = true;
           return prev; // Remove handled below separately
         }
+        
+        Haptics.selectionAsync();
 
         if (quantity < minQty && quantity > 0) {
           // Enforce min quantity — just return prev unchanged, show toast outside

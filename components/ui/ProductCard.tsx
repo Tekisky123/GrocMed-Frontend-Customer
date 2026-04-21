@@ -101,6 +101,23 @@ export const ProductCard = React.memo(
                 <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{product.discount}%</Text>
               </View>
             )}
+            {/* Buying Options Badge - Top Right */}
+            {product.packagingOptions && product.packagingOptions.length > 1 && (
+              <View style={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                backgroundColor: '#E3F2FD',
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+                borderRadius: 6,
+                zIndex: 1,
+                borderWidth: 1,
+                borderColor: 'rgba(21, 101, 192, 0.1)',
+              }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#1565C0' }}>{product.packagingOptions.length} OPTIONS</Text>
+              </View>
+            )}
             <Image
               source={{ uri: product.image || 'https://via.placeholder.com/150' }}
               style={{ width: 85, height: 85, borderRadius: 8 }}
@@ -117,15 +134,6 @@ export const ProductCard = React.memo(
                 {product.name}
               </Text>
               <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
-
-              {/* Buying Options Tag */}
-              {product.packagingOptions && product.packagingOptions.length > 1 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                  <View style={{ backgroundColor: '#E3F2FD', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#1565C0' }}>{product.packagingOptions.length} options</Text>
-                  </View>
-                </View>
-              )}
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -140,22 +148,22 @@ export const ProductCard = React.memo(
 
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <TouchableOpacity
-                  onPress={handleAddToCart}
-                  disabled={!product.inStock}
+                  onPress={product.packagingOptions && product.packagingOptions.length > 1 ? onPress : handleAddToCart}
+                  disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length <= 1)}
                   style={{
                     paddingVertical: 7,
                     paddingHorizontal: 14,
                     borderRadius: 8,
-                    backgroundColor: product.inStock ? Colors.primary : Colors.gray300,
+                    backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.primary : Colors.gray300,
                     shadowColor: Colors.primary,
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: product.inStock ? 0.25 : 0,
+                    shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 0.25 : 0,
                     shadowRadius: 4,
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontWeight: '700', fontSize: 12, color: product.inStock ? Colors.textWhite : Colors.textSecondary }}>
-                    {product.inStock ? 'ADD' : 'N/A'}
+                  <Text style={{ fontWeight: '700', fontSize: 12, color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.textWhite : Colors.textSecondary }}>
+                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 'ADD' : 'OUT'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -205,8 +213,25 @@ export const ProductCard = React.memo(
           </View>
         )}
 
-        {/* Product Image */}
-        <View ref={imageRef} collapsable={false} style={{ alignItems: 'center', marginBottom: 10, backgroundColor: '#F8F9FA', borderRadius: 12, padding: 8 }}>
+        {/* Image Section */}
+        <View ref={imageRef} collapsable={false} style={{ alignItems: 'center', marginBottom: 10, backgroundColor: '#F8F9FA', borderRadius: 12, padding: 8, position: 'relative' }}>
+          {/* Buying Options Badge - Top Right */}
+          {product.packagingOptions && product.packagingOptions.length > 1 && (
+            <View style={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              backgroundColor: '#E3F2FD',
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+              borderRadius: 6,
+              zIndex: 1,
+              borderWidth: 1,
+              borderColor: 'rgba(21, 101, 192, 0.1)',
+            }}>
+              <Text style={{ fontSize: 9, fontWeight: '800', color: '#1565C0' }}>{product.packagingOptions.length} OPTIONS</Text>
+            </View>
+          )}
           <Image
             source={{ uri: product.image || 'https://via.placeholder.com/150' }}
             style={{ width: '100%', height: 140, borderRadius: 8 }}
@@ -229,24 +254,6 @@ export const ProductCard = React.memo(
           {/* Unit */}
           <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
 
-          {/* Buying Options Tag */}
-          {product.packagingOptions && product.packagingOptions.length > 1 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#E3F2FD',
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 6,
-              }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1565C0' }}>
-                  {product.packagingOptions.length} options
-                </Text>
-              </View>
-            </View>
-          )}
-
           {/* Price and Add Button */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
             <View>
@@ -260,19 +267,19 @@ export const ProductCard = React.memo(
 
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <TouchableOpacity
-                onPress={handleAddToCart}
-                disabled={!product.inStock}
+                onPress={product.packagingOptions && product.packagingOptions.length > 1 ? onPress : handleAddToCart}
+                disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length <= 1)}
                 style={{
                   paddingVertical: 8,
                   paddingHorizontal: 16,
                   borderRadius: 10,
-                  backgroundColor: product.inStock ? Colors.primary : Colors.gray300,
+                  backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.primary : Colors.gray300,
                   minWidth: 70,
                   alignItems: 'center',
                   justifyContent: 'center',
                   shadowColor: Colors.primary,
                   shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: product.inStock ? 0.3 : 0,
+                  shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 0.3 : 0,
                   shadowRadius: 5,
                 }}
                 activeOpacity={0.8}
@@ -284,11 +291,11 @@ export const ProductCard = React.memo(
                     style={{
                       fontWeight: '800',
                       fontSize: 13,
-                      color: product.inStock ? Colors.textWhite : Colors.textSecondary,
+                      color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.textWhite : Colors.textSecondary,
                       letterSpacing: 0.5,
                     }}
                   >
-                    {product.inStock ? 'ADD' : 'N/A'}
+                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 'ADD' : 'OUT'}
                   </Text>
                 )}
               </TouchableOpacity>

@@ -300,7 +300,7 @@ export default function CheckoutScreen() {
                                                 styles.typeChipText,
                                                 addressType === type && styles.typeChipTextSelected,
                                             ]}>
-                                                {type === 'Home' ? '🏠' : type === 'Work' ? '🏢' : '📍'} {type}
+                                                {type}
                                             </Text>
                                         </TouchableOpacity>
                                     ))}
@@ -342,7 +342,9 @@ export default function CheckoutScreen() {
                             <View style={styles.divider} />
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Delivery</Text>
-                                <Text style={[styles.summaryValue, { color: Colors.success }]}>FREE</Text>
+                                <Text style={[styles.summaryValue, cart.deliveryFee === 0 ? { color: Colors.success } : { color: Colors.textPrimary }]}>
+                                    {cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}
+                                </Text>
                             </View>
                             {totalGST > 0 && (
                                 <View style={styles.summaryRow}>
@@ -361,7 +363,7 @@ export default function CheckoutScreen() {
                     {/* ── Payment Method ────────────────────────────────────── */}
                     <View style={[styles.section, { paddingTop: 0 }]}>
                         <Text style={styles.sectionTitle}>Payment Method</Text>
-                        {(['cod', 'upi', 'card'] as PaymentMethod[]).map(method => (
+                        {(['cod', 'upi'] as PaymentMethod[]).map(method => (
                             <TouchableOpacity
                                 key={method}
                                 onPress={() => setPaymentMethod(method)}

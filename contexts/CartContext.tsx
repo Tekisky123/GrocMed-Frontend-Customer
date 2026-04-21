@@ -43,8 +43,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Stable helper to build cart from items
   const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string): Cart => {
     const subtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
-    const total = subtotal - discount;
-    return { items, subtotal, deliveryFee: 0, discount, total, couponCode };
+    const deliveryFee = (subtotal >= 1000 || subtotal === 0) ? 0 : 50;
+    const total = subtotal + deliveryFee - discount;
+    return { items, subtotal, deliveryFee, discount, total, couponCode };
   }, []);
 
   // Stable fetchServerCart — uses functional setState so it doesn't need cart in deps

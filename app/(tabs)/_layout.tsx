@@ -65,10 +65,10 @@ export default function TabLayout() {
           title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
             <Icon
-              name={Icons.category.name}
+              name={Icons.search.name}
               size={focused ? 26 : 24}
               color={color}
-              library={Icons.category.library}
+              library={Icons.search.library}
             />
           ),
           tabBarLabel: ({ color, focused }) => (

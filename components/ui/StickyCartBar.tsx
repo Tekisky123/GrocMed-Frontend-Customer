@@ -44,10 +44,20 @@ export function StickyCartBar() {
     useEffect(() => {
         if (cart.items.length > 0 && !isRouteHidden) {
             showBar();
+            
+            // Auto-dismiss logic: hide after 5 seconds of inactivity
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(() => {
+                hideBar();
+            }, 5000);
         } else {
             hideBar();
         }
-    }, [cart.items.length, isRouteHidden, showBar, hideBar]);
+        
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, [getItemCount(), isRouteHidden, showBar, hideBar]);
 
     if (cart.items.length === 0) return null;
 

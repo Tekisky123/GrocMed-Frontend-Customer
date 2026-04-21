@@ -70,7 +70,7 @@ export default function HomeScreen() {
         return () => clearInterval(interval);
     }, [isAutoPlay]);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const [productsRes, categoriesRes] = await Promise.all([
                 productApi.getAllProducts().catch(() => ({ success: false, data: [] as ApiProduct[] })),
@@ -93,7 +93,7 @@ export default function HomeScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [products.length]);
 
     useEffect(() => {
         loadData();
@@ -146,9 +146,26 @@ export default function HomeScreen() {
                                 borderRadius: 12,
                                 borderWidth: 1,
                                 borderColor: Colors.border,
+                                position: 'relative',
                             }}
                         >
                             <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
+                            <View style={{
+                                position: 'absolute',
+                                top: -4,
+                                right: -4,
+                                backgroundColor: Colors.error,
+                                borderRadius: 10,
+                                minWidth: 18,
+                                height: 18,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingHorizontal: 4,
+                                borderWidth: 2,
+                                borderColor: Colors.background,
+                            }}>
+                                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>3</Text>
+                            </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity

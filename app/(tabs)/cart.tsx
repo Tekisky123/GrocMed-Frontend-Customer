@@ -96,8 +96,12 @@ export default function CartScreen() {
                 }}
               >
                 {/* Product Image */}
-                <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: Colors.gray50, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                  <Image source={{ uri: item.product.image }} style={{ width: 60, height: 60 }} resizeMode="contain" />
+                <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: Colors.gray50, alignItems: 'center', justifyContent: 'center', marginRight: 16, overflow: 'hidden' }}>
+                  <Image 
+                    source={{ uri: item.product.image || 'https://via.placeholder.com/150' }} 
+                    style={{ width: '100%', height: '100%' }} 
+                    resizeMode="cover" 
+                  />
                 </View>
 
                 {/* Details */}

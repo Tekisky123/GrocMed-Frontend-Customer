@@ -9,7 +9,7 @@ import { mapApiProductToUiProduct, mapApiProductsToUiProducts } from '@/utils/pr
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { Product } from '@/types';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

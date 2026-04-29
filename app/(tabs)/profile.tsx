@@ -19,17 +19,34 @@ export default function ProfileScreen() {
     }).start();
   }, []);
 
-  // Auth Guard
-  React.useEffect(() => {
-    if (!user) { // Assuming user is null if not authenticated
-      router.replace('/auth/login');
-    }
-  }, [user]);
-
   if (!user) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <View style={{
+          width: 120, height: 120, backgroundColor: Colors.gray100, borderRadius: 60,
+          alignItems: 'center', justifyContent: 'center', marginBottom: 24
+        }}>
+          <Icon name="person" size={48} color={Colors.gray400} library="material" />
+        </View>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>Login Required</Text>
+        <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginBottom: 32, lineHeight: 24, fontSize: 15 }}>
+          Please login to view and manage your profile details.
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/auth/login')}
+          style={{
+            backgroundColor: Colors.primary,
+            paddingVertical: 16,
+            paddingHorizontal: 32,
+            borderRadius: 16,
+            shadowColor: Colors.primary,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Go to Login</Text>
+        </TouchableOpacity>
       </View>
     );
   }

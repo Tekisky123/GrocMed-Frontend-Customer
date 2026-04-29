@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
                     <Text style={styles.emptySubtitle}>Please login to view your notifications.</Text>
                     <TouchableOpacity 
                         style={styles.loginButton}
-                        onPress={() => router.push('/login')}
+                        onPress={() => router.push('/auth/login')}
                     >
                         <Text style={styles.loginButtonText}>Go to Login</Text>
                     </TouchableOpacity>

@@ -101,8 +101,7 @@ export const ProductCard = React.memo(
                 <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{product.discount}%</Text>
               </View>
             )}
-            {/* Buying Options Badge - Top Right */}
-            {product.packagingOptions && product.packagingOptions.length > 1 && (
+            {product.packagingOptions && product.packagingOptions.length > 0 && (
               <View style={{
                 position: 'absolute',
                 top: 4,
@@ -148,22 +147,22 @@ export const ProductCard = React.memo(
 
               <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                 <TouchableOpacity
-                  onPress={product.packagingOptions && product.packagingOptions.length > 1 ? onPress : handleAddToCart}
-                  disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length <= 1)}
+                  onPress={product.packagingOptions && product.packagingOptions.length > 0 ? onPress : handleAddToCart}
+                  disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length === 0)}
                   style={{
                     paddingVertical: 7,
                     paddingHorizontal: 14,
                     borderRadius: 8,
-                    backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.primary : Colors.gray300,
+                    backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.primary : Colors.gray300,
                     shadowColor: Colors.primary,
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 0.25 : 0,
+                    shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 0.25 : 0,
                     shadowRadius: 4,
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontWeight: '700', fontSize: 12, color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.textWhite : Colors.textSecondary }}>
-                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 'ADD' : 'OUT'}
+                  <Text style={{ fontWeight: '700', fontSize: 12, color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.textWhite : Colors.textSecondary }}>
+                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 'ADD' : 'OUT'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -215,8 +214,7 @@ export const ProductCard = React.memo(
 
         {/* Image Section */}
         <View ref={imageRef} collapsable={false} style={{ alignItems: 'center', marginBottom: 10, backgroundColor: '#F8F9FA', borderRadius: 12, padding: 8, position: 'relative' }}>
-          {/* Buying Options Badge - Top Right */}
-          {product.packagingOptions && product.packagingOptions.length > 1 && (
+          {product.packagingOptions && product.packagingOptions.length > 0 && (
             <View style={{
               position: 'absolute',
               top: 4,
@@ -267,19 +265,19 @@ export const ProductCard = React.memo(
 
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
               <TouchableOpacity
-                onPress={product.packagingOptions && product.packagingOptions.length > 1 ? onPress : handleAddToCart}
-                disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length <= 1)}
+                onPress={product.packagingOptions && product.packagingOptions.length > 0 ? onPress : handleAddToCart}
+                disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length === 0)}
                 style={{
                   paddingVertical: 8,
                   paddingHorizontal: 16,
                   borderRadius: 10,
-                  backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.primary : Colors.gray300,
+                  backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.primary : Colors.gray300,
                   minWidth: 70,
                   alignItems: 'center',
                   justifyContent: 'center',
                   shadowColor: Colors.primary,
                   shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 0.3 : 0,
+                  shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 0.3 : 0,
                   shadowRadius: 5,
                 }}
                 activeOpacity={0.8}
@@ -291,11 +289,11 @@ export const ProductCard = React.memo(
                     style={{
                       fontWeight: '800',
                       fontSize: 13,
-                      color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? Colors.textWhite : Colors.textSecondary,
+                      color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.textWhite : Colors.textSecondary,
                       letterSpacing: 0.5,
                     }}
                   >
-                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 1) ? 'ADD' : 'OUT'}
+                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 'ADD' : 'OUT'}
                   </Text>
                 )}
               </TouchableOpacity>

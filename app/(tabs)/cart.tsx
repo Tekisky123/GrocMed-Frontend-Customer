@@ -4,11 +4,13 @@ import { Colors } from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { router } from 'expo-router';
 import React from 'react';
-import { Animated, FlatList, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, FlatList, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CartScreen() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
 
   const totalGST = cart.items.reduce((sum, item) => {
     const gstRate = item.product?.gstRate || 0;
@@ -28,44 +30,32 @@ export default function CartScreen() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View className="flex-1 bg-white">
       <PageHeader
         title="My Cart"
         rightComponent={
           cart.items.length > 0 ? (
             <TouchableOpacity onPress={clearCart}>
-              <Text style={{ color: Colors.error, fontWeight: '700', fontSize: 13 }}>Clear Cart</Text>
+              <Text className="text-red-500 font-bold text-[13px]">Clear Cart</Text>
             </TouchableOpacity>
           ) : undefined
         }
       />
 
       {cart.items.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-          <View style={{
-            width: 120, height: 120, backgroundColor: Colors.gray100, borderRadius: 60,
-            alignItems: 'center', justifyContent: 'center', marginBottom: 24
-          }}>
+        <View className="flex-1 items-center justify-center p-10">
+          <View className="w-32 h-32 bg-gray-50 rounded-full items-center justify-center mb-6">
             <Icon name="shopping-cart" size={48} color={Colors.gray400} library="material" />
           </View>
-          <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>Your Cart is Empty</Text>
-          <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginBottom: 32, lineHeight: 24, fontSize: 15 }}>
+          <Text className="text-2xl font-extrabold text-gray-900 mb-3">Your Cart is Empty</Text>
+          <Text className="text-center text-gray-500 mb-8 leading-6 text-[15px]">
             Looks like you haven't added anything to your cart yet. Discover fresh products now!
           </Text>
           <TouchableOpacity
             onPress={() => router.push('/(tabs)')}
-            style={{
-              backgroundColor: Colors.primary,
-              paddingVertical: 16,
-              paddingHorizontal: 32,
-              borderRadius: 16,
-              shadowColor: Colors.primary,
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.25,
-              shadowRadius: 16,
-            }}
+            className="bg-orange-500 py-4 px-8 rounded-2xl shadow-sm shadow-orange-500/30"
           >
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Start Shopping</Text>
+            <Text className="text-white font-extrabold text-base">Start Shopping</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -77,71 +67,57 @@ export default function CartScreen() {
             maxToRenderPerBatch={4}
             windowSize={5}
             removeClippedSubviews={Platform.OS === 'android'}
-            contentContainerStyle={{ padding: 20, paddingBottom: 160, paddingTop: 100 }}
+            contentContainerStyle={{ padding: 20, paddingBottom: 160 + insets.bottom, paddingTop: 20 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  backgroundColor: Colors.textWhite,
-                  borderRadius: 20,
-                  padding: 12,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 10,
-                  borderWidth: 1,
-                  borderColor: 'rgba(0,0,0,0.03)',
-                  marginBottom: 16
-                }}
-              >
+              <View className="flex-row bg-white rounded-2xl p-3 shadow-sm shadow-black/5 border border-black/5 mb-4">
                 {/* Product Image */}
-                <View style={{ width: 80, height: 80, borderRadius: 16, backgroundColor: Colors.gray50, alignItems: 'center', justifyContent: 'center', marginRight: 16, overflow: 'hidden' }}>
+                <View className="w-20 h-20 rounded-xl bg-gray-50 items-center justify-center mr-4 overflow-hidden">
                   <Image 
                     source={{ uri: item.product.image || 'https://via.placeholder.com/150' }} 
-                    style={{ width: '100%', height: '100%' }} 
+                    className="w-full h-full"
                     resizeMode="cover" 
                   />
                 </View>
 
                 {/* Details */}
-                <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 4 }}>
+                <View className="flex-1 justify-between py-1">
                   <View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textPrimary, flex: 1, marginRight: 8, lineHeight: 22 }} numberOfLines={2}>
+                    <View className="flex-row justify-between items-start">
+                      <Text className="text-base font-bold text-gray-900 flex-1 mr-2 leading-snug" numberOfLines={2}>
                         {item.product.name}
                       </Text>
-                      <TouchableOpacity onPress={() => removeFromCart(item.productId)} hitSlop={10}>
+                      <TouchableOpacity onPress={() => removeFromCart(item.productId)} hitSlop={{top:10, bottom:10, left:10, right:10}}>
                         <Icon name="close" size={18} color={Colors.gray400} library="material" />
                       </TouchableOpacity>
                     </View>
-                    <Text style={{ fontSize: 13, color: Colors.textSecondary, marginTop: 4, fontWeight: '500' }}>
+                    <Text className="text-[13px] text-gray-500 mt-1 font-medium">
                       {item.packagingOptionLabel ? item.packagingOptionLabel : (item.product.unit || 'Unit')}
                       {item.product.perUnitWeightVolume && item.packagingOptionLabel?.toLowerCase() !== item.product.perUnitWeightVolume.toLowerCase() ? ` (${item.product.perUnitWeightVolume})` : ''} • ₹{item.price}
                     </Text>
                   </View>
 
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                    <Text style={{ fontSize: 17, fontWeight: '800', color: Colors.textPrimary }}>₹{item.total}</Text>
+                  <View className="flex-row justify-between items-center mt-3">
+                    <Text className="text-[17px] font-extrabold text-gray-900">₹{item.total}</Text>
 
                     {/* Quantity Control */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 4 }}>
+                    <View className="flex-row items-center bg-white rounded-xl border border-gray-200 p-1">
                       <TouchableOpacity
                         onPress={item.quantity <= (item.product.minQuantity || 1) ? undefined : () => updateQuantity(item.productId, item.quantity - 1)}
                         disabled={item.quantity <= (item.product.minQuantity || 1)}
                         activeOpacity={item.quantity <= (item.product.minQuantity || 1) ? 1 : 0.7}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.textWhite, borderRadius: 8, opacity: item.quantity <= (item.product.minQuantity || 1) ? 0.3 : 1 }}
+                        className={`w-7 h-7 items-center justify-center rounded-lg ${item.quantity <= (item.product.minQuantity || 1) ? 'opacity-30' : 'bg-white'}`}
                       >
                         <Icon name="remove" size={16} color={Colors.textPrimary} library="material" />
                       </TouchableOpacity>
 
-                      <Text style={{ width: 32, textAlign: 'center', fontWeight: '700', color: Colors.textPrimary, fontSize: 14 }}>{item.quantity}</Text>
+                      <Text className="w-8 text-center font-bold text-gray-900 text-sm">{item.quantity}</Text>
 
                       <TouchableOpacity
                         onPress={() => updateQuantity(item.productId, item.quantity + 1)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: 8 }}
+                        className="w-7 h-7 items-center justify-center bg-orange-500 rounded-lg"
                       >
                         <Icon name="add" size={16} color="#fff" library="material" />
                       </TouchableOpacity>
@@ -152,87 +128,60 @@ export default function CartScreen() {
             )}
             ListFooterComponent={() => (
               <Animated.View style={{ opacity: fadeAnim }}>
-                <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 16, letterSpacing: -0.5 }}>Bill Details</Text>
-                  <View style={{ backgroundColor: Colors.textWhite, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: Colors.gray200, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-                      <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>Item Total</Text>
-                      <Text style={{ fontWeight: '600', color: Colors.textPrimary, fontSize: 15 }}>₹{cart.subtotal}</Text>
+                <View className="mt-4">
+                  <Text className="text-lg font-extrabold text-gray-900 mb-4 tracking-tight">Bill Details</Text>
+                  <View className="bg-white rounded-[24px] p-6 border border-gray-100 shadow-sm shadow-black/5">
+                    <View className="flex-row justify-between mb-3.5">
+                      <Text className="text-gray-500 text-[15px]">Item Total</Text>
+                      <Text className="font-semibold text-gray-900 text-[15px]">₹{cart.subtotal}</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-                      <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>Delivery Fee</Text>
-                      <Text style={{ fontWeight: '700', color: Colors.success, fontSize: 15 }}>{cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}</Text>
+                    <View className="flex-row justify-between mb-3.5">
+                      <Text className="text-gray-500 text-[15px]">Delivery Fee</Text>
+                      <Text className="font-bold text-green-600 text-[15px]">{cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}</Text>
                     </View>
                     {cart.discount > 0 && (
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>Discount</Text>
-                        <Text style={{ fontWeight: '700', color: Colors.success, fontSize: 15 }}>-₹{cart.discount}</Text>
+                      <View className="flex-row justify-between mb-3.5">
+                        <Text className="text-gray-500 text-[15px]">Discount</Text>
+                        <Text className="font-bold text-green-600 text-[15px]">-₹{cart.discount}</Text>
                       </View>
                     )}
                     {totalGST > 0 && (
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <Text style={{ color: Colors.textSecondary, fontSize: 15 }}>GST (Incl.)</Text>
-                        <Text style={{ fontWeight: '600', color: Colors.textPrimary, fontSize: 13 }}>₹{totalGST.toFixed(2)}</Text>
+                      <View className="flex-row justify-between mb-3.5">
+                        <Text className="text-gray-500 text-[15px]">GST (Incl.)</Text>
+                        <Text className="font-semibold text-gray-900 text-[13px]">₹{totalGST.toFixed(2)}</Text>
                       </View>
                     )}
-                    <View style={{ height: 1, borderColor: Colors.gray200, borderWidth: 1, borderStyle: 'dashed', borderRadius: 1, marginVertical: 16 }} />
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>To Pay</Text>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.primary }}>₹{cart.total}</Text>
+                    <View className="h-[1px] border border-dashed border-gray-200 rounded-sm my-4" />
+                    <View className="flex-row justify-between items-center">
+                      <Text className="text-lg font-extrabold text-gray-900">To Pay</Text>
+                      <Text className="text-[22px] font-extrabold text-orange-500">₹{cart.total}</Text>
                     </View>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24, opacity: 0.6 }}>
+                <View className="flex-row items-center justify-center mt-6 opacity-60">
                   <Icon name="verified-user" size={14} color={Colors.textSecondary} library="material" />
-                  <Text style={{ marginLeft: 6, color: Colors.textSecondary, fontSize: 12, fontWeight: '500' }}>Safe and Secure Payments</Text>
+                  <Text className="ml-1.5 text-gray-500 text-xs font-medium">Safe and Secure Payments</Text>
                 </View>
               </Animated.View>
             )}
           />
 
           {/* Bottom Checkout Bar - Sticky & Premium */}
-          <View style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: Colors.textWhite,
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-            borderTopLeftRadius: 32,
-            borderTopRightRadius: 32,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -8 },
-            shadowOpacity: 0.1,
-            shadowRadius: 20,
-            // elevation: 24,
-            borderWidth: 1,
-            borderColor: Colors.gray100
-          }}>
+          <View 
+            className="absolute bottom-0 left-0 right-0 bg-white px-5 pt-5 border-t border-gray-100 rounded-t-[32px] shadow-[0_-8px_20px_rgba(0,0,0,0.1)]"
+            style={{ paddingBottom: Math.max(insets.bottom, 24) }}
+          >
             <TouchableOpacity
               onPress={() => router.push('/checkout')}
-              style={{
-                backgroundColor: Colors.primary,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: 18,
-                paddingHorizontal: 24,
-                borderRadius: 20,
-                shadowColor: Colors.primary,
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-              }}
+              className="bg-orange-500 flex-row items-center justify-between py-[18px] px-6 rounded-[20px] shadow-sm shadow-orange-500/30"
               activeOpacity={0.85}
             >
               <View>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>TOTAL</Text>
-                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>₹{cart.total}</Text>
+                <Text className="text-white/80 text-[11px] font-semibold tracking-wider uppercase">TOTAL</Text>
+                <Text className="text-white text-lg font-extrabold">₹{cart.total}</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginRight: 8 }}>Checkout</Text>
+              <View className="flex-row items-center bg-black/10 px-4 py-2 rounded-xl">
+                <Text className="text-white text-[15px] font-bold mr-2">Checkout</Text>
                 <Icon name="arrow-forward" size={18} color="#fff" library="material" />
               </View>
             </TouchableOpacity>
@@ -242,4 +191,3 @@ export default function CartScreen() {
     </View>
   );
 }
-

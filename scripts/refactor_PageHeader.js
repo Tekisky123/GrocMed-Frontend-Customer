@@ -1,4 +1,6 @@
-import { Colors } from '@/constants/colors';
+const fs = require('fs');
+
+const code = `import { Colors } from '@/constants/colors';
 import { router } from 'expo-router';
 import React from 'react';
 import { Platform, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
@@ -77,3 +79,6 @@ export function PageHeader({
     </View>
   );
 }
+`;
+
+fs.writeFileSync('/Users/umairuddin/Desktop/GrocMed/GrocMed-Frontend-Customer/components/ui/PageHeader.tsx', code);

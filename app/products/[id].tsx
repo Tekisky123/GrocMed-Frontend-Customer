@@ -4,7 +4,7 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
-import { mapApiProductToUiProduct, mapApiProductsToUiProducts } from '@/utils/productHelper';
+import { mapApiProductToUiProduct } from '@/utils/productHelper';
 import { formatSafeDate } from '@/utils/dateHelper';
 import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,7 +15,6 @@ import {
     Dimensions,
     Image,
     ScrollView,
-    StyleSheet,
     Text,
     TouchableOpacity,
     View,
@@ -63,7 +62,6 @@ export default function ProductDetailScreen() {
                 setApiProduct(response.data);
                 setProduct(mapApiProductToUiProduct(response.data));
 
-                // Default to first packaging option if available
                 if (response.data.packagingOptions?.length) {
                     setSelectedOption(response.data.packagingOptions[0]);
                     setQuantity(response.data.packagingOptions[0].minQty || 1);
@@ -83,7 +81,6 @@ export default function ProductDetailScreen() {
         }
     };
 
-    // Derived values from selected option or product fallback
     const activePrice = selectedOption?.salePrice ?? product?.price ?? 0;
     const activeMrp = selectedOption?.mrp ?? product?.price ?? 0;
     const activeStock = selectedOption?.stock ?? product?.stockQuantity ?? 0;
@@ -114,7 +111,6 @@ export default function ProductDetailScreen() {
     const handleAddToCart = () => {
         if (!product || !isInStock) return;
         if (selectedOption) {
-            // Build a product-like object with the option's price for the cart context
             const optionProduct: Product = {
                 ...product,
                 id: product.id,
@@ -131,8 +127,8 @@ export default function ProductDetailScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+                <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
             </SafeAreaView>
@@ -141,15 +137,15 @@ export default function ProductDetailScreen() {
 
     if (error || !product) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
-                <View style={{ padding: 16 }}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+                <View className="p-4">
+                    <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
                         <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
-                        <Text style={{ marginLeft: 8, fontSize: 16, fontWeight: '600', color: Colors.textPrimary }}>Back</Text>
+                        <Text className="ml-2 text-base font-semibold text-gray-900">Back</Text>
                     </TouchableOpacity>
                 </View>
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 16, color: Colors.textSecondary }}>{error || 'Product not found'}</Text>
+                <View className="flex-1 items-center justify-center">
+                    <Text className="text-base text-gray-500">{error || 'Product not found'}</Text>
                 </View>
             </SafeAreaView>
         );
@@ -160,23 +156,23 @@ export default function ProductDetailScreen() {
     const hasPackagingOptions = (apiProduct?.packagingOptions?.length ?? 0) > 0;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+            <View className="flex-row items-center px-4 py-3.5 bg-white border-b border-gray-200">
+                <TouchableOpacity onPress={() => router.back()} className="p-1">
                     <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
+                <Text className="flex-1 ml-3 text-lg font-bold text-gray-900" numberOfLines={1}>{product.name}</Text>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 <Animated.View style={{ opacity: fadeAnim }}>
 
                     {/* Image Section */}
-                    <View style={styles.imageContainer}>
+                    <View className="bg-gray-50 py-5 items-center relative">
                         {(optionDiscount > 0 || (product.discount ?? 0) > 0) && (
-                            <View style={styles.discountBadge}>
-                                <Text style={styles.discountBadgeText}>
+                            <View className="absolute top-4 left-4 bg-red-500 px-2 py-1 rounded-lg z-10 shadow-sm shadow-red-500/30">
+                                <Text className="text-white text-xs font-extrabold tracking-wider">
                                     {optionDiscount > 0 ? optionDiscount : product.discount}% OFF
                                 </Text>
                             </View>
@@ -192,36 +188,32 @@ export default function ProductDetailScreen() {
                             decelerationRate="fast"
                         >
                             {displayImages.map((uri, index) => (
-                                <View key={index} style={{ width, alignItems: 'center', justifyContent: 'center' }}>
+                                <View key={index} style={{ width }} className="items-center justify-center">
                                     <Image source={{ uri }} style={{ width: width - 32, height: 300 }} resizeMode="contain" />
                                 </View>
                             ))}
                         </ScrollView>
                         {displayImages.length > 1 && (
-                            <View style={{ flexDirection: 'row', marginTop: 16, gap: 6 }}>
+                            <View className="flex-row mt-4 gap-1.5">
                                 {displayImages.map((_, i) => (
-                                    <View key={i} style={{
-                                        width: i === activeImageIndex ? 24 : 6, height: 6,
-                                        borderRadius: 3,
-                                        backgroundColor: i === activeImageIndex ? Colors.primary : Colors.gray300,
-                                    }} />
+                                    <View key={i} className={`h-1.5 rounded-full ${i === activeImageIndex ? 'w-6 bg-orange-500' : 'w-1.5 bg-gray-300'}`} />
                                 ))}
                             </View>
                         )}
                     </View>
 
-                    <View style={styles.contentPadding}>
+                    <View className="p-5">
 
                         {/* Title */}
-                        <Text style={styles.productName}>{product.name}</Text>
-                        {product.unit ? (
-                            <Text style={styles.productUnit}>{product.unit}</Text>
-                        ) : null}
+                        <Text className="text-[22px] font-extrabold text-gray-900 leading-[28px] mb-1">{product.name}</Text>
+                        {product.unit && (
+                            <Text className="text-[13px] text-gray-500 font-medium mb-5">{product.unit}</Text>
+                        )}
 
-                        {/* ── Buying Options ────────────────────────────────────── */}
+                        {/* Buying Options */}
                         {hasPackagingOptions && (
-                            <View style={styles.sectionBlock}>
-                                <Text style={styles.sectionLabel}>Choose How to Buy</Text>
+                            <View className="mb-6">
+                                <Text className="text-[15px] font-extrabold text-gray-900 mb-3">Choose How to Buy</Text>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -239,60 +231,43 @@ export default function ProductDetailScreen() {
                                                 key={opt._id}
                                                 onPress={() => !outOfStock && handleOptionSelect(opt)}
                                                 activeOpacity={0.8}
-                                                style={[
-                                                    styles.optionCard,
-                                                    isSelected && styles.optionCardSelected,
-                                                    outOfStock && styles.optionCardDisabled,
-                                                ]}
+                                                className={`w-[148px] p-3 rounded-2xl border-2 relative bg-white ${isSelected ? 'border-orange-500 bg-orange-50 shadow-sm shadow-orange-500/20' : 'border-gray-200'} ${outOfStock ? 'opacity-45' : ''}`}
                                             >
-                                                {/* Selected checkmark */}
                                                 {isSelected && (
-                                                    <View style={styles.optionCheck}>
+                                                    <View className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full bg-orange-500 items-center justify-center">
                                                         <Icon name="check" size={10} color="#fff" library="material" />
                                                     </View>
                                                 )}
 
-                                                {/* Discount badge */}
                                                 {optDiscount > 0 && (
-                                                    <View style={styles.optionDiscountBadge}>
-                                                        <Text style={styles.optionDiscountText}>{optDiscount}% off</Text>
+                                                    <View className="self-start bg-orange-100 px-1.5 py-0.5 rounded mb-2">
+                                                        <Text className="text-[10px] font-bold text-orange-600">{optDiscount}% off</Text>
                                                     </View>
                                                 )}
 
-                                                {/* Label */}
-                                                <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]} numberOfLines={2}>
+                                                <Text className={`text-[13px] font-bold leading-[18px] mb-0.5 ${isSelected ? 'text-orange-600' : 'text-gray-900'}`} numberOfLines={2}>
                                                     {opt.label}
                                                 </Text>
 
-                                                {/* Units */}
-                                                <Text style={styles.optionUnits}>
+                                                <Text className="text-[11px] text-gray-500 font-medium">
                                                     {opt.unitsPerPack} unit{opt.unitsPerPack !== 1 ? 's' : ''} / pack
                                                 </Text>
 
-                                                {/* Prices */}
-                                                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 6 }}>
-                                                    <Text style={[styles.optionSalePrice, isSelected && { color: Colors.primary }]}>
+                                                <View className="flex-row items-baseline gap-1 mt-1.5">
+                                                    <Text className={`text-base font-extrabold ${isSelected ? 'text-orange-600' : 'text-gray-900'}`}>
                                                         ₹{opt.salePrice}
                                                     </Text>
                                                     {opt.mrp > opt.salePrice && (
-                                                        <Text style={styles.optionMrp}>₹{opt.mrp}</Text>
+                                                        <Text className="text-xs text-gray-400 line-through">₹{opt.mrp}</Text>
                                                     )}
                                                 </View>
 
-                                                {/* Min qty hint */}
                                                 {opt.minQty > 1 && (
-                                                    <Text style={styles.optionMinQty}>Min {opt.minQty} packs</Text>
+                                                    <Text className="text-[10px] text-gray-500 mt-1">Min {opt.minQty} packs</Text>
                                                 )}
 
-                                                {/* Stock status */}
-                                                <View style={[
-                                                    styles.stockBadge,
-                                                    { backgroundColor: outOfStock ? '#FFEBEE' : '#E8F5E9' },
-                                                ]}>
-                                                    <Text style={[
-                                                        styles.stockBadgeText,
-                                                        { color: outOfStock ? Colors.error : Colors.success },
-                                                    ]}>
+                                                <View className={`mt-2 px-2 py-1 rounded-md self-start ${outOfStock ? 'bg-red-50' : 'bg-green-50'}`}>
+                                                    <Text className={`text-[10px] font-bold ${outOfStock ? 'text-red-500' : 'text-green-600'}`}>
                                                         {outOfStock ? 'Out of stock' : `${opt.stock} left`}
                                                     </Text>
                                                 </View>
@@ -303,150 +278,146 @@ export default function ProductDetailScreen() {
                             </View>
                         )}
 
-                        {/* ── Price & Stock Block ─────────────────────────────── */}
-                        <View style={styles.priceBlock}>
+                        {/* Price & Stock Block */}
+                        <View className="flex-row justify-between items-center bg-gray-50 rounded-2xl p-4 border border-black/5 mb-6 shadow-sm shadow-black/5">
                             <View>
-                                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                                    <Text style={styles.priceMain}>₹{activePrice}</Text>
+                                <View className="flex-row items-baseline gap-2">
+                                    <Text className="text-[26px] font-extrabold text-gray-900">₹{activePrice}</Text>
                                     {hasOptionDiscount && (
-                                        <Text style={styles.priceMrp}>₹{activeMrp}</Text>
+                                        <Text className="text-sm text-gray-400 line-through">₹{activeMrp}</Text>
                                     )}
                                 </View>
                                 {hasOptionDiscount && (
-                                    <Text style={styles.priceSavings}>
+                                    <Text className="text-xs font-bold text-green-600 mt-0.5">
                                         You save ₹{(activeMrp - activePrice).toFixed(2)} ({optionDiscount}% off)
                                     </Text>
                                 )}
                                 {selectedOption && (
-                                    <Text style={styles.priceOptionHint}>
+                                    <Text className="text-[11px] text-gray-500 mt-1">
                                         {selectedOption.label} · {selectedOption.unitsPerPack} unit{selectedOption.unitsPerPack !== 1 ? 's' : ''} per pack
                                     </Text>
                                 )}
                             </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <View style={[styles.stockIndicator, { backgroundColor: isInStock ? '#E8F5E9' : '#FFEBEE' }]}>
-                                    <Text style={[styles.stockIndicatorText, { color: isInStock ? Colors.success : Colors.error }]}>
+                            <View className="items-end">
+                                <View className={`px-2.5 py-1 rounded-md ${isInStock ? 'bg-green-50' : 'bg-red-50'}`}>
+                                    <Text className={`text-xs font-bold tracking-wider ${isInStock ? 'text-green-600' : 'text-red-500'}`}>
                                         {isInStock ? 'IN STOCK' : 'OUT OF STOCK'}
                                     </Text>
                                 </View>
                                 {isInStock && activeStock <= 10 && (
-                                    <Text style={styles.lowStockHint}>Only {activeStock} left!</Text>
+                                    <Text className="text-[11px] text-red-500 font-semibold mt-1">Only {activeStock} left!</Text>
                                 )}
-                                <Text style={styles.taxHint}>
+                                <Text className="text-[11px] text-gray-500 mt-0.5">
                                     Incl. all taxes {product.gstRate ? `(${product.gstRate}% GST)` : ''}
                                 </Text>
                             </View>
                         </View>
 
-                        {/* ── Quantity Selector ──────────────────────────────── */}
-                        <View style={styles.sectionBlock}>
-                            <Text style={styles.sectionLabel}>
+                        {/* Quantity Selector */}
+                        <View className="mb-6">
+                            <Text className="text-[15px] font-extrabold text-gray-900 mb-3">
                                 Quantity{selectedOption ? ` (packs)` : ''}
                             </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View style={styles.qtyRow}>
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center bg-gray-100 rounded-xl p-1">
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity - 1)}
                                         disabled={quantity <= activeMinQty}
-                                        style={[styles.qtyBtn, { opacity: quantity <= activeMinQty ? 0.4 : 1 }]}
+                                        className={`w-11 h-11 bg-white rounded-lg items-center justify-center shadow-sm shadow-black/10 ${quantity <= activeMinQty ? 'opacity-40' : ''}`}
                                     >
                                         <Icon name="remove" size={20} color={Colors.textPrimary} library="material" />
                                     </TouchableOpacity>
-                                    <View style={{ width: 56, alignItems: 'center' }}>
-                                        <Text style={styles.qtyValue}>{quantity}</Text>
+                                    <View className="w-14 items-center">
+                                        <Text className="text-lg font-extrabold text-gray-900">{quantity}</Text>
                                     </View>
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity + 1)}
                                         disabled={quantity >= activeStock}
-                                        style={[styles.qtyBtnPrimary, { opacity: quantity >= activeStock ? 0.4 : 1 }]}
+                                        className={`w-11 h-11 bg-orange-500 rounded-lg items-center justify-center shadow-sm ${quantity >= activeStock ? 'opacity-40' : ''}`}
                                     >
                                         <Icon name="add" size={20} color="#fff" library="material" />
                                     </TouchableOpacity>
                                 </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={{ fontSize: 11, color: Colors.textTertiary }}>Total</Text>
-                                    <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary }}>
+                                <View className="items-end">
+                                    <Text className="text-[11px] text-gray-500">Total</Text>
+                                    <Text className="text-xl font-extrabold text-gray-900">
                                         ₹{(activePrice * quantity).toFixed(2)}
                                     </Text>
                                 </View>
                             </View>
                             {activeMinQty > 1 && (
-                                <Text style={styles.minQtyNote}>
+                                <Text className="text-[11px] text-gray-500 mt-2.5 leading-4">
                                     ℹ️ Minimum order is {activeMinQty} pack{activeMinQty > 1 ? 's' : ''} for this option
                                 </Text>
                             )}
                         </View>
 
-                        {/* ── Product Details ────────────────────────────────── */}
-                        <View style={styles.sectionBlock}>
-                            <Text style={styles.sectionLabel}>Product Details</Text>
-                            <View style={styles.detailsTable}>
-                                {product.unit ? (
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailKey}>Unit Type</Text>
-                                        <Text style={styles.detailVal}>{product.unit}</Text>
+                        {/* Product Details Table */}
+                        <View className="mb-6">
+                            <Text className="text-[15px] font-extrabold text-gray-900 mb-3">Product Details</Text>
+                            <View className="border border-gray-200 rounded-xl overflow-hidden">
+                                {product.unit && (
+                                    <View className="flex-row border-b border-gray-200 p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">Unit Type</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{product.unit}</Text>
                                     </View>
-                                ) : null}
-                                {apiProduct?.brand ? (
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailKey}>Brand</Text>
-                                        <Text style={styles.detailVal}>{apiProduct.brand}</Text>
+                                )}
+                                {apiProduct?.brand && (
+                                    <View className="flex-row border-b border-gray-200 p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">Brand</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{apiProduct.brand}</Text>
                                     </View>
-                                ) : null}
-                                {product.perUnitWeightVolume ? (
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailKey}>Net Weight/Vol</Text>
-                                        <Text style={styles.detailVal}>{product.perUnitWeightVolume}</Text>
+                                )}
+                                {product.perUnitWeightVolume && (
+                                    <View className="flex-row border-b border-gray-200 p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">Net Weight/Vol</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{product.perUnitWeightVolume}</Text>
                                     </View>
-                                ) : null}
-                                {product.gstRate ? (
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailKey}>GST Rate</Text>
-                                        <Text style={styles.detailVal}>{product.gstRate}%</Text>
+                                )}
+                                {product.gstRate && (
+                                    <View className="flex-row border-b border-gray-200 p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">GST Rate</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{product.gstRate}%</Text>
                                     </View>
-                                ) : null}
-                                <View style={styles.detailRow}>
-                                    <Text style={styles.detailKey}>Availability</Text>
-                                    <Text style={[styles.detailVal, { color: isInStock ? Colors.success : Colors.error }]}>
+                                )}
+                                <View className="flex-row border-b border-gray-200 p-3">
+                                    <Text className="flex-1 text-gray-500 text-[13px]">Availability</Text>
+                                    <Text className={`flex-1 text-[13px] font-semibold ${isInStock ? 'text-green-600' : 'text-red-500'}`}>
                                         {isInStock ? 'In Stock' : 'Out of Stock'}
                                     </Text>
                                 </View>
-                                {apiProduct?.manfDate ? (
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailKey}>MFG Date</Text>
-                                        <Text style={styles.detailVal}>
-                                            {formatSafeDate(apiProduct.manfDate)}
-                                        </Text>
+                                {apiProduct?.manfDate && (
+                                    <View className="flex-row border-b border-gray-200 p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">MFG Date</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{formatSafeDate(apiProduct.manfDate)}</Text>
                                     </View>
-                                ) : null}
-                                {apiProduct?.expiryDate ? (
-                                    <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                                        <Text style={styles.detailKey}>EXP Date</Text>
-                                        <Text style={styles.detailVal}>
-                                            {formatSafeDate(apiProduct.expiryDate)}
-                                        </Text>
+                                )}
+                                {apiProduct?.expiryDate && (
+                                    <View className="flex-row p-3">
+                                        <Text className="flex-1 text-gray-500 text-[13px]">EXP Date</Text>
+                                        <Text className="flex-1 text-gray-900 text-[13px] font-semibold">{formatSafeDate(apiProduct.expiryDate)}</Text>
                                     </View>
-                                ) : null}
+                                )}
                             </View>
                         </View>
 
-                        {/* ── Description ───────────────────────────────────── */}
-                        {product.description ? (
-                            <View style={styles.sectionBlock}>
-                                <Text style={styles.sectionLabel}>Description</Text>
-                                <Text style={styles.descText}>{product.description}</Text>
+                        {/* Description */}
+                        {product.description && (
+                            <View className="mb-6">
+                                <Text className="text-[15px] font-extrabold text-gray-900 mb-3">Description</Text>
+                                <Text className="text-sm text-gray-600 leading-6">{product.description}</Text>
                             </View>
-                        ) : null}
+                        )}
 
-                        {/* ── Add to Cart Button ─────────────────────────────── */}
+                        {/* Add to Cart Button */}
                         <TouchableOpacity
                             onPress={handleAddToCart}
                             disabled={!isInStock}
                             activeOpacity={0.85}
-                            style={[styles.addToCartBtn, { backgroundColor: isInStock ? Colors.primary : Colors.gray300 }]}
+                            className={`flex-row items-center justify-center gap-2.5 py-4 rounded-2xl shadow-sm shadow-orange-500/25 ${isInStock ? 'bg-orange-500' : 'bg-gray-300'}`}
                         >
                             <Icon name="shopping-cart" size={20} color="#fff" library="material" />
-                            <Text style={styles.addToCartText}>
+                            <Text className="text-[15px] font-extrabold text-white tracking-wider">
                                 {isInStock
                                     ? selectedOption
                                         ? `Add ${quantity} × ${selectedOption.label} — ₹${(activePrice * quantity).toFixed(2)}`
@@ -459,9 +430,9 @@ export default function ProductDetailScreen() {
                     {/* Related Products */}
                     {suggestedProducts.length > 0 && (
                         <>
-                            <View style={{ height: 12, backgroundColor: '#F3F4F6', marginBottom: 24 }} />
-                            <View style={{ paddingBottom: 24 }}>
-                                <Text style={[styles.sectionLabel, { paddingHorizontal: 16, marginBottom: 16 }]}>
+                            <View className="h-3 bg-gray-100 mb-6" />
+                            <View className="pb-6">
+                                <Text className="text-[15px] font-extrabold text-gray-900 px-4 mb-4">
                                     You Might Also Like
                                 </Text>
                                 <ScrollView
@@ -470,7 +441,7 @@ export default function ProductDetailScreen() {
                                     contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                                 >
                                     {suggestedProducts.map((item) => (
-                                        <View key={item.id} style={{ width: 154 }}>
+                                        <View key={item.id} className="w-[154px]">
                                             <ProductCard
                                                 product={item}
                                                 onPress={() => router.push(`/products/${item.id}`)}
@@ -486,168 +457,3 @@ export default function ProductDetailScreen() {
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        backgroundColor: Colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    headerTitle: {
-        flex: 1,
-        marginLeft: 12,
-        fontSize: 18,
-        fontWeight: '700',
-        color: Colors.textPrimary,
-    },
-    imageContainer: {
-        backgroundColor: '#F8F9FA',
-        paddingVertical: 20,
-        alignItems: 'center',
-    },
-    discountBadge: {
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        backgroundColor: Colors.error,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        zIndex: 1,
-    },
-    discountBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-    contentPadding: { padding: 16 },
-    productName: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, lineHeight: 28, marginBottom: 4 },
-    productUnit: { fontSize: 13, color: Colors.textTertiary, fontWeight: '500', marginBottom: 20 },
-
-    // Section
-    sectionBlock: { marginBottom: 24 },
-    sectionLabel: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 },
-
-    // Option Cards
-    optionCard: {
-        width: 148,
-        padding: 12,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: Colors.border,
-        backgroundColor: '#fff',
-        position: 'relative',
-    },
-    optionCardSelected: {
-        borderColor: Colors.primary,
-        backgroundColor: '#F0F7FF',
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    optionCardDisabled: { opacity: 0.45 },
-    optionCheck: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        backgroundColor: Colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    optionDiscountBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#FFF3E0',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginBottom: 8,
-    },
-    optionDiscountText: { fontSize: 10, fontWeight: '700', color: '#E65100' },
-    optionLabel: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, lineHeight: 18, marginBottom: 2 },
-    optionLabelSelected: { color: Colors.primary },
-    optionUnits: { fontSize: 11, color: Colors.textTertiary, fontWeight: '500' },
-    optionSalePrice: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
-    optionMrp: { fontSize: 12, color: Colors.textTertiary, textDecorationLine: 'line-through' },
-    optionMinQty: { fontSize: 10, color: Colors.textTertiary, marginTop: 4 },
-    stockBadge: {
-        marginTop: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        alignSelf: 'flex-start',
-    },
-    stockBadgeText: { fontSize: 10, fontWeight: '700' },
-
-    // Price block
-    priceBlock: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: Colors.surface,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-    },
-    priceMain: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary },
-    priceMrp: { fontSize: 14, color: Colors.textTertiary, textDecorationLine: 'line-through' },
-    priceSavings: { fontSize: 12, fontWeight: '700', color: Colors.success, marginTop: 2 },
-    priceOptionHint: { fontSize: 11, color: Colors.textTertiary, marginTop: 4 },
-    stockIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    stockIndicatorText: { fontSize: 12, fontWeight: '700' },
-    lowStockHint: { fontSize: 11, color: Colors.error, fontWeight: '600', marginTop: 4 },
-    taxHint: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
-
-    // Qty
-    qtyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4 },
-    qtyBtn: {
-        width: 44, height: 44, backgroundColor: '#fff', borderRadius: 10,
-        alignItems: 'center', justifyContent: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2,
-    },
-    qtyBtnPrimary: {
-        width: 44, height: 44, backgroundColor: Colors.primary, borderRadius: 10,
-        alignItems: 'center', justifyContent: 'center',
-    },
-    qtyValue: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
-    minQtyNote: { fontSize: 11, color: Colors.textTertiary, marginTop: 10, lineHeight: 16 },
-
-    // Details table
-    detailsTable: { borderWidth: 1, borderColor: Colors.border, borderRadius: 12, overflow: 'hidden' },
-    detailRow: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        padding: 12,
-    },
-    detailKey: { flex: 1, color: Colors.textTertiary, fontSize: 13 },
-    detailVal: { flex: 1, color: Colors.textPrimary, fontSize: 13, fontWeight: '600' },
-
-    // Description
-    descText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
-
-    // Add to cart
-    addToCartBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingVertical: 18,
-        borderRadius: 16,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-    },
-    addToCartText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
-});

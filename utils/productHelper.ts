@@ -33,27 +33,32 @@ export const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefin
             ? apiProduct.images[0] 
             : (apiProduct.image || 'https://via.placeholder.com/150');
 
-        return {
-            id: String(apiProduct._id),
-            name: apiProduct.name || 'Unknown Product',
-            description: apiProduct.description || '',
-            price: Number(price),
-            originalPrice: originalPrice ? Number(originalPrice) : undefined,
-            discount: discount > 0 ? discount : undefined,
-            image: mainImage,
-            images: Array.isArray(apiProduct.images) ? apiProduct.images : [],
-            categoryId: String(apiProduct.category || ''),
-            brandId: String(apiProduct.brand || ''),
-            brand: String(apiProduct.brand || 'Generic'),
-            category: String(apiProduct.category || 'General'),
-            inStock: Boolean((apiProduct.stock || 0) > 0 && apiProduct.isActive !== false),
-            stockQuantity: Number(apiProduct.stock || 0),
-            unit: String(apiProduct.unitType || 'unit'),
-            unitType: apiProduct.unitType,
-            perUnitWeightVolume: apiProduct.perUnitWeightVolume,
-            gstRate: apiProduct.gstRate ? Number(apiProduct.gstRate) : undefined,
-            minQuantity: Number(apiProduct.minimumQuantity || 1),
-            maxQuantity: 10, // Hardcoded limit for safety
+            let totalStock = Number(apiProduct.stock || 0);
+            if (apiProduct.packagingOptions && Array.isArray(apiProduct.packagingOptions) && apiProduct.packagingOptions.length > 0) {
+                totalStock = apiProduct.packagingOptions.reduce((sum, opt) => sum + Number(opt.stock || 0), 0);
+            }
+
+            return {
+                id: String(apiProduct._id),
+                name: apiProduct.name || 'Unknown Product',
+                description: apiProduct.description || '',
+                price: Number(price),
+                originalPrice: originalPrice ? Number(originalPrice) : undefined,
+                discount: discount > 0 ? discount : undefined,
+                image: mainImage,
+                images: Array.isArray(apiProduct.images) ? apiProduct.images : [],
+                categoryId: String(apiProduct.category || ''),
+                brandId: String(apiProduct.brand || ''),
+                brand: String(apiProduct.brand || 'Generic'),
+                category: String(apiProduct.category || 'General'),
+                inStock: Boolean(totalStock > 0 && apiProduct.isActive !== false),
+                stockQuantity: totalStock,
+                unit: String(apiProduct.unitType || 'unit'),
+                unitType: apiProduct.unitType,
+                perUnitWeightVolume: apiProduct.perUnitWeightVolume,
+                gstRate: apiProduct.gstRate ? Number(apiProduct.gstRate) : undefined,
+                minQuantity: Number(apiProduct.minimumQuantity || 1),
+                maxQuantity: 10, // Hardcoded limit for safety
             rating: 4.5, // Default rating if missing
             reviewCount: 0,
             ingredients: [],

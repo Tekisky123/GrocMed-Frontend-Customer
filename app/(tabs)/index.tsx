@@ -126,7 +126,7 @@ export default function HomeScreen() {
                 <View className="flex-row items-center justify-between mb-3">
                     <Image
                         source={require('@/assets/images/logo-removebg-preview.png')}
-                        className="w-[190px] h-[70px]"
+                        style={{ width: 130, height: 45 }}
                         resizeMode="contain"
                     />
 
@@ -327,7 +327,7 @@ export default function HomeScreen() {
                     </View>
                 )}
                 renderItem={({ item }) => (
-                    <View className="flex-1 px-1.5 mb-2">
+                    <View className="flex-1">
                         <ProductCard product={item} onPress={() => handleProductPress(item)} />
                     </View>
                 )}

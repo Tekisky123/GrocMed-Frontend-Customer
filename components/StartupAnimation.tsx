@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
         width: '100%',
     } as ViewStyle,
     logo: {
-        width: width * 0.75, // responsive width
-        height: 140,
+        width: 140,
+        height: 60,
         marginBottom: 24,
     } as ImageStyle,
     slogan: {

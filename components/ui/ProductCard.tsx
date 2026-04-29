@@ -14,295 +14,232 @@ interface ProductCardProps {
 
 export const ProductCard = React.memo(
   function ProductCardInner({ product, onPress, variant = 'vertical' }: ProductCardProps) {
-  const { addToCart } = useCart();
-  const { startAnimation } = useCartAnimation();
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const imageRef = React.useRef<View>(null);
+    const { addToCart, getItemQuantity, updateQuantity } = useCart();
+    const { startAnimation } = useCartAnimation();
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const imageRef = React.useRef<View>(null);
 
-  React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+    React.useEffect(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, []);
 
-  const [isAdding, setIsAdding] = React.useState(false);
+    const [isAdding, setIsAdding] = React.useState(false);
 
-  const handleAddToCart = () => {
-    if (!product || !product.inStock || isAdding) return;
+    const handleAddToCart = () => {
+      if (!product || !product.inStock || isAdding) return;
 
-    setIsAdding(true);
+      setIsAdding(true);
 
-    // Kick off fly-to-cart animation immediately
-    if (imageRef.current) {
-      imageRef.current.measureInWindow((x, y, width, height) => {
-        // Only run if we actually got valid measurements
-        if (x !== undefined && y !== undefined && width > 0) {
-          startAnimation({ x, y, width, height }, product.image || 'https://via.placeholder.com/150', () => {});
-        }
-      });
+      if (imageRef.current) {
+        imageRef.current.measureInWindow((x, y, width, height) => {
+          if (x !== undefined && y !== undefined && width > 0) {
+            startAnimation({ x, y, width, height }, product.image || 'https://via.placeholder.com/150', () => {});
+          }
+        });
+      }
+
+      Animated.sequence([
+        Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
+      ]).start();
+
+      try {
+        addToCart(product, product.minQuantity || 1);
+      } catch (error) {
+        console.warn('Failed to add to cart:', error);
+      }
+
+      setTimeout(() => setIsAdding(false), 500);
+    };
+
+    const hasDiscount = product.discount && product.discount > 0;
+    const hasOptions = product.packagingOptions && product.packagingOptions.length > 0;
+    const canAdd = product.inStock || hasOptions;
+    const cartQty = getItemQuantity(product.id);
+
+    if (variant === 'horizontal') {
+      return (
+        <Animated.View style={{ opacity: fadeAnim }} className="w-full">
+          <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.85}
+            className="bg-white rounded-2xl p-3 flex-row border border-black/5 shadow-sm shadow-black/10 mb-3"
+          >
+            {/* Image Section */}
+            <View ref={imageRef} collapsable={false} className="relative bg-gray-50 rounded-xl p-1.5">
+              {hasDiscount && (
+                <View className="absolute top-1 left-1 bg-red-500 px-1.5 py-0.5 rounded-md z-10">
+                  <Text className="text-white text-[9px] font-extrabold">{product.discount}%</Text>
+                </View>
+              )}
+              {hasOptions && (
+                <View className="absolute top-1 right-1 bg-blue-50 px-1.5 py-0.5 rounded-md z-10 border border-blue-600/10">
+                  <Text className="text-[9px] font-extrabold text-blue-700">{product.packagingOptions!.length} OPTIONS</Text>
+                </View>
+              )}
+              <Image
+                source={{ uri: product.image || 'https://via.placeholder.com/150' }}
+                className="w-[85px] h-[85px] rounded-lg"
+                resizeMode="contain"
+                resizeMethod="resize"
+                fadeDuration={0}
+              />
+            </View>
+
+            {/* Details Section */}
+            <View className="flex-1 ml-3 justify-between">
+              <View>
+                <Text className="text-[15px] font-bold text-gray-900 mb-1 leading-tight" numberOfLines={2}>
+                  {product.name}
+                </Text>
+                <Text className="text-[11px] text-gray-500 mb-1.5">{product.unit}</Text>
+              </View>
+
+              <View className="flex-row items-center justify-between">
+                <View>
+                  <Text className="text-[17px] font-extrabold text-gray-900">₹{product.price}</Text>
+                  {hasDiscount && (
+                    <Text className="text-[11px] text-gray-400 line-through">
+                      ₹{product.originalPrice}
+                    </Text>
+                  )}
+                </View>
+
+                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                  {cartQty > 0 && !hasOptions ? (
+                    <View className="flex-row items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                      <TouchableOpacity
+                        onPress={() => updateQuantity(product.id, cartQty - 1)}
+                        className="w-7 h-7 bg-white rounded-[6px] items-center justify-center shadow-sm shadow-black/10"
+                      >
+                        <Icon name="remove" size={14} color={Colors.textPrimary} library="material" />
+                      </TouchableOpacity>
+                      <Text className="w-6 text-center text-xs font-extrabold text-gray-900">{cartQty}</Text>
+                      <TouchableOpacity
+                        onPress={() => updateQuantity(product.id, cartQty + 1)}
+                        className="w-7 h-7 bg-orange-500 rounded-[6px] items-center justify-center shadow-sm shadow-orange-500/30"
+                      >
+                        <Icon name="add" size={14} color="#fff" library="material" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={hasOptions ? onPress : handleAddToCart}
+                      disabled={!canAdd}
+                      className={`py-1.5 px-3.5 rounded-lg shadow-sm ${canAdd ? 'bg-orange-500 shadow-orange-500/30' : 'bg-gray-300'}`}
+                      activeOpacity={0.8}
+                    >
+                      <Text className={`font-bold text-xs ${canAdd ? 'text-white' : 'text-gray-500'}`}>
+                        {canAdd ? 'ADD' : 'OUT'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </Animated.View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      );
     }
 
-    // Scale feedback animation
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.9, duration: 100, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
-    ]).start();
-
-    // addToCart handles authentication internally and synchronous optimistic updates
-    try {
-      addToCart(product, product.minQuantity || 1);
-    } catch (error) {
-      console.warn('Failed to add to cart:', error);
-    }
-
-    // Reset adding flag after brief delay (for visual feedback)
-    setTimeout(() => setIsAdding(false), 500);
-  };
-
-  const hasDiscount = product.discount && product.discount > 0;
-
-  if (variant === 'horizontal') {
+    // Vertical variant (default)
     return (
-      <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
+      <Animated.View style={{ opacity: fadeAnim }} className="w-full flex-1">
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
-          style={{
-            backgroundColor: Colors.textWhite,
-            borderRadius: 16,
-            padding: 12,
-            flexDirection: 'row',
-            borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.04)',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 10,
-            elevation: 3,
-            marginBottom: 12,
-          }}
+          className="bg-white rounded-[18px] p-2.5 border border-black/5 shadow-sm shadow-black/10 flex-1 justify-between"
         >
-          {/* Image Section */}
-          <View ref={imageRef} collapsable={false} style={{ position: 'relative', backgroundColor: '#F8F9FA', borderRadius: 12, padding: 6 }}>
+          <View>
+            {/* Discount Badge */}
             {hasDiscount && (
-              <View style={{
-                position: 'absolute',
-                top: 4,
-                left: 4,
-                backgroundColor: Colors.error,
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                borderRadius: 6,
-                zIndex: 1,
-              }}>
-                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{product.discount}%</Text>
+              <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded-lg z-10 shadow-sm shadow-red-500/30">
+                <Text className="text-white text-[10px] font-extrabold tracking-wider">{product.discount}% OFF</Text>
               </View>
             )}
-            {product.packagingOptions && product.packagingOptions.length > 0 && (
-              <View style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                backgroundColor: '#E3F2FD',
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                borderRadius: 6,
-                zIndex: 1,
-                borderWidth: 1,
-                borderColor: 'rgba(21, 101, 192, 0.1)',
-              }}>
-                <Text style={{ fontSize: 9, fontWeight: '800', color: '#1565C0' }}>{product.packagingOptions.length} OPTIONS</Text>
-              </View>
-            )}
-            <Image
-              source={{ uri: product.image || 'https://via.placeholder.com/150' }}
-              style={{ width: 85, height: 85, borderRadius: 8 }}
-              resizeMode="contain"
-              resizeMethod="resize"
-              fadeDuration={0}
-            />
-          </View>
 
-          {/* Details Section */}
-          <View style={{ flex: 1, marginLeft: 12, justifyContent: 'space-between' }}>
-            <View>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }} numberOfLines={2}>
+            {/* Image Section */}
+            <View ref={imageRef} collapsable={false} className="items-center mb-2.5 bg-gray-50 rounded-xl p-2 relative">
+              {hasOptions && (
+                <View className="absolute top-1 right-1 bg-blue-50 px-1.5 py-0.5 rounded-md z-10 border border-blue-600/10">
+                  <Text className="text-[9px] font-extrabold text-blue-700">{product.packagingOptions!.length} OPTIONS</Text>
+                </View>
+              )}
+              <Image
+                source={{ uri: product.image || 'https://via.placeholder.com/150' }}
+                className="w-full h-[120px] rounded-lg"
+                resizeMode="contain"
+                resizeMethod="resize"
+                fadeDuration={0}
+              />
+            </View>
+
+            {/* Product Details */}
+            <View className="w-full">
+              <Text
+                className="text-[13px] font-bold text-gray-900 mb-1 leading-snug min-h-[36px]"
+                numberOfLines={2}
+              >
                 {product.name}
               </Text>
-              <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: Colors.textPrimary }}>₹{product.price}</Text>
-                {hasDiscount && (
-                  <Text style={{ fontSize: 11, color: Colors.textTertiary, textDecorationLine: 'line-through' }}>
-                    ₹{product.originalPrice}
-                  </Text>
-                )}
-              </View>
-
-              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                <TouchableOpacity
-                  onPress={product.packagingOptions && product.packagingOptions.length > 0 ? onPress : handleAddToCart}
-                  disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length === 0)}
-                  style={{
-                    paddingVertical: 7,
-                    paddingHorizontal: 14,
-                    borderRadius: 8,
-                    backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.primary : Colors.gray300,
-                    shadowColor: Colors.primary,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 0.25 : 0,
-                    shadowRadius: 4,
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontWeight: '700', fontSize: 12, color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.textWhite : Colors.textSecondary }}>
-                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 'ADD' : 'OUT'}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
+              <Text className="text-[11px] text-gray-500 mb-1.5">{product.unit}</Text>
             </View>
           </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  }
 
-  // Vertical variant (default)
-  return (
-    <Animated.View style={{ opacity: fadeAnim, width: '100%' }}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.85}
-        style={{
-          backgroundColor: Colors.textWhite,
-          borderRadius: 18,
-          padding: 10,
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.04)',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          elevation: 4,
-        }}
-      >
-        {/* Discount Badge */}
-        {hasDiscount && (
-          <View style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            backgroundColor: Colors.error,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 8,
-            zIndex: 1,
-            shadowColor: Colors.error,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-          }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.3 }}>{product.discount}% OFF</Text>
-          </View>
-        )}
-
-        {/* Image Section */}
-        <View ref={imageRef} collapsable={false} style={{ alignItems: 'center', marginBottom: 10, backgroundColor: '#F8F9FA', borderRadius: 12, padding: 8, position: 'relative' }}>
-          {product.packagingOptions && product.packagingOptions.length > 0 && (
-            <View style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              backgroundColor: '#E3F2FD',
-              paddingHorizontal: 6,
-              paddingVertical: 3,
-              borderRadius: 6,
-              zIndex: 1,
-              borderWidth: 1,
-              borderColor: 'rgba(21, 101, 192, 0.1)',
-            }}>
-              <Text style={{ fontSize: 9, fontWeight: '800', color: '#1565C0' }}>{product.packagingOptions.length} OPTIONS</Text>
-            </View>
-          )}
-          <Image
-            source={{ uri: product.image || 'https://via.placeholder.com/150' }}
-            style={{ width: '100%', height: 140, borderRadius: 8 }}
-            resizeMode="contain"
-            resizeMethod="resize"
-            fadeDuration={0}
-          />
-        </View>
-
-        {/* Product Details */}
-        <View style={{ width: '100%' }}>
-          {/* Product Name */}
-          <Text
-            style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4, lineHeight: 18 }}
-            numberOfLines={2}
-          >
-            {product.name}
-          </Text>
-
-          {/* Unit */}
-          <Text style={{ fontSize: 11, color: Colors.textTertiary, marginBottom: 6 }}>{product.unit}</Text>
-
-          {/* Price and Add Button */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+          {/* Price and Add Button (Pushed to bottom) */}
+          <View className="flex-row items-center justify-between mt-1 pt-1 border-t border-transparent">
             <View>
-              <Text style={{ fontSize: 17, fontWeight: '800', color: Colors.textPrimary }}>₹{product.price}</Text>
+              <Text className="text-[16px] font-extrabold text-gray-900">₹{product.price}</Text>
               {hasDiscount && (
-                <Text style={{ fontSize: 11, color: Colors.textTertiary, textDecorationLine: 'line-through', marginTop: 2 }}>
+                <Text className="text-[10px] text-gray-400 line-through mt-0.5">
                   ₹{product.originalPrice}
                 </Text>
               )}
             </View>
 
             <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <TouchableOpacity
-                onPress={product.packagingOptions && product.packagingOptions.length > 0 ? onPress : handleAddToCart}
-                disabled={!product.inStock && (!product.packagingOptions || product.packagingOptions.length === 0)}
-                style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: 10,
-                  backgroundColor: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.primary : Colors.gray300,
-                  minWidth: 70,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: Colors.primary,
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 0.3 : 0,
-                  shadowRadius: 5,
-                }}
-                activeOpacity={0.8}
-              >
-                {isAdding ? (
-                  <Icon name="more-horiz" size={18} color={Colors.textWhite} library="material" />
-                ) : (
-                  <Text
-                    style={{
-                      fontWeight: '800',
-                      fontSize: 13,
-                      color: product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? Colors.textWhite : Colors.textSecondary,
-                      letterSpacing: 0.5,
-                    }}
+              {cartQty > 0 && !hasOptions ? (
+                <View className="flex-row items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
+                  <TouchableOpacity
+                    onPress={() => updateQuantity(product.id, cartQty - 1)}
+                    className="w-7 h-7 bg-white rounded-[6px] items-center justify-center shadow-sm shadow-black/10"
                   >
-                    {product.inStock || (product.packagingOptions && product.packagingOptions.length > 0) ? 'ADD' : 'OUT'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                    <Icon name="remove" size={14} color={Colors.textPrimary} library="material" />
+                  </TouchableOpacity>
+                  <Text className="w-6 text-center text-[13px] font-extrabold text-gray-900">{cartQty}</Text>
+                  <TouchableOpacity
+                    onPress={() => updateQuantity(product.id, cartQty + 1)}
+                    className="w-7 h-7 bg-orange-500 rounded-[6px] items-center justify-center shadow-sm shadow-orange-500/30"
+                  >
+                    <Icon name="add" size={14} color="#fff" library="material" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={hasOptions ? onPress : handleAddToCart}
+                  disabled={!canAdd}
+                  className={`py-1.5 px-3 rounded-[10px] min-w-[60px] items-center justify-center shadow-sm ${canAdd ? 'bg-orange-500 shadow-orange-500/30' : 'bg-gray-300'}`}
+                  activeOpacity={0.8}
+                >
+                  {isAdding ? (
+                    <Icon name="more-horiz" size={18} color="#ffffff" library="material" />
+                  ) : (
+                    <Text className={`font-extrabold text-[12px] tracking-wide ${canAdd ? 'text-white' : 'text-gray-500'}`}>
+                      {canAdd ? 'ADD' : 'OUT'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </Animated.View>
           </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
+        </TouchableOpacity>
+      </Animated.View>
+    );
   },
   (prevProps, nextProps) => {
     return prevProps.product.id === nextProps.product.id && prevProps.variant === nextProps.variant;

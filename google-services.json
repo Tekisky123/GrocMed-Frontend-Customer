@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:740046456842:android:57a5a5cf6a5fd6144af7f3",
         "android_client_info": {
-          "package_name": "app.grocmed"
+          "package_name": "com.grocmed.app"
         }
       },
       "oauth_client": [],

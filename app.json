@@ -10,10 +10,10 @@
     "entryPoint": "./node_modules/expo-router/entry",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.grocmed"
+      "bundleIdentifier": "com.grocmed.app"
     },
     "android": {
-      "package": "app.grocmed",
+      "package": "com.grocmed.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo.png"

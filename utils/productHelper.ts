@@ -31,7 +31,7 @@ export const mapApiProductToUiProduct = (apiProduct: ApiProduct | null | undefin
         // Safe image selection
         const mainImage = (apiProduct.images && apiProduct.images.length > 0) 
             ? apiProduct.images[0] 
-            : (apiProduct.image || 'https://via.placeholder.com/150');
+            : 'https://via.placeholder.com/150';
 
             let totalStock = Number(apiProduct.stock || 0);
             if (apiProduct.packagingOptions && Array.isArray(apiProduct.packagingOptions) && apiProduct.packagingOptions.length > 0) {

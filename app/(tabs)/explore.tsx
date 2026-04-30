@@ -14,52 +14,7 @@ const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20; // Standardized to 20px consistently
 const ITEM_SPACING = 12;
 
-// Robust mapping function consistent with other pages
-const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
-  let price = apiProduct.offerPrice || apiProduct.mrp || 0;
-  let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
-  let discount = apiProduct.mrp && apiProduct.offerPrice
-    ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
-    : 0;
-
-  if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
-      const firstOpt = apiProduct.packagingOptions[0];
-      price = firstOpt.salePrice || firstOpt.mrp || 0;
-      originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
-      if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
-          discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
-      }
-  }
-
-  return {
-    id: apiProduct._id,
-    name: apiProduct.name,
-    description: apiProduct.description,
-    price,
-    originalPrice,
-    discount: discount > 0 ? discount : undefined,
-    image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
-    images: apiProduct.images,
-    categoryId: apiProduct.category,
-    brandId: apiProduct.brand,
-    brand: apiProduct.brand,
-    category: apiProduct.category,
-    inStock: apiProduct.stock > 0 && apiProduct.isActive,
-    stockQuantity: apiProduct.stock,
-    unit: apiProduct.unitType || 'unit',
-    unitType: apiProduct.unitType,
-    perUnitWeightVolume: apiProduct.perUnitWeightVolume,
-    gstRate: apiProduct.gstRate,
-    minQuantity: apiProduct.minimumQuantity || 1,
-    maxQuantity: 10,
-    rating: 4.5, // Placeholder
-    reviewCount: 127, // Placeholder
-    ingredients: [],
-    nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    manfDate: apiProduct.manfDate,
-    expiryDate: apiProduct.expiryDate,
-  };
-};
+import { mapApiProductsToUiProducts, mapApiProductToUiProduct } from '@/utils/productHelper';
 
 export default function ExploreScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -87,7 +42,7 @@ export default function ExploreScreen() {
 
       if (productsRes.success && productsRes.data) {
         // Show featured products (random selection for explore)
-        setProducts(productsRes.data.map(mapApiProductToUiProduct).slice(0, 10));
+        setProducts(mapApiProductsToUiProducts(productsRes.data).slice(0, 10));
       }
     } catch (err) {
       console.error('Error loading explore data:', err);

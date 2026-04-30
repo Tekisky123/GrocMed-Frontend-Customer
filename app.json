@@ -9,10 +9,11 @@
     "userInterfaceStyle": "automatic",
     "entryPoint": "./node_modules/expo-router/entry",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.grocmed"
     },
     "android": {
-      "package": "com.tekisky.ReactNative",
+      "package": "app.grocmed",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo.png"

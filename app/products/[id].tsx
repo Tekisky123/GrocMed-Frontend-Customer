@@ -4,7 +4,7 @@ import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
-import { mapApiProductToUiProduct } from '@/utils/productHelper';
+import { mapApiProductsToUiProducts, mapApiProductToUiProduct } from '@/utils/productHelper';
 import { formatSafeDate } from '@/utils/dateHelper';
 import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -69,7 +69,7 @@ export default function ProductDetailScreen() {
 
                 const suggestedResponse = await productApi.getSuggestedProducts(id);
                 if (suggestedResponse.success && Array.isArray(suggestedResponse.data)) {
-                    setSuggestedProducts(suggestedResponse.data.map(mapApiProductToUiProduct));
+                    setSuggestedProducts(mapApiProductsToUiProducts(suggestedResponse.data));
                 }
             } else {
                 setError('Product not found');

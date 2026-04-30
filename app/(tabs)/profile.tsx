@@ -21,7 +21,7 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <Animated.View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 20, opacity: fadeAnim }}>
         <View style={{
           width: 120, height: 120, backgroundColor: Colors.gray100, borderRadius: 60,
           alignItems: 'center', justifyContent: 'center', marginBottom: 24
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
         >
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Go to Login</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   }
 

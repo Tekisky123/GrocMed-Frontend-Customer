@@ -4,6 +4,7 @@ import { Icon, Icons } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Colors } from '@/constants/colors';
 import { Product } from '@/types';
+import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -11,50 +12,6 @@ import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, Text
 const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20;
 const ITEM_SPACING = 12;
-
-// Reusing mapping function
-const mapApiProductToUiProduct = (apiProduct: ApiProduct): Product => {
-  let price = apiProduct.offerPrice || apiProduct.mrp || 0;
-  let originalPrice = apiProduct.offerPrice ? apiProduct.mrp : undefined;
-  let discount = apiProduct.mrp && apiProduct.offerPrice
-    ? Math.round(((apiProduct.mrp - apiProduct.offerPrice) / apiProduct.mrp) * 100)
-    : 0;
-
-  if (apiProduct.packagingOptions && apiProduct.packagingOptions.length > 0) {
-      const firstOpt = apiProduct.packagingOptions[0];
-      price = firstOpt.salePrice || firstOpt.mrp || 0;
-      originalPrice = firstOpt.mrp > firstOpt.salePrice ? firstOpt.mrp : undefined;
-      if (firstOpt.mrp && firstOpt.salePrice && firstOpt.mrp > firstOpt.salePrice) {
-          discount = Math.round(((firstOpt.mrp - firstOpt.salePrice) / firstOpt.mrp) * 100);
-      }
-  }
-
-  return {
-    id: apiProduct._id,
-    name: apiProduct.name,
-    description: apiProduct.description,
-    price,
-    originalPrice,
-    discount: discount > 0 ? discount : undefined,
-    image: apiProduct.images && apiProduct.images.length > 0 ? apiProduct.images[0] : '',
-    categoryId: apiProduct.category,
-    brandId: apiProduct.brand,
-    brand: apiProduct.brand,
-    category: apiProduct.category,
-    inStock: apiProduct.stock > 0 && apiProduct.isActive,
-    stockQuantity: apiProduct.stock,
-    unit: apiProduct.unitType || 'unit',
-    unitType: apiProduct.unitType,
-    perUnitWeightVolume: apiProduct.perUnitWeightVolume,
-    gstRate: apiProduct.gstRate,
-    minQuantity: apiProduct.minimumQuantity || 1,
-    maxQuantity: 10,
-    rating: 4.5,
-    reviewCount: 0,
-    ingredients: [],
-    nutrition: undefined
-  };
-};
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,7 +57,7 @@ export default function SearchScreen() {
     try {
       const response = await productApi.searchProducts(query, category || undefined);
       if (response.success && response.data) {
-        setProducts(response.data.map(mapApiProductToUiProduct));
+        setProducts(mapApiProductsToUiProducts(response.data));
       } else {
         setProducts([]);
       }

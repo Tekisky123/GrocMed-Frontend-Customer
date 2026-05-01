@@ -240,6 +240,5 @@ export const ProductCard = React.memo(
         </TouchableOpacity>
       </Animated.View>
     );
-  },
   }
 );

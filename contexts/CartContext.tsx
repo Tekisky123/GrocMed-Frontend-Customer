@@ -58,8 +58,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return { items, subtotal, deliveryFee, discount, total, couponCode };
   }, []);
 
-  // Stable fetchServerCart — uses functional setState so it doesn't need cart in deps
+  // Stable fetchServerCart
   const fetchServerCart = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const res = await cartApi.getCart();
       if (res.success && res.data?.items && isMounted.current) {
@@ -80,6 +81,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
              }
           }
 
+          const itemKey = i.packagingOptionId ? `${uiProd.id}_${i.packagingOptionId}` : uiProd.id;
+
           return {
             id: String(i._id || i.id || Date.now()),
             productId: String(uiProd.id),
@@ -89,7 +92,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             quantity: Number(i.quantity || 1),
             price: Number(price),
             total: Number(price) * Number(i.quantity || 1),
-          };
+            itemKey // Store the key for later updates
+          } as any;
         }).filter((item: any) => item !== null);
 
         setCart(prev => buildCart(mappedItems, prev.discount, prev.couponCode));
@@ -97,7 +101,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('fetchServerCart error:', e);
     }
-  }, [buildCart]);
+  }, [isAuthenticated, buildCart]);
 
   // Load cart when user authenticates
   useEffect(() => {
@@ -122,12 +126,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // 1. Optimistic Update
       setCart(prev => {
-        const existing = prev.items.find(i => (i as any).itemKey === itemKey || (!packagingOptionId && i.productId === product.id && !(i as any).packagingOptionId));
+        const existing = prev.items.find(i => (i as any).itemKey === itemKey);
         let updatedItems: CartItem[];
 
         if (existing) {
           updatedItems = prev.items.map(item =>
-            (item as any).itemKey === itemKey || (!packagingOptionId && item.productId === product.id && !(item as any).packagingOptionId)
+            (item as any).itemKey === itemKey
               ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
               : item
           );
@@ -164,7 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       showToast(`${product.name} added to cart`, 'success');
 
-      // 2. Debounced API Sync with Net Change Tracking
+      // 2. Debounced API Sync
       const currentDiff = pendingDiffs.current.get(itemKey) || 0;
       pendingDiffs.current.set(itemKey, currentDiff + quantity);
 
@@ -203,7 +207,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       showToast('Item removed from cart', 'info');
 
-      // Clear any pending syncs for this product
+      // Clear any pending syncs
       const existingTimer = apiTimers.current.get(productId);
       if (existingTimer) clearTimeout(existingTimer);
       apiTimers.current.delete(productId);
@@ -226,66 +230,68 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuantity = useCallback(
     (productId: string, quantity: number) => {
-      let diff = 0;
+      if (!isAuthenticated) return;
+
+      let itemKeyToSync = productId;
+      let finalDiff = 0;
       let minQty = 1;
-      let shouldRemove = false;
-      let itemKey = productId;
+      let isRemoval = false;
 
       setCart(prev => {
-        const currentItem = prev.items.find(i => i.productId === productId);
-        if (!currentItem) return prev;
+        const item = prev.items.find(i => i.productId === productId);
+        if (!item) return prev;
 
-        itemKey = (currentItem as any).itemKey || productId;
-        minQty = currentItem.product?.minQuantity || 1;
+        itemKeyToSync = (item as any).itemKey || productId;
+        minQty = item.product?.minQuantity || 1;
 
         if (quantity <= 0) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          shouldRemove = true;
+          isRemoval = true;
           return prev;
         }
-        
-        Haptics.selectionAsync();
 
-        if (quantity < minQty && quantity > 0) return prev;
+        if (quantity < minQty) return prev;
 
-        diff = quantity - currentItem.quantity;
-        if (diff === 0) return prev;
+        finalDiff = quantity - item.quantity;
+        if (finalDiff === 0) return prev;
 
-        const updatedItems = prev.items.map(item =>
-          item.productId === productId
-            ? { ...item, quantity, total: item.price * quantity }
-            : item
+        const updatedItems = prev.items.map(i => 
+          i.productId === productId 
+            ? { ...i, quantity, total: i.price * quantity } 
+            : i
         );
+
         return buildCart(updatedItems, prev.discount, prev.couponCode);
       });
+
+      if (isRemoval) {
+        removeFromCart(productId);
+        return;
+      }
 
       if (quantity > 0 && quantity < minQty) {
         showToast(`Minimum order quantity is ${minQty}`, 'info');
         return;
       }
 
-      if (shouldRemove) {
-        removeFromCart(productId);
-        return;
-      }
+      if (finalDiff === 0) return;
 
-      if (diff === 0 || !isAuthenticated) return;
+      Haptics.selectionAsync();
 
-      // Track net change for debounced sync
-      const currentPending = pendingDiffs.current.get(itemKey) || 0;
-      pendingDiffs.current.set(itemKey, currentPending + diff);
+      // Debounced sync
+      const currentPending = pendingDiffs.current.get(itemKeyToSync) || 0;
+      pendingDiffs.current.set(itemKeyToSync, currentPending + finalDiff);
 
-      const existingTimer = apiTimers.current.get(itemKey);
+      const existingTimer = apiTimers.current.get(itemKeyToSync);
       if (existingTimer) clearTimeout(existingTimer);
 
       const timer = setTimeout(async () => {
-        apiTimers.current.delete(itemKey);
-        const finalDiff = pendingDiffs.current.get(itemKey);
-        pendingDiffs.current.delete(itemKey);
+        apiTimers.current.delete(itemKeyToSync);
+        const syncDiff = pendingDiffs.current.get(itemKeyToSync);
+        pendingDiffs.current.delete(itemKeyToSync);
 
-        if (finalDiff && finalDiff !== 0) {
+        if (syncDiff && syncDiff !== 0) {
           try {
-            await cartApi.addToCart(productId, finalDiff);
+            await cartApi.addToCart(productId, syncDiff);
           } catch (e) {
             console.error('updateQuantity sync error:', e);
             fetchServerCart();
@@ -293,7 +299,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }, 800);
 
-      apiTimers.current.set(itemKey, timer);
+      apiTimers.current.set(itemKeyToSync, timer);
     },
     [isAuthenticated, buildCart, removeFromCart, showToast, fetchServerCart]
   );
@@ -305,9 +311,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         await cartApi.clearCart();
       } catch (e) {
         console.error('clearCart error:', e);
+        fetchServerCart();
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchServerCart]);
 
   const applyCoupon = useCallback((_code: string): boolean => {
     return false;

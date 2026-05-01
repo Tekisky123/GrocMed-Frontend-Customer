@@ -1,5 +1,6 @@
 import { orderApi } from '@/api/orderApi';
 import { pincodeApi, PincodeOption } from '@/api/pincodeApi';
+import { deliverySlotApi } from '@/api/deliverySlotApi';
 import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,7 +47,28 @@ export default function CheckoutScreen() {
     const [pincodeSearch, setPincodeSearch] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Delivery Slots State
+    const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+    const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [availabilityInfo, setAvailabilityInfo] = useState<any>(null);
+    const [slotsLoading, setSlotsLoading] = useState(false);
+
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const deliveryDates = useMemo(() => {
+        const dates = [];
+        for (let i = 0; i < 4; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            dates.push({
+                label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
+                value: date.toISOString().split('T')[0],
+                isToday: i === 0
+            });
+        }
+        return dates;
+    }, []);
 
     // Computed
     const totalGST = useMemo(() => {
@@ -91,6 +113,35 @@ export default function CheckoutScreen() {
     const filteredPincodes = useMemo(() => 
         pincodes.filter(p => p.pincode.includes(pincodeSearch)),
     [pincodes, pincodeSearch]);
+
+    useEffect(() => {
+        fetchAvailability();
+    }, [selectedDate]);
+
+    const fetchAvailability = async () => {
+        try {
+            setSlotsLoading(true);
+            const res = await deliverySlotApi.getAvailability(selectedDate);
+            if (res.success) {
+                setAvailabilityInfo(res.data);
+                setAvailableSlots(res.data.availableSlots || []);
+                
+                // If today is full and we selected today, switch to tomorrow
+                if (res.data.isFull && selectedDate === new Date().toISOString().split('T')[0]) {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    setSelectedDate(tomorrow.toISOString().split('T')[0]);
+                    showToast('Orders full for today. Switching to tomorrow.', 'info');
+                } else if (res.data.availableSlots?.length > 0 && !selectedSlot) {
+                    setSelectedSlot(res.data.availableSlots[0].name);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch availability', e);
+        } finally {
+            setSlotsLoading(false);
+        }
+    };
 
     // Handlers
     const handleSaveAddress = async () => {
@@ -141,6 +192,8 @@ export default function CheckoutScreen() {
                     addressType: addressObject.type || 'Home',
                 },
                 paymentMethod: paymentMethod.toUpperCase(),
+                deliveryDate: selectedDate,
+                deliverySlot: selectedSlot,
             };
 
             const res = await orderApi.placeOrder(orderData);
@@ -273,6 +326,67 @@ export default function CheckoutScreen() {
                                         <Text style={styles.addLink}>Add New Address</Text>
                                     </TouchableOpacity>
                                 )}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Delivery Schedule Section */}
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <Icon name="schedule" size={20} color={Colors.primary} library="material" />
+                            <Text style={styles.cardTitle}>Delivery Schedule</Text>
+                        </View>
+
+                        {/* Date Picker */}
+                        <Text style={styles.cardTitleSmall}>Select Date</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateList}>
+                            {deliveryDates.map((date) => {
+                                const isFull = date.isToday && availabilityInfo?.isFull;
+                                return (
+                                    <TouchableOpacity
+                                        key={date.value}
+                                        onPress={() => !isFull && setSelectedDate(date.value)}
+                                        disabled={isFull}
+                                        style={[
+                                            styles.dateChip,
+                                            selectedDate === date.value && styles.dateChipActive,
+                                            isFull && styles.dateChipDisabled
+                                        ]}
+                                    >
+                                        <Text style={[styles.dateLabel, selectedDate === date.value && styles.dateLabelActive, isFull && styles.dateLabelDisabled]}>{date.label}</Text>
+                                        {isFull && <Text style={styles.fullBadge}>FULL</Text>}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        {/* Slot Picker */}
+                        <Text style={[styles.cardTitleSmall, { marginTop: 20 }]}>Select Time Window</Text>
+                        {slotsLoading ? (
+                            <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
+                        ) : (
+                            <View style={styles.slotGrid}>
+                                {availableSlots.length > 0 ? (
+                                    availableSlots.map((slot: any) => (
+                                        <TouchableOpacity
+                                            key={slot._id}
+                                            onPress={() => setSelectedSlot(slot.name)}
+                                            style={[styles.slotChip, selectedSlot === slot.name && styles.slotChipActive]}
+                                        >
+                                            <Text style={[styles.slotText, selectedSlot === slot.name && styles.slotTextActive]}>{slot.name}</Text>
+                                            <Text style={[styles.slotTime, selectedSlot === slot.name && styles.slotTimeActive]}>{slot.startTime} - {slot.endTime}</Text>
+                                        </TouchableOpacity>
+                                    ))
+                                ) : (
+                                    <Text style={styles.noSlotsText}>No slots available for this date</Text>
+                                )}
+                            </View>
+                        )}
+
+                        {availabilityInfo?.isFull && selectedDate === new Date().toISOString().split('T')[0] && (
+                            <View style={styles.fullWarning}>
+                                <Icon name="info-outline" size={16} color="#E65100" library="material" />
+                                <Text style={styles.fullWarningText}>Today is fully booked. Please select a future date.</Text>
                             </View>
                         )}
                     </View>
@@ -937,5 +1051,103 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: Colors.textTertiary,
         fontWeight: '600',
+    },
+    // Delivery Schedule Styles
+    dateList: {
+        marginBottom: 10,
+    },
+    dateChip: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 14,
+        backgroundColor: '#F1F3F5',
+        marginRight: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    dateChipActive: {
+        backgroundColor: '#FFF9F4',
+        borderColor: Colors.primary,
+    },
+    dateChipDisabled: {
+        backgroundColor: '#F8F9FA',
+        opacity: 0.6,
+    },
+    dateLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.textSecondary,
+    },
+    dateLabelActive: {
+        color: Colors.primary,
+    },
+    dateLabelDisabled: {
+        color: Colors.textTertiary,
+    },
+    fullBadge: {
+        fontSize: 8,
+        fontWeight: '900',
+        color: '#D84315',
+        marginTop: 2,
+    },
+    slotGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    slotChip: {
+        width: (width - 64 - 10) / 2, // 2 columns with gaps and padding
+        padding: 12,
+        borderRadius: 14,
+        backgroundColor: '#F1F3F5',
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    slotChipActive: {
+        backgroundColor: '#FFF9F4',
+        borderColor: Colors.primary,
+    },
+    slotText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        marginBottom: 2,
+    },
+    slotTextActive: {
+        color: Colors.primary,
+    },
+    slotTime: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: Colors.textTertiary,
+    },
+    slotTimeActive: {
+        color: Colors.primary,
+        opacity: 0.8,
+    },
+    noSlotsText: {
+        fontSize: 13,
+        color: Colors.textTertiary,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        width: '100%',
+        marginVertical: 10,
+    },
+    fullWarning: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF3E0',
+        padding: 10,
+        borderRadius: 10,
+        marginTop: 16,
+        gap: 8,
+    },
+    fullWarningText: {
+        fontSize: 12,
+        color: '#E65100',
+        fontWeight: '700',
+        flex: 1,
     },
 });

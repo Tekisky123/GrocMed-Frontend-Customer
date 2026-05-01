@@ -1,17 +1,17 @@
 import { orderApi } from '@/api/orderApi';
 import { pincodeApi, PincodeOption } from '@/api/pincodeApi';
 import { Icon } from '@/components/ui/Icon';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Address, PaymentMethod } from '@/types';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
     ActivityIndicator,
     Animated,
+    Dimensions,
     FlatList,
     Modal,
     Platform,
@@ -21,56 +21,64 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SECTION_PADDING = 20;
+const { width } = Dimensions.get('window');
+const IS_SMALL_DEVICE = width < 375;
 
 export default function CheckoutScreen() {
     const { cart, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
     const { showToast } = useToast();
 
-    const totalGST = cart.items.reduce((sum, item) => {
-        const gstRate = item.product?.gstRate || 0;
-        if (gstRate > 0) {
-            const taxable = item.total / (1 + gstRate / 100);
-            return sum + (item.total - taxable);
-        }
-        return sum;
-    }, 0);
-
+    // State
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
-
-    // Address form
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [newStreet, setNewStreet] = useState('');
     const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Other'>('Home');
-
-    // Pincode selection
     const [pincodes, setPincodes] = useState<PincodeOption[]>([]);
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [selectedPincode, setSelectedPincode] = useState<PincodeOption | null>(null);
     const [showPincodeModal, setShowPincodeModal] = useState(false);
     const [pincodeSearch, setPincodeSearch] = useState('');
-
-    const fadeAnim = useRef(new Animated.Value(0)).current;
     const [loading, setLoading] = useState(false);
 
-    // Fade in
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Computed
+    const totalGST = useMemo(() => {
+        return cart.items.reduce((sum, item) => {
+            const gstRate = item.product?.gstRate || 0;
+            if (gstRate > 0) {
+                const taxable = item.total / (1 + gstRate / 100);
+                return sum + (item.total - taxable);
+            }
+            return sum;
+        }, 0);
+    }, [cart.items]);
+
+    const activeStep = useMemo(() => {
+        if (isAddingAddress) return 1;
+        if (!selectedAddressId) return 1;
+        return 2;
+    }, [isAddingAddress, selectedAddressId]);
+
+    // Effects
     useEffect(() => {
-        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+        StatusBar.setBarStyle('dark-content');
     }, []);
 
-    // Auto-select default address
     useEffect(() => {
-        if (user?.addresses && user.addresses.length > 0 && !selectedAddressId) {
+        if (user?.addresses?.length > 0 && !selectedAddressId) {
             const def = user.addresses.find(a => a.isDefault);
             setSelectedAddressId(def?.id || user.addresses[0].id);
         }
-    }, [user?.addresses?.length]);
+    }, [user?.addresses]);
 
-    // Fetch pincodes
     useEffect(() => {
         let cancelled = false;
         setPincodeLoading(true);
@@ -80,26 +88,20 @@ export default function CheckoutScreen() {
         return () => { cancelled = true; };
     }, []);
 
-    const filteredPincodes = pincodes.filter(p =>
-        p.pincode.includes(pincodeSearch)
-    );
+    const filteredPincodes = useMemo(() => 
+        pincodes.filter(p => p.pincode.includes(pincodeSearch)),
+    [pincodes, pincodeSearch]);
 
-    // ── Save new address ──────────────────────────────────────────────────────
+    // Handlers
     const handleSaveAddress = async () => {
-        if (!newStreet.trim()) {
-            showToast('Please enter your street address', 'info');
-            return;
-        }
-        if (!selectedPincode) {
-            showToast('Please select a delivery pincode', 'info');
-            return;
-        }
+        if (!newStreet.trim()) return showToast('Please enter your street address', 'info');
+        if (!selectedPincode) return showToast('Please select a delivery pincode', 'info');
 
         const addressToSave: Address = {
             id: Math.random().toString(36).substr(2, 9),
             street: newStreet.trim(),
-            city: '',
-            state: '',
+            city: selectedPincode.city || 'Default City',
+            state: selectedPincode.state || 'Default State',
             zip: selectedPincode.pincode,
             type: addressType,
             isDefault: (user?.addresses?.length || 0) === 0,
@@ -108,50 +110,37 @@ export default function CheckoutScreen() {
         if (user) {
             const updatedAddresses = [...(user.addresses || []), addressToSave];
             try {
-                await updateProfile({ addresses: updatedAddresses });
-            } catch {}
-            setSelectedAddressId(addressToSave.id);
+                const res = await updateProfile({ addresses: updatedAddresses });
+                if (res.success) {
+                    showToast('Address added successfully', 'success');
+                    setSelectedAddressId(addressToSave.id);
+                    setIsAddingAddress(false);
+                    setNewStreet('');
+                    setSelectedPincode(null);
+                } else {
+                    showToast(res.message || 'Failed to save address', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to save address', 'error');
+            }
         }
-
-        setIsAddingAddress(false);
-        setNewStreet('');
-        setSelectedPincode(null);
-        setAddressType('Home');
-        setPincodeSearch('');
     };
 
-    // ── Place order ───────────────────────────────────────────────────────────
     const handlePlaceOrder = async () => {
         const addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
-        if (!addressObject) {
-            showToast('Please select or add a delivery address', 'info');
-            return;
-        }
-
-        const invalidItems = cart.items.filter(item => {
-            const minQty = item.product?.minQuantity || 1;
-            return item.quantity < minQty;
-        });
-        if (invalidItems.length > 0) {
-            const names = invalidItems.map(i => i.product.name).join(', ');
-            showToast(`Some items are below minimum quantity: ${names}`, 'error');
-            return;
-        }
+        if (!addressObject) return showToast('Please select a delivery address', 'info');
 
         try {
             setLoading(true);
             const orderData = {
-                shippingAddress: JSON.stringify({
-                    streetAddress: addressObject.street,
+                shippingAddress: {
+                    street: addressObject.street,
                     city: addressObject.city || '',
                     state: addressObject.state || '',
-                    postalCode: addressObject.zip,
-                    fullName: user?.name || 'Guest',
-                    phoneNumber: user?.phone || '',
-                }),
+                    zip: addressObject.zip,
+                    addressType: addressObject.type || 'Home',
+                },
                 paymentMethod: paymentMethod.toUpperCase(),
-                items: cart.items,
-                totalAmount: cart.total,
             };
 
             const res = await orderApi.placeOrder(orderData);
@@ -160,705 +149,793 @@ export default function CheckoutScreen() {
                 router.replace({
                     pathname: '/orders/confirmation',
                     params: {
-                        orderId: res.data?.orderId || res.data?._id || `ORD-${Date.now()}`,
+                        orderId: res.data?._id || `ORD-${Date.now()}`,
                         total: cart.total.toString(),
                     },
                 });
             } else {
                 showToast(res.message || 'Failed to place order', 'error');
             }
-        } catch (error) {
-            console.error('Place order error:', error);
-            showToast('An error occurred while placing order', 'error');
+        } catch (error: any) {
+            showToast(error.message || 'An error occurred', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const headerHeight = Platform.OS === 'ios' ? 120 : 100;
-
     return (
-        <View style={{ flex: 1, backgroundColor: Colors.background }}>
-            <PageHeader title="Checkout" variant="primary" />
+        <SafeAreaView style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Icon name="arrow-back" size={24} color={Colors.textPrimary} library="material" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Checkout</Text>
+                <View style={{ width: 40 }} />
+            </View>
 
-            <ScrollView
+            {/* Step Indicator */}
+            <View style={styles.stepContainer}>
+                {[1, 2].map((step) => (
+                    <React.Fragment key={step}>
+                        <View style={[styles.stepCircle, activeStep >= step && styles.stepCircleActive]}>
+                            <Text style={[styles.stepText, activeStep >= step && styles.stepTextActive]}>{step}</Text>
+                        </View>
+                        {step === 1 && <View style={[styles.stepLine, activeStep > 1 && styles.stepLineActive]} />}
+                    </React.Fragment>
+                ))}
+                <View style={styles.stepLabels}>
+                    <Text style={[styles.stepLabel, activeStep >= 1 && styles.stepLabelActive]}>Address</Text>
+                    <Text style={[styles.stepLabel, activeStep >= 2 && styles.stepLabelActive]}>Payment</Text>
+                </View>
+            </View>
+
+            <ScrollView 
                 showsVerticalScrollIndicator={false}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ paddingTop: headerHeight, paddingBottom: 120 }}
-                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.scrollContent}
             >
                 <Animated.View style={{ opacity: fadeAnim }}>
+                    
+                    {/* Address Section */}
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <Icon name="location-on" size={20} color={Colors.primary} library="material" />
+                            <Text style={styles.cardTitle}>Delivery Address</Text>
+                            {!isAddingAddress && user?.addresses?.length > 0 && (
+                                <TouchableOpacity onPress={() => setIsAddingAddress(true)}>
+                                    <Text style={styles.editLink}>Change</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
-                    {/* ── Delivery Address ──────────────────────────────────── */}
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Delivery Address</Text>
-
-                        {/* Saved addresses */}
-                        {!isAddingAddress && user?.addresses?.map(address => (
-                            <TouchableOpacity
-                                key={address.id}
-                                onPress={() => setSelectedAddressId(address.id)}
-                                activeOpacity={0.8}
-                                style={[
-                                    styles.addressCard,
-                                    selectedAddressId === address.id && styles.addressCardSelected,
-                                ]}
-                            >
-                                <View style={{ flex: 1 }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                                        <View style={styles.typeBadge}>
-                                            <Text style={styles.typeBadgeText}>{address.type}</Text>
-                                        </View>
-                                        <Text style={styles.addressZip}>📍 {address.zip}</Text>
-                                    </View>
-                                    <Text style={styles.addressStreet}>{address.street}</Text>
-                                </View>
-                                {selectedAddressId === address.id && (
-                                    <View style={styles.checkBadge}>
-                                        <Icon name="check" size={16} color="#fff" library="material" />
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-
-                        {/* Add address button */}
-                        {!isAddingAddress && (
-                            <TouchableOpacity
-                                onPress={() => setIsAddingAddress(true)}
-                                style={styles.addAddressButton}
-                            >
-                                <Icon name="add" size={20} color={Colors.primary} library="material" />
-                                <Text style={styles.addAddressText}>Add New Address</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* ── New Address Form ──────────────────────────────── */}
-                        {isAddingAddress && (
-                            <View style={styles.formCard}>
-                                <Text style={styles.formTitle}>New Address Details</Text>
-
-                                {/* Street */}
-                                <Text style={styles.fieldLabel}>Street / Building / Area *</Text>
+                        {isAddingAddress ? (
+                            <View style={styles.addressForm}>
+                                <Text style={styles.inputLabel}>HOUSE / FLAT / BLOCK NO.</Text>
                                 <TextInput
-                                    placeholder="e.g. 12B, Rose Garden Apartments, MG Road"
+                                    style={styles.input}
+                                    placeholder="Enter your full address"
                                     value={newStreet}
                                     onChangeText={setNewStreet}
-                                    multiline
-                                    numberOfLines={2}
-                                    style={styles.textInput}
                                     placeholderTextColor={Colors.textTertiary}
                                 />
-
-                                {/* Pincode Selector */}
-                                <Text style={styles.fieldLabel}>Delivery Pincode *</Text>
-                                <TouchableOpacity
+                                
+                                <Text style={styles.inputLabel}>DELIVERY PINCODE</Text>
+                                <TouchableOpacity 
+                                    style={styles.pincodeButton} 
                                     onPress={() => setShowPincodeModal(true)}
-                                    style={[
-                                        styles.pincodeSelector,
-                                        selectedPincode ? styles.pincodeSelectorSelected : null,
-                                    ]}
-                                    activeOpacity={0.8}
                                 >
-                                    <View style={{ flex: 1 }}>
-                                        {selectedPincode ? (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <Text style={styles.pincodeSelectorValue}>
-                                                    {selectedPincode.pincode}
-                                                </Text>
-                                                <Icon name="check-circle" size={16} color={Colors.primary} library="material" />
-                                            </View>
-                                        ) : (
-                                            <Text style={styles.pincodeSelectorPlaceholder}>
-                                                {pincodeLoading ? 'Loading...' : 'Tap to select pincode →'}
-                                            </Text>
-                                        )}
-                                    </View>
-                                    <Icon name="expand-more" size={20} color={Colors.textTertiary} library="material" />
+                                    <Text style={selectedPincode ? styles.pincodeText : styles.pincodePlaceholder}>
+                                        {selectedPincode ? selectedPincode.pincode : 'Select Pincode'}
+                                    </Text>
+                                    <Icon name="chevron-right" size={20} color={Colors.textTertiary} library="material" />
                                 </TouchableOpacity>
 
-                                {/* Delivery note callout */}
-                                {selectedPincode?.deliveryNote ? (
-                                    <View style={styles.deliveryNoteBox}>
-                                        <Icon name="info" size={14} color={Colors.info} library="material" />
-                                        <Text style={styles.deliveryNoteText}>{selectedPincode.deliveryNote}</Text>
-                                    </View>
-                                ) : null}
-
-                                {/* Address Type */}
-                                <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Address Type</Text>
-                                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                                <View style={styles.typeContainer}>
                                     {(['Home', 'Work', 'Other'] as const).map(type => (
-                                        <TouchableOpacity
-                                            key={type}
+                                        <TouchableOpacity 
+                                            key={type} 
                                             onPress={() => setAddressType(type)}
-                                            style={[
-                                                styles.typeChip,
-                                                addressType === type && styles.typeChipSelected,
-                                            ]}
+                                            style={[styles.typeChip, addressType === type && styles.typeChipActive]}
                                         >
-                                            <Text style={[
-                                                styles.typeChipText,
-                                                addressType === type && styles.typeChipTextSelected,
-                                            ]}>
-                                                {type}
-                                            </Text>
+                                            <Text style={[styles.typeChipText, addressType === type && styles.typeChipTextActive]}>{type}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
 
-                                {/* Form buttons */}
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setIsAddingAddress(false);
-                                            setSelectedPincode(null);
-                                            setNewStreet('');
-                                            setPincodeSearch('');
-                                        }}
-                                        style={styles.cancelButton}
-                                    >
-                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                <View style={styles.formActions}>
+                                    <TouchableOpacity style={styles.btnSecondary} onPress={() => setIsAddingAddress(false)}>
+                                        <Text style={styles.btnSecondaryText}>Cancel</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={handleSaveAddress} style={styles.saveButton}>
-                                        <Text style={styles.saveButtonText}>Save & Select</Text>
+                                    <TouchableOpacity style={styles.btnPrimary} onPress={handleSaveAddress}>
+                                        <Text style={styles.btnPrimaryText}>Save Address</Text>
                                     </TouchableOpacity>
                                 </View>
+                            </View>
+                        ) : (
+                            <View>
+                                {user?.addresses?.length > 0 ? (
+                                    <View style={styles.selectedAddress}>
+                                        <View style={styles.addressInfo}>
+                                            <View style={styles.badge}>
+                                                <Text style={styles.badgeText}>{user.addresses.find(a => a.id === selectedAddressId)?.type || 'Home'}</Text>
+                                            </View>
+                                            <Text style={styles.addressText} numberOfLines={2}>
+                                                {user.addresses.find(a => a.id === selectedAddressId)?.street}
+                                            </Text>
+                                            <Text style={styles.zipText}>Pincode: {user.addresses.find(a => a.id === selectedAddressId)?.zip}</Text>
+                                        </View>
+                                        <Icon name="check-circle" size={24} color={Colors.success} library="material" />
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity style={styles.emptyAddress} onPress={() => setIsAddingAddress(true)}>
+                                        <Icon name="add-location-alt" size={32} color={Colors.gray300} library="material" />
+                                        <Text style={styles.emptyAddressText}>No address added yet</Text>
+                                        <Text style={styles.addLink}>Add New Address</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         )}
                     </View>
 
-                    {/* ── Order Summary ─────────────────────────────────────── */}
-                    <View style={[styles.section, { paddingTop: 0 }]}>
-                        <Text style={styles.sectionTitle}>Order Summary</Text>
-                        <View style={styles.summaryCard}>
+                    {/* Order Items Summary */}
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <Icon name="shopping-bag" size={20} color={Colors.primary} library="material" />
+                            <Text style={styles.cardTitle}>Order Summary</Text>
+                            <Text style={styles.itemCount}>{cart.items.length} Items</Text>
+                        </View>
+                        <View style={styles.itemList}>
                             {cart.items.map(item => (
-                                <View key={item.id} style={styles.summaryRow}>
-                                    <Text style={styles.summaryItemName} numberOfLines={1}>
-                                        {item.product.name} × {item.quantity}
-                                    </Text>
-                                    <Text style={styles.summaryItemPrice}>₹{item.total}</Text>
+                                <View key={item.id} style={styles.itemRow}>
+                                    <View style={styles.itemNameContainer}>
+                                        <View style={styles.dot} />
+                                        <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
+                                        <Text style={styles.itemQty}>x {item.quantity}</Text>
+                                    </View>
+                                    <Text style={styles.itemPrice}>₹{item.total}</Text>
                                 </View>
                             ))}
-                            <View style={styles.divider} />
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Delivery</Text>
-                                <Text style={[styles.summaryValue, cart.deliveryFee === 0 ? { color: Colors.success } : { color: Colors.textPrimary }]}>
-                                    {cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}
-                                </Text>
-                            </View>
-                            {totalGST > 0 && (
-                                <View style={styles.summaryRow}>
-                                    <Text style={styles.summaryLabel}>GST (Included)</Text>
-                                    <Text style={[styles.summaryValue, { color: Colors.textSecondary, fontSize: 13 }]}>₹{totalGST.toFixed(2)}</Text>
-                                </View>
-                            )}
-                            <View style={[styles.divider, { backgroundColor: Colors.gray100 }]} />
-                            <View style={styles.summaryRow}>
-                                <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.textPrimary }}>Total</Text>
-                                <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.primary }}>₹{cart.total}</Text>
-                            </View>
                         </View>
                     </View>
 
-                    {/* ── Payment Method ────────────────────────────────────── */}
-                    <View style={[styles.section, { paddingTop: 0 }]}>
-                        <Text style={styles.sectionTitle}>Payment Method</Text>
-                        {(['cod', 'upi'] as PaymentMethod[]).map(method => (
-                            <TouchableOpacity
-                                key={method}
-                                onPress={() => setPaymentMethod(method)}
-                                style={[
-                                    styles.paymentCard,
-                                    paymentMethod === method && styles.paymentCardSelected,
-                                ]}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={{ fontWeight: '600', color: Colors.textPrimary }}>
-                                    {method === 'cod' ? '💵 Cash on Delivery' : method === 'upi' ? '📱 UPI' : '💳 Card'}
-                                </Text>
-                                {paymentMethod === method && (
-                                    <Icon name="check-circle" size={20} color={Colors.primary} library="material" />
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                    {/* Bill Details */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitleSmall}>Bill Details</Text>
+                        <View style={styles.billRow}>
+                            <Text style={styles.billLabel}>Item Total</Text>
+                            <Text style={styles.billValue}>₹{cart.items.reduce((sum, i) => sum + i.total, 0)}</Text>
+                        </View>
+                        <View style={styles.billRow}>
+                            <View style={styles.rowWithIcon}>
+                                <Text style={styles.billLabel}>Delivery Fee</Text>
+                                <Icon name="info-outline" size={12} color={Colors.textTertiary} library="material" />
+                            </View>
+                            <Text style={[styles.billValue, cart.deliveryFee === 0 && { color: Colors.success }]}>
+                                {cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}
+                            </Text>
+                        </View>
+                        {totalGST > 0 && (
+                            <View style={styles.billRow}>
+                                <Text style={styles.billLabel}>GST (Included)</Text>
+                                <Text style={styles.billValueSub}>₹{totalGST.toFixed(2)}</Text>
+                            </View>
+                        )}
+                        <View style={styles.billDivider} />
+                        <View style={styles.billRow}>
+                            <Text style={styles.billTotalLabel}>Grand Total</Text>
+                            <Text style={styles.billTotalValue}>₹{cart.total}</Text>
+                        </View>
                     </View>
+
+                    {/* Payment Method */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitleSmall}>Choose Payment Method</Text>
+                        <View style={styles.paymentOptions}>
+                            {[
+                                { id: 'cod', label: 'Cash on Delivery', icon: 'payments' },
+                                { id: 'upi', label: 'UPI / Google Pay', icon: 'account-balance-wallet' }
+                            ].map((method) => (
+                                <TouchableOpacity 
+                                    key={method.id}
+                                    onPress={() => setPaymentMethod(method.id as any)}
+                                    style={[styles.paymentOption, paymentMethod === method.id && styles.paymentOptionActive]}
+                                >
+                                    <Icon name={method.icon} size={22} color={paymentMethod === method.id ? Colors.primary : Colors.textSecondary} library="material" />
+                                    <Text style={[styles.paymentText, paymentMethod === method.id && styles.paymentTextActive]}>{method.label}</Text>
+                                    <View style={[styles.radio, paymentMethod === method.id && styles.radioActive]}>
+                                        {paymentMethod === method.id && <View style={styles.radioInner} />}
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={styles.safetyCard}>
+                        <Icon name="verified-user" size={20} color={Colors.success} library="material" />
+                        <Text style={styles.safetyText}>Secure Checkout | 100% Genuine Products</Text>
+                    </View>
+
                 </Animated.View>
             </ScrollView>
 
-            {/* ── Place Order Button ──────────────────────────────────────── */}
-            <View style={styles.footer}>
-                <TouchableOpacity
+            {/* Bottom Bar */}
+            <View style={styles.bottomBar}>
+                <View>
+                    <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
+                    <Text style={styles.totalPrice}>₹{cart.total}</Text>
+                </View>
+                <TouchableOpacity 
+                    style={[styles.placeOrderBtn, loading && styles.btnDisabled]}
                     onPress={handlePlaceOrder}
                     disabled={loading}
-                    style={[styles.placeOrderButton, loading && { backgroundColor: Colors.gray400 }]}
                 >
-                    {loading
-                        ? <ActivityIndicator color="#fff" />
-                        : <Text style={styles.placeOrderText}>Place Order  •  ₹{cart.total}</Text>
-                    }
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <>
+                            <Text style={styles.placeOrderText}>PLACE ORDER</Text>
+                            <Icon name="chevron-right" size={20} color="#fff" library="material" />
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
 
-            {/* ── Pincode Picker Modal ──────────────────────────────────────── */}
-            <Modal
-                visible={showPincodeModal}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setShowPincodeModal(false)}
-            >
+            {/* Pincode Modal */}
+            <Modal visible={showPincodeModal} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalSheet}>
-                        {/* Header */}
+                    <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <View>
-                                <Text style={styles.modalTitle}>Select Pincode</Text>
-                                <Text style={styles.modalSubtitle}>
-                                    {pincodes.length > 0
-                                        ? `${pincodes.length} deliverable pincode${pincodes.length !== 1 ? 's' : ''}`
-                                        : 'No pincodes available yet'}
-                                </Text>
-                            </View>
-                            <TouchableOpacity onPress={() => setShowPincodeModal(false)} style={styles.closeButton}>
-                                <Icon name="close" size={20} color={Colors.textTertiary} library="material" />
+                            <Text style={styles.modalTitle}>Select Area</Text>
+                            <TouchableOpacity onPress={() => setShowPincodeModal(false)}>
+                                <Icon name="close" size={24} color={Colors.textTertiary} library="material" />
                             </TouchableOpacity>
                         </View>
-
-                        {/* Search */}
-                        <View style={styles.searchBar}>
-                            <Icon name="search" size={18} color={Colors.textTertiary} library="material" />
-                            <TextInput
-                                placeholder="Search by pincode..."
-                                value={pincodeSearch}
-                                onChangeText={setPincodeSearch}
-                                keyboardType="number-pad"
-                                style={styles.searchInput}
-                                placeholderTextColor={Colors.textTertiary}
-                                autoFocus
-                            />
-                            {pincodeSearch.length > 0 && (
-                                <TouchableOpacity onPress={() => setPincodeSearch('')}>
-                                    <Icon name="close" size={16} color={Colors.textTertiary} library="material" />
+                        <TextInput 
+                            style={styles.modalSearch}
+                            placeholder="Search pincode..."
+                            value={pincodeSearch}
+                            onChangeText={setPincodeSearch}
+                            keyboardType="numeric"
+                        />
+                        <FlatList
+                            data={filteredPincodes}
+                            keyExtractor={item => item._id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity 
+                                    style={styles.pincodeRow}
+                                    onPress={() => {
+                                        setSelectedPincode(item);
+                                        setShowPincodeModal(false);
+                                    }}
+                                >
+                                    <Text style={styles.pincodeRowText}>{item.pincode}</Text>
+                                    <Text style={styles.pincodeRowCity}>{item.city}</Text>
                                 </TouchableOpacity>
                             )}
-                        </View>
-
-                        {/* List */}
-                        {pincodeLoading ? (
-                            <View style={styles.modalCenter}>
-                                <ActivityIndicator color={Colors.primary} />
-                                <Text style={styles.modalCenterText}>Loading pincodes...</Text>
-                            </View>
-                        ) : filteredPincodes.length === 0 ? (
-                            <View style={styles.modalCenter}>
-                                <Icon name="location-off" size={40} color={Colors.gray300} library="material" />
-                                <Text style={styles.modalCenterText}>
-                                    {pincodeSearch
-                                        ? 'No pincodes match your search'
-                                        : 'No serviceable pincodes available yet'}
-                                </Text>
-                            </View>
-                        ) : (
-                            <FlatList
-                                data={filteredPincodes}
-                                keyExtractor={item => item._id}
-                                showsVerticalScrollIndicator={false}
-                                keyboardShouldPersistTaps="handled"
-                                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-                                renderItem={({ item }) => {
-                                    const isSelected = selectedPincode?._id === item._id;
-                                    return (
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setSelectedPincode(item);
-                                                setShowPincodeModal(false);
-                                                setPincodeSearch('');
-                                            }}
-                                            activeOpacity={0.75}
-                                            style={[
-                                                styles.pincodeRow,
-                                                isSelected && styles.pincodeRowSelected,
-                                            ]}
-                                        >
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.pincodeNumber}>{item.pincode}</Text>
-                                                {item.deliveryNote ? (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                                                        <Icon name="info" size={12} color={Colors.info} library="material" />
-                                                        <Text style={styles.pincodeNote}>{item.deliveryNote}</Text>
-                                                    </View>
-                                                ) : null}
-                                            </View>
-                                            {isSelected && (
-                                                <Icon name="check-circle" size={20} color={Colors.primary} library="material" />
-                                            )}
-                                        </TouchableOpacity>
-                                    );
-                                }}
-                            />
-                        )}
+                        />
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    section: {
-        padding: SECTION_PADDING,
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: Colors.textPrimary,
-        marginBottom: 14,
-    },
-    // Address cards
-    addressCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
+    header: {
+        height: 60,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F3F5',
     },
-    addressCardSelected: {
-        borderWidth: 2,
-        borderColor: Colors.primary,
-        backgroundColor: 'rgba(248, 128, 14, 0.03)',
+    backButton: {
+        padding: 8,
     },
-    typeBadge: {
-        backgroundColor: Colors.gray100,
-        borderRadius: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        marginRight: 8,
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        letterSpacing: -0.5,
     },
-    typeBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: Colors.textSecondary,
-        textTransform: 'uppercase',
-    },
-    addressZip: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: Colors.primary,
-    },
-    addressStreet: {
-        color: Colors.textSecondary,
-        fontSize: 13,
-        marginTop: 2,
-        lineHeight: 18,
-    },
-    checkBadge: {
-        backgroundColor: Colors.primary,
-        borderRadius: 12,
-        padding: 4,
-        marginLeft: 10,
-    },
-    addAddressButton: {
+    stepContainer: {
+        backgroundColor: '#fff',
+        paddingVertical: 16,
+        paddingHorizontal: 40,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Colors.primary,
-        borderStyle: 'dashed',
-        borderRadius: 12,
-        backgroundColor: 'rgba(248, 128, 14, 0.04)',
+        position: 'relative',
     },
-    addAddressText: {
-        color: Colors.primary,
-        fontWeight: '600',
-        marginLeft: 8,
-        fontSize: 14,
-    },
-    // Form
-    formCard: {
-        backgroundColor: Colors.surface,
+    stepCircle: {
+        width: 28,
+        height: 28,
         borderRadius: 14,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
+        backgroundColor: '#E9ECEF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2,
     },
-    formTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: Colors.textPrimary,
-        marginBottom: 14,
+    stepCircleActive: {
+        backgroundColor: Colors.primary,
     },
-    fieldLabel: {
-        fontSize: 11,
+    stepText: {
+        fontSize: 12,
         fontWeight: '700',
         color: Colors.textSecondary,
-        marginBottom: 6,
+    },
+    stepTextActive: {
+        color: '#fff',
+    },
+    stepLine: {
+        flex: 0.5,
+        height: 2,
+        backgroundColor: '#E9ECEF',
+        marginHorizontal: -2,
+        zIndex: 1,
+    },
+    stepLineActive: {
+        backgroundColor: Colors.primary,
+    },
+    stepLabels: {
+        position: 'absolute',
+        bottom: 2,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingHorizontal: 20,
+    },
+    stepLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: Colors.textTertiary,
+    },
+    stepLabelActive: {
+        color: Colors.primary,
+    },
+    scrollContent: {
+        padding: 16,
+        paddingBottom: 100,
+    },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#F1F3F5',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        marginLeft: 8,
+        flex: 1,
+    },
+    cardTitleSmall: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        marginBottom: 16,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    textInput: {
-        borderWidth: 1,
-        borderColor: Colors.gray200,
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 14,
-        fontSize: 14,
-        color: Colors.textPrimary,
-        minHeight: 52,
-        textAlignVertical: 'top',
+    editLink: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.primary,
     },
-    pincodeSelector: {
-        borderWidth: 1,
-        borderColor: Colors.gray200,
-        borderRadius: 10,
-        padding: 14,
-        marginBottom: 10,
+    selectedAddress: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.surface,
+        backgroundColor: '#FFF9F4',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FFE8D6',
     },
-    pincodeSelectorSelected: {
-        borderColor: Colors.primary,
-        backgroundColor: 'rgba(248,128,14,0.04)',
+    addressInfo: {
+        flex: 1,
     },
-    pincodeSelectorValue: {
-        fontSize: 20,
+    badge: {
+        backgroundColor: '#FFE8D6',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+        marginBottom: 6,
+    },
+    badgeText: {
+        fontSize: 10,
         fontWeight: '800',
         color: Colors.primary,
-        fontVariant: ['tabular-nums'],
-        letterSpacing: 3,
+        textTransform: 'uppercase',
     },
-    pincodeSelectorPlaceholder: {
-        color: Colors.textTertiary,
+    addressText: {
         fontSize: 14,
-    },
-    deliveryNoteBox: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 7,
-        backgroundColor: 'rgba(59,130,246,0.07)',
-        borderRadius: 10,
-        padding: 10,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(59,130,246,0.15)',
-    },
-    deliveryNoteText: {
-        flex: 1,
-        fontSize: 12,
-        color: Colors.info,
+        color: Colors.textPrimary,
         fontWeight: '600',
-        lineHeight: 17,
+        lineHeight: 20,
+    },
+    zipText: {
+        fontSize: 12,
+        color: Colors.textTertiary,
+        marginTop: 4,
+        fontWeight: '600',
+    },
+    emptyAddress: {
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
+    emptyAddressText: {
+        fontSize: 14,
+        color: Colors.textSecondary,
+        marginTop: 8,
+        fontWeight: '600',
+    },
+    addLink: {
+        fontSize: 14,
+        color: Colors.primary,
+        fontWeight: '800',
+        marginTop: 4,
+    },
+    addressForm: {
+        marginTop: 8,
+    },
+    inputLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: Colors.textTertiary,
+        marginBottom: 6,
+        letterSpacing: 0.5,
+    },
+    input: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 10,
+        padding: 12,
+        fontSize: 14,
+        color: Colors.textPrimary,
+        fontWeight: '600',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+    },
+    pincodeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F8F9FA',
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+    },
+    pincodeText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+    },
+    pincodePlaceholder: {
+        fontSize: 14,
+        color: Colors.textTertiary,
+    },
+    typeContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 20,
     },
     typeChip: {
         flex: 1,
         paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: '#F1F3F5',
         alignItems: 'center',
-        borderRadius: 8,
-        backgroundColor: Colors.gray100,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
     },
-    typeChipSelected: {
+    typeChipActive: {
         backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
     },
     typeChipText: {
         fontSize: 12,
         fontWeight: '700',
         color: Colors.textSecondary,
     },
-    typeChipTextSelected: {
+    typeChipTextActive: {
         color: '#fff',
     },
-    cancelButton: {
-        flex: 1,
-        padding: 13,
-        alignItems: 'center',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
-    },
-    cancelButtonText: {
-        color: Colors.textSecondary,
-        fontWeight: '600',
-    },
-    saveButton: {
-        flex: 1,
-        backgroundColor: Colors.primary,
-        borderRadius: 10,
-        padding: 13,
-        alignItems: 'center',
-    },
-    saveButtonText: {
-        color: '#fff',
-        fontWeight: '700',
-    },
-    // Summary
-    summaryCard: {
-        backgroundColor: Colors.surface,
-        borderRadius: 14,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
-    },
-    summaryRow: {
+    formActions: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-        alignItems: 'center',
+        gap: 12,
     },
-    summaryItemName: {
-        color: Colors.textSecondary,
+    btnSecondary: {
         flex: 1,
-        fontSize: 13,
-        marginRight: 8,
-    },
-    summaryItemPrice: {
-        fontWeight: '600',
-        color: Colors.textPrimary,
-        fontSize: 13,
-    },
-    summaryLabel: {
-        color: Colors.textSecondary,
-        fontSize: 14,
-    },
-    summaryValue: {
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.gray200,
-        marginVertical: 10,
-    },
-    // Payment
-    paymentCard: {
-        backgroundColor: Colors.surface,
+        paddingVertical: 14,
         borderRadius: 12,
-        padding: 16,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: Colors.gray200,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        backgroundColor: '#F8F9FA',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
     },
-    paymentCardSelected: {
-        borderWidth: 2,
-        borderColor: Colors.primary,
+    btnSecondaryText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.textSecondary,
     },
-    // Footer
-    footer: {
-        padding: 20,
-        backgroundColor: Colors.surface,
-        borderTopWidth: 1,
-        borderColor: Colors.gray200,
-    },
-    placeOrderButton: {
+    btnPrimary: {
+        flex: 2,
+        paddingVertical: 14,
+        borderRadius: 12,
         backgroundColor: Colors.primary,
-        borderRadius: 14,
-        paddingVertical: 16,
         alignItems: 'center',
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
+        elevation: 4,
+    },
+    btnPrimaryText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#fff',
+    },
+    itemCount: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.textTertiary,
+    },
+    itemList: {
+        marginTop: 4,
+    },
+    itemRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    itemNameContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: Colors.success,
+        marginRight: 8,
+    },
+    itemName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        flexShrink: 1,
+    },
+    itemQty: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.textTertiary,
+        marginLeft: 8,
+    },
+    itemPrice: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+        marginLeft: 12,
+    },
+    billRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    rowWithIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    billLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    billValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+    },
+    billValueSub: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.textTertiary,
+    },
+    billDivider: {
+        height: 1,
+        backgroundColor: '#F1F3F5',
+        marginVertical: 12,
+    },
+    billTotalLabel: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: Colors.textPrimary,
+    },
+    billTotalValue: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: Colors.primary,
+    },
+    paymentOptions: {
+        gap: 12,
+    },
+    paymentOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F1F3F5',
+        backgroundColor: '#fff',
+    },
+    paymentOptionActive: {
+        borderColor: Colors.primary,
+        backgroundColor: '#FFF9F4',
+    },
+    paymentText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.textSecondary,
+        marginLeft: 12,
+    },
+    paymentTextActive: {
+        color: Colors.textPrimary,
+    },
+    radio: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#E9ECEF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    radioActive: {
+        borderColor: Colors.primary,
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: Colors.primary,
+    },
+    safetyCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F1FBF4',
+        padding: 12,
+        borderRadius: 12,
+        gap: 8,
+    },
+    safetyText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.success,
+    },
+    bottomBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        padding: 16,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F3F5',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    totalLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: Colors.textTertiary,
+        letterSpacing: 0.5,
+    },
+    totalPrice: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: Colors.textPrimary,
+    },
+    placeOrderBtn: {
+        backgroundColor: Colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        borderRadius: 14,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
+    },
+    btnDisabled: {
+        backgroundColor: '#DEE2E6',
+        shadowOpacity: 0,
     },
     placeOrderText: {
-        color: '#fff',
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '900',
+        color: '#fff',
+        marginRight: 4,
     },
-    // Pincode modal
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
-    modalSheet: {
+    modalContent: {
         backgroundColor: '#fff',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        paddingTop: 20,
-        maxHeight: '70%',
+        padding: 20,
+        maxHeight: '80%',
     },
     modalHeader: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingBottom: 14,
+        alignItems: 'center',
+        marginBottom: 16,
     },
     modalTitle: {
-        fontSize: 19,
+        fontSize: 20,
         fontWeight: '800',
         color: Colors.textPrimary,
     },
-    modalSubtitle: {
-        fontSize: 12,
-        color: Colors.textTertiary,
-        marginTop: 2,
-        fontWeight: '500',
-    },
-    closeButton: {
-        padding: 4,
-        marginTop: 2,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.gray100,
+    modalSearch: {
+        backgroundColor: '#F1F3F5',
         borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 44,
-        marginHorizontal: 16,
-        marginBottom: 12,
-        gap: 8,
+        padding: 14,
+        fontSize: 16,
+        marginBottom: 16,
     },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        color: Colors.textPrimary,
-    },
-    modalCenter: {
-        padding: 40,
-        alignItems: 'center',
-        gap: 12,
-    },
-    modalCenterText: {
-        color: Colors.textTertiary,
-        fontSize: 14,
-        textAlign: 'center',
-        fontWeight: '500',
-    },
-    // Pincode list row
     pincodeRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        marginBottom: 8,
-        borderRadius: 12,
-        backgroundColor: Colors.gray100,
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F3F5',
     },
-    pincodeRowSelected: {
-        backgroundColor: 'rgba(248,128,14,0.07)',
-        borderWidth: 2,
-        borderColor: Colors.primary,
-    },
-    pincodeNumber: {
-        fontSize: 18,
-        fontWeight: '800',
+    pincodeRowText: {
+        fontSize: 16,
+        fontWeight: '700',
         color: Colors.textPrimary,
-        fontVariant: ['tabular-nums'],
-        letterSpacing: 2,
     },
-    pincodeNote: {
-        fontSize: 12,
-        color: Colors.info,
+    pincodeRowCity: {
+        fontSize: 14,
+        color: Colors.textTertiary,
         fontWeight: '600',
     },
 });

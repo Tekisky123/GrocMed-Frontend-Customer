@@ -80,8 +80,9 @@ export default function OrderDetailsScreen() {
           deliveryFee: 0,
           discount: 0,
           placedAt: o.createdAt,
-          shippingAddress: parsedAddress,
-          paymentMethod: o.paymentMethod || 'COD'
+          shippingAddress: o.shippingAddress || {},
+          paymentMethod: o.paymentMethod || 'COD',
+          paymentStatus: o.paymentStatus || 'Pending'
         };
         setOrder(mappedOrder);
       }
@@ -311,9 +312,9 @@ export default function OrderDetailsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }}>Delivery Address</Text>
                 <Text style={{ fontSize: 13, color: Colors.textSecondary, lineHeight: 18 }}>
-                  <Text style={{ fontWeight: '600' }}>{order.shippingAddress?.fullName}</Text>{'\n'}
-                  {order.shippingAddress?.streetAddress}, {order.shippingAddress?.city}{'\n'}
-                  Phone: {order.shippingAddress?.phoneNumber}
+                  {order.shippingAddress?.street}{'\n'}
+                  {order.shippingAddress?.city}{order.shippingAddress?.state ? `, ${order.shippingAddress?.state}` : ''}{'\n'}
+                  Pincode: {order.shippingAddress?.zip}
                 </Text>
               </View>
             </View>
@@ -329,7 +330,9 @@ export default function OrderDetailsScreen() {
                 <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }}>Payment Method</Text>
                 <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '500' }}>
                   {order.paymentMethod.toUpperCase()}
-                  <Text style={{ color: Colors.success }}> (Status: Paid/Pending)</Text>
+                  <Text style={{ color: order.paymentStatus === 'Paid' ? Colors.success : '#F57C00' }}>
+                    {` (Status: ${order.paymentStatus || 'Pending'})`}
+                  </Text>
                 </Text>
               </View>
             </View>

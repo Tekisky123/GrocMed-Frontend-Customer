@@ -9,6 +9,7 @@ import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { Product } from '@/types';
 import { router } from 'expo-router';
+import { bannerApi, Banner } from '@/api/bannerApi';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +42,9 @@ const HOME_BANNERS = [
         description: 'Every product is 100% genuine and quality checked for your peace of mind.'
     },
 ];
+const BANNER_ASPECT_RATIO = 2 / 1; // Standard modern mobile banner ratio
+const BANNER_WIDTH = width;
+const BANNER_HEIGHT = BANNER_WIDTH / BANNER_ASPECT_RATIO;
 
 export default function HomeScreen() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -48,6 +52,7 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [banners, setBanners] = useState<Banner[]>([]);
     const [currentBanner, setCurrentBanner] = useState(0);
     const [isAutoPlay, setIsAutoPlay] = useState(true);
 
@@ -60,8 +65,9 @@ export default function HomeScreen() {
         if (!isAutoPlay) return;
         
         const interval = setInterval(() => {
+            const bannerCount = banners.length > 0 ? banners.length : HOME_BANNERS.length;
             setCurrentBanner((prev) => {
-                const next = (prev + 1) % HOME_BANNERS.length;
+                const next = (prev + 1) % bannerCount;
                 scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
                 return next;
             });
@@ -72,9 +78,10 @@ export default function HomeScreen() {
 
     const loadData = useCallback(async () => {
         try {
-            const [productsRes, categoriesRes] = await Promise.all([
+            const [productsRes, categoriesRes, bannersRes] = await Promise.all([
                 productApi.getAllProducts().catch(() => ({ success: false, data: [] as ApiProduct[] })),
                 categoryApi.getAllCategories().catch(() => ({ success: false, data: [] as Category[] })),
+                bannerApi.getBanners().catch(() => ({ success: false, data: [] as Banner[] })),
             ]);
 
             if (productsRes.success && Array.isArray(productsRes.data)) {
@@ -85,6 +92,12 @@ export default function HomeScreen() {
 
             if (categoriesRes.success && Array.isArray(categoriesRes.data)) {
                 setCategories(categoriesRes.data.filter(c => c && c.name));
+            }
+
+            if (bannersRes.success && Array.isArray(bannersRes.data) && bannersRes.data.length > 0) {
+                setBanners(bannersRes.data);
+            } else {
+                setBanners([]); // Will fallback to HOME_BANNERS in render
             }
         } catch (err) {
             console.error('Error loading home data:', err);
@@ -208,11 +221,9 @@ export default function HomeScreen() {
                 ListHeaderComponent={() => (
                     <View className="pb-3">
                         {/* Banner Section */}
-                        <View className="mt-4 mb-6">
+                        <View className="mb-6">
                             {loading && !refreshing ? (
-                                <View className="px-5">
-                                    <SkeletonLoader height={210} borderRadius={20} />
-                                </View>
+                                <SkeletonLoader height={BANNER_HEIGHT} width={BANNER_WIDTH} />
                             ) : (
                                 <>
                                     <ScrollView
@@ -222,37 +233,76 @@ export default function HomeScreen() {
                                         showsHorizontalScrollIndicator={false}
                                         onScrollBeginDrag={() => setIsAutoPlay(false)}
                                         onMomentumScrollEnd={(event) => {
-                                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+                                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / BANNER_WIDTH);
                                             setCurrentBanner(slideIndex);
                                             setIsAutoPlay(true);
                                         }}
-                                        snapToInterval={width}
+                                        snapToInterval={BANNER_WIDTH}
                                         decelerationRate="fast"
                                     >
-                                        {HOME_BANNERS.map((banner) => (
-                                            <View key={banner.id} style={{ width: width, paddingHorizontal: 20 }}>
-                                                <View style={{
-                                                    height: 210, backgroundColor: banner.color, borderRadius: 20, padding: 24,
-                                                    justifyContent: 'space-between', shadowColor: banner.color, shadowOffset: { width: 0, height: 8 },
-                                                    shadowOpacity: 0.4, shadowRadius: 12, overflow: 'hidden',
-                                                }}>
-                                                    <View className="absolute -right-14 -top-14 w-56 h-56 rounded-full bg-white/10" />
-                                                    <View className="absolute right-5 -bottom-10 w-36 h-36 rounded-full bg-white/10" />
-                                                    <View>
-                                                        <View className="bg-white/30 px-3 py-1.5 rounded-lg self-start mb-3">
-                                                            <Text className="text-[11px] font-extrabold text-white uppercase tracking-wider">{banner.tag}</Text>
+                                        {(banners.length > 0 ? banners : HOME_BANNERS).map((banner: any, index) => (
+                                            <View 
+                                                key={banner._id || banner.id} 
+                                                style={{ 
+                                                    width: BANNER_WIDTH,
+                                                }}
+                                            >
+                                                <TouchableOpacity 
+                                                    activeOpacity={1}
+                                                    onPress={() => banner.link && router.push(banner.link as any)}
+                                                    style={{
+                                                        height: BANNER_HEIGHT, 
+                                                        backgroundColor: banner.color || Colors.primary, 
+                                                        overflow: 'hidden',
+                                                    }}
+                                                >
+                                                    {/* Background Image */}
+                                                    {banner.image ? (
+                                                        <Image 
+                                                            source={{ uri: banner.image }} 
+                                                            style={{ width: '100%', height: '100%' }} 
+                                                            resizeMode="cover" 
+                                                        />
+                                                    ) : (
+                                                        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+                                                            <View style={{ position: 'absolute', right: -50, top: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                                                            <View>
+                                                                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 12 }}>
+                                                                    <Text style={{ fontSize: 10, fontWeight: '900', color: 'white', textTransform: 'uppercase' }}>{banner.tag || 'PROMO'}</Text>
+                                                                </View>
+                                                                <Text style={{ fontSize: 32, fontWeight: '900', color: 'white', lineHeight: 36 }}>{banner.title || ''}</Text>
+                                                                <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginTop: 4 }}>{banner.subtitle || ''}</Text>
+                                                            </View>
                                                         </View>
-                                                        <Text className="text-3xl font-extrabold text-white mb-2 leading-tight">{banner.title}</Text>
-                                                        <Text className="text-lg font-semibold text-white/95 mb-2">{banner.subtitle}</Text>
-                                                        <Text className="text-[13px] font-medium text-white/80 leading-snug">{banner.description}</Text>
-                                                    </View>
-                                                </View>
+                                                    )}
+                                                    
+                                                    {/* Standard Text Overlay for Dynamic Banners */}
+                                                    {banners.length > 0 && banner.title && (
+                                                        <View 
+                                                            style={{ 
+                                                                position: 'absolute', 
+                                                                bottom: 0, 
+                                                                left: 0, 
+                                                                right: 0, 
+                                                                padding: 20,
+                                                                backgroundColor: 'rgba(0,0,0,0.35)',
+                                                            }}
+                                                        >
+                                                            <Text style={{ color: 'white', fontSize: 22, fontWeight: '900' }}>{banner.title || ''}</Text>
+                                                            {banner.description && (
+                                                                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4 }} numberOfLines={1}>
+                                                                    {banner.description || ''}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    )}
+                                                </TouchableOpacity>
                                             </View>
                                         ))}
                                     </ScrollView>
-                                    <View className="flex-row justify-center mt-4 gap-2">
-                                        {HOME_BANNERS.map((_, index) => (
-                                            <View key={index} className={`h-2 rounded-full ${index === currentBanner ? 'w-7 bg-orange-500' : 'w-2 bg-gray-300'}`} />
+                                    <View style={{ position: 'absolute', bottom: 25, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                                        {(banners.length > 0 ? banners : HOME_BANNERS).map((_, index) => (
+                                            <View key={index} style={{ height: 4, width: index === currentBanner ? 20 : 6, borderRadius: 2, backgroundColor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)' }} />
                                         ))}
                                     </View>
                                 </>

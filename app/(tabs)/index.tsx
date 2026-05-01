@@ -106,7 +106,7 @@ export default function HomeScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [products.length]);
+    }, []);
 
     useEffect(() => {
         loadData();
@@ -199,14 +199,14 @@ export default function HomeScreen() {
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
                 ListEmptyComponent={loading && !refreshing ? () => (
-                    <View className="gap-3 px-5">
-                        <View className="flex-row gap-3">
-                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
-                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
+                    <View className="px-5">
+                        <View className="flex-row gap-3 mb-3">
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
                         </View>
                         <View className="flex-row gap-3">
-                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
-                            <SkeletonLoader height={220} width={(width - 52) / 2} borderRadius={16} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
                         </View>
                     </View>
                 ) : error ? (

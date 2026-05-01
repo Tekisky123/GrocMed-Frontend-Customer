@@ -241,7 +241,5 @@ export const ProductCard = React.memo(
       </Animated.View>
     );
   },
-  (prevProps, nextProps) => {
-    return prevProps.product.id === nextProps.product.id && prevProps.variant === nextProps.variant;
   }
 );

@@ -34,11 +34,21 @@ const emptyCart: Cart = {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart>(emptyCart);
 
-  // Single ref for all pending API debounce timers, keyed by productId
   const apiTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingDiffs = useRef<Map<string, number>>(new Map());
+  const isMounted = useRef(true);
 
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      apiTimers.current.forEach(t => clearTimeout(t));
+      apiTimers.current.clear();
+    };
+  }, []);
 
   // Stable helper to build cart from items
   const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string): Cart => {
@@ -52,7 +62,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const fetchServerCart = useCallback(async () => {
     try {
       const res = await cartApi.getCart();
-      if (res.success && res.data?.items) {
+      if (res.success && res.data?.items && isMounted.current) {
         const mappedItems: CartItem[] = res.data.items.map((i: any) => {
           const apiProd = i.product;
           const uiProd = mapApiProductToUiProduct(apiProd);
@@ -98,14 +108,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, fetchServerCart]);
 
-  // Clean up all debounce timers on unmount
-  useEffect(() => {
-    return () => {
-      apiTimers.current.forEach(t => clearTimeout(t));
-      apiTimers.current.clear();
-    };
-  }, []);
-
   const addToCart = useCallback(
     (product: Product, quantity: number, packagingOptionId?: string) => {
       if (!isAuthenticated) {
@@ -116,7 +118,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // Cart key = productId + optionId (so same product in different packs = separate lines)
       const itemKey = packagingOptionId ? `${product.id}_${packagingOptionId}` : product.id;
 
       // 1. Optimistic Update
@@ -126,7 +127,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         if (existing) {
           updatedItems = prev.items.map(item =>
-            (item as any).itemKey === itemKey
+            (item as any).itemKey === itemKey || (!packagingOptionId && item.productId === product.id && !(item as any).packagingOptionId)
               ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
               : item
           );
@@ -151,7 +152,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               quantity,
               price,
               total: price * quantity,
-              // Extra metadata
               itemKey,
               packagingOptionId,
               packagingOptionLabel
@@ -164,22 +164,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       showToast(`${product.name} added to cart`, 'success');
 
-      // 2. Debounced API Sync
-      const existing = apiTimers.current.get(itemKey);
-      if (existing) clearTimeout(existing);
+      // 2. Debounced API Sync with Net Change Tracking
+      const currentDiff = pendingDiffs.current.get(itemKey) || 0;
+      pendingDiffs.current.set(itemKey, currentDiff + quantity);
+
+      const existingTimer = apiTimers.current.get(itemKey);
+      if (existingTimer) clearTimeout(existingTimer);
 
       const timer = setTimeout(async () => {
         apiTimers.current.delete(itemKey);
-        try {
-          const res = await cartApi.addToCart(product.id, quantity, packagingOptionId);
-          if (!res.success) {
+        const finalDiff = pendingDiffs.current.get(itemKey);
+        pendingDiffs.current.delete(itemKey);
+
+        if (finalDiff && finalDiff !== 0) {
+          try {
+            const res = await cartApi.addToCart(product.id, finalDiff, packagingOptionId);
+            if (!res.success) fetchServerCart();
+          } catch (e) {
+            console.error('addToCart sync error:', e);
             fetchServerCart();
           }
-        } catch (e) {
-          console.error('addToCart sync error:', e);
-          fetchServerCart();
         }
-      }, 400);
+      }, 800);
 
       apiTimers.current.set(itemKey, timer);
     },
@@ -190,7 +196,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (productId: string) => {
       if (!isAuthenticated) return;
 
-      // 1. Optimistic Update
       setCart(prev => {
         const updatedItems = prev.items.filter(i => i.productId !== productId);
         return buildCart(updatedItems, prev.discount, prev.couponCode);
@@ -198,20 +203,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       showToast('Item removed from cart', 'info');
 
-      // 2. Background API Sync (no debounce needed for removes)
+      // Clear any pending syncs for this product
+      const existingTimer = apiTimers.current.get(productId);
+      if (existingTimer) clearTimeout(existingTimer);
+      apiTimers.current.delete(productId);
+      pendingDiffs.current.delete(productId);
+
       const timer = setTimeout(async () => {
         try {
           const res = await cartApi.removeFromCart(productId);
-          if (!res.success) {
-            fetchServerCart(); // Rollback silently
-          }
+          if (!res.success) fetchServerCart();
         } catch (e) {
           console.error('removeFromCart sync error:', e);
           fetchServerCart();
         }
       }, 100);
 
-      // Store timer in case component unmounts
       apiTimers.current.set(`remove_${productId}`, timer);
     },
     [isAuthenticated, showToast, buildCart, fetchServerCart]
@@ -219,30 +226,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuantity = useCallback(
     (productId: string, quantity: number) => {
-      // We need to read current cart state without adding it to deps.
-      // Use functional setState to get current state.
       let diff = 0;
       let minQty = 1;
       let shouldRemove = false;
+      let itemKey = productId;
 
       setCart(prev => {
         const currentItem = prev.items.find(i => i.productId === productId);
         if (!currentItem) return prev;
 
+        itemKey = (currentItem as any).itemKey || productId;
         minQty = currentItem.product?.minQuantity || 1;
 
         if (quantity <= 0) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           shouldRemove = true;
-          return prev; // Remove handled below separately
+          return prev;
         }
         
         Haptics.selectionAsync();
 
-        if (quantity < minQty && quantity > 0) {
-          // Enforce min quantity — just return prev unchanged, show toast outside
-          return prev;
-        }
+        if (quantity < minQty && quantity > 0) return prev;
 
         diff = quantity - currentItem.quantity;
         if (diff === 0) return prev;
@@ -255,7 +259,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return buildCart(updatedItems, prev.discount, prev.couponCode);
       });
 
-      // Enforce minimum outside of setCart
       if (quantity > 0 && quantity < minQty) {
         showToast(`Minimum order quantity is ${minQty}`, 'info');
         return;
@@ -268,21 +271,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (diff === 0 || !isAuthenticated) return;
 
-      // Debounced quantity API sync
-      const existing = apiTimers.current.get(productId);
-      if (existing) clearTimeout(existing);
+      // Track net change for debounced sync
+      const currentPending = pendingDiffs.current.get(itemKey) || 0;
+      pendingDiffs.current.set(itemKey, currentPending + diff);
+
+      const existingTimer = apiTimers.current.get(itemKey);
+      if (existingTimer) clearTimeout(existingTimer);
 
       const timer = setTimeout(async () => {
-        apiTimers.current.delete(productId);
-        try {
-          await cartApi.addToCart(productId, diff);
-        } catch (e) {
-          console.error('updateQuantity sync error:', e);
-          fetchServerCart();
-        }
-      }, 500);
+        apiTimers.current.delete(itemKey);
+        const finalDiff = pendingDiffs.current.get(itemKey);
+        pendingDiffs.current.delete(itemKey);
 
-      apiTimers.current.set(productId, timer);
+        if (finalDiff && finalDiff !== 0) {
+          try {
+            await cartApi.addToCart(productId, finalDiff);
+          } catch (e) {
+            console.error('updateQuantity sync error:', e);
+            fetchServerCart();
+          }
+        }
+      }, 800);
+
+      apiTimers.current.set(itemKey, timer);
     },
     [isAuthenticated, buildCart, removeFromCart, showToast, fetchServerCart]
   );

@@ -16,6 +16,8 @@ import {
   View
 } from 'react-native';
 
+import * as ImagePicker from 'expo-image-picker';
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
@@ -25,20 +27,66 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  
+  // B2B Fields
+  const [shopName, setShopName] = useState('');
+  const [adhaar, setAdhaar] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [adhaarImage, setAdhaarImage] = useState<string | null>(null);
+  const [licenseImage, setLicenseImage] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(false);
 
+  const pickImage = async (type: 'adhaar' | 'license') => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      if (type === 'adhaar') setAdhaarImage(result.assets[0].uri);
+      else setLicenseImage(result.assets[0].uri);
+    }
+  };
+
   const handleRegister = async () => {
-    if (!name || !email || !phone || !password) {
-      showToast('Please fill in all fields', 'error');
+    if (!name || !email || !phone || !password || !shopName || !adhaar || !licenseNumber || !adhaarImage || !licenseImage) {
+      showToast('Please fill all fields and upload documents', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      // API expects {name, email, phone, password}
-      const res = await register({ name, email, phone, password });
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('password', password);
+      formData.append('shopName', shopName);
+      formData.append('adhaar', adhaar);
+      formData.append('licenseNumber', licenseNumber);
+
+      // Append images
+      const adhaarFile = {
+        uri: Platform.OS === 'ios' ? adhaarImage.replace('file://', '') : adhaarImage,
+        name: 'adhaar.jpg',
+        type: 'image/jpeg',
+      };
+      const licenseFile = {
+        uri: Platform.OS === 'ios' ? licenseImage.replace('file://', '') : licenseImage,
+        name: 'license.jpg',
+        type: 'image/jpeg',
+      };
+
+      // @ts-ignore
+      formData.append('adhaarImage', adhaarFile);
+      // @ts-ignore
+      formData.append('licenseImage', licenseFile);
+
+      const res = await register(formData);
       if (res.success) {
-        showToast('Account created successfully! Please login.', 'success');
+        showToast('Registration successful! Please login.', 'success');
         router.replace('/auth/login');
       } else {
         showToast(res.message || 'Registration failed', 'error');
@@ -80,6 +128,17 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.label}>Shop Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="GrocMed Store"
+              placeholderTextColor={Colors.textTertiary}
+              value={shopName}
+              onChangeText={setShopName}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
               style={styles.input}
@@ -102,6 +161,49 @@ export default function RegisterScreen() {
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Aadhaar Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="12-digit Aadhaar"
+              placeholderTextColor={Colors.textTertiary}
+              value={adhaar}
+              onChangeText={setAdhaar}
+              keyboardType="number-pad"
+              maxLength={12}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Shop License / GST Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="License or GST Registration"
+              placeholderTextColor={Colors.textTertiary}
+              value={licenseNumber}
+              onChangeText={setLicenseNumber}
+              autoCapitalize="characters"
+            />
+          </View>
+
+          <View style={styles.docUploadRow}>
+            <TouchableOpacity 
+              style={[styles.docButton, adhaarImage && styles.docButtonActive]} 
+              onPress={() => pickImage('adhaar')}
+            >
+              <Icon name={adhaarImage ? "check-circle" : "file-upload"} size={20} color={adhaarImage ? Colors.success : Colors.primary} library="material" />
+              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar Uploaded" : "Upload Aadhaar"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.docButton, licenseImage && styles.docButtonActive]} 
+              onPress={() => pickImage('license')}
+            >
+              <Icon name={licenseImage ? "check-circle" : "file-upload"} size={20} color={licenseImage ? Colors.success : Colors.primary} library="material" />
+              <Text style={[styles.docButtonText, licenseImage && styles.docButtonTextActive]}>{licenseImage ? "License Uploaded" : "Upload License"}</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -237,5 +339,36 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 15,
     fontWeight: '700',
+  },
+  docUploadRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  docButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primary + '30',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  docButtonActive: {
+    borderColor: Colors.success,
+    backgroundColor: Colors.success + '10',
+    borderStyle: 'solid',
+  },
+  docButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  docButtonTextActive: {
+    color: Colors.success,
   },
 });

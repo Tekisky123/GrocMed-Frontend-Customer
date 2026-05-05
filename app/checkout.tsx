@@ -25,6 +25,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const IS_SMALL_DEVICE = width < 375;
@@ -53,6 +54,7 @@ export default function CheckoutScreen() {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [availabilityInfo, setAvailabilityInfo] = useState<any>(null);
     const [slotsLoading, setSlotsLoading] = useState(false);
+    const [showAddressModal, setShowAddressModal] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -255,7 +257,7 @@ export default function CheckoutScreen() {
                             <Icon name="location-on" size={20} color={Colors.primary} library="material" />
                             <Text style={styles.cardTitle}>Delivery Address</Text>
                             {!isAddingAddress && user?.addresses?.length > 0 && (
-                                <TouchableOpacity onPress={() => setIsAddingAddress(true)}>
+                                <TouchableOpacity onPress={() => setShowAddressModal(true)}>
                                     <Text style={styles.editLink}>Change</Text>
                                 </TouchableOpacity>
                             )}
@@ -401,7 +403,7 @@ export default function CheckoutScreen() {
                         <View style={styles.itemList}>
                             {cart.items.map(item => (
                                 <View key={item.id} style={styles.itemRow}>
-                                    <View style={styles.itemNameContainer}>
+                                    <View style={itemNameContainerStyle}>
                                         <View style={styles.dot} />
                                         <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
                                         <Text style={styles.itemQty}>x {item.quantity}</Text>
@@ -494,6 +496,58 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
             </View>
 
+            {/* Address Selection Modal */}
+            <Modal visible={showAddressModal} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Address</Text>
+                            <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                                <Icon name="close" size={24} color={Colors.textTertiary} library="material" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <ScrollView style={{ maxHeight: 400 }}>
+                            {user?.addresses?.map((addr) => (
+                                <TouchableOpacity 
+                                    key={addr.id}
+                                    style={[
+                                        styles.pincodeRow, 
+                                        selectedAddressId === addr.id && { backgroundColor: '#FFF9F4', borderColor: Colors.primary, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10 }
+                                    ]}
+                                    onPress={() => {
+                                        setSelectedAddressId(addr.id);
+                                        setShowAddressModal(false);
+                                    }}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <View style={styles.badge}>
+                                                <Text style={styles.badgeText}>{addr.type}</Text>
+                                            </View>
+                                            {addr.isDefault && <Text style={{ fontSize: 10, color: Colors.success, fontWeight: '800' }}>DEFAULT</Text>}
+                                        </View>
+                                        <Text style={[styles.addressText, { fontSize: 14 }]} numberOfLines={2}>{addr.street}</Text>
+                                        <Text style={styles.zipText}>{addr.city}, {addr.zip}</Text>
+                                    </View>
+                                    {selectedAddressId === addr.id && <Icon name="check-circle" size={20} color={Colors.primary} library="material" />}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <TouchableOpacity 
+                            style={[styles.btnPrimary, { marginTop: 16, width: '100%', height: 50, justifyContent: 'center' }]}
+                            onPress={() => {
+                                setShowAddressModal(false);
+                                setIsAddingAddress(true);
+                            }}
+                        >
+                            <Text style={styles.btnPrimaryText}>+ Add New Address</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             {/* Pincode Modal */}
             <Modal visible={showPincodeModal} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
@@ -533,6 +587,12 @@ export default function CheckoutScreen() {
         </SafeAreaView>
     );
 }
+
+const itemNameContainerStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -822,11 +882,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 12,
-    },
-    itemNameContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
     },
     dot: {
         width: 6,

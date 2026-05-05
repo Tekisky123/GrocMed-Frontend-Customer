@@ -51,8 +51,9 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    if (!name || !email || !phone || !password || !shopName || !adhaar || !licenseNumber || !adhaarImage || !licenseImage) {
-      showToast('Please fill all fields and upload documents', 'error');
+    // Basic validations - Aadhaar and Personal details are mandatory
+    if (!name || !email || !phone || !password || !shopName || !adhaar || !adhaarImage) {
+      showToast('Please fill all mandatory fields and upload Aadhaar', 'error');
       return;
     }
 
@@ -65,24 +66,29 @@ export default function RegisterScreen() {
       formData.append('password', password);
       formData.append('shopName', shopName);
       formData.append('adhaar', adhaar);
-      formData.append('licenseNumber', licenseNumber);
+      
+      // Optional fields
+      if (licenseNumber) formData.append('licenseNumber', licenseNumber);
 
-      // Append images
+      // Append mandatory image
       const adhaarFile = {
         uri: Platform.OS === 'ios' ? adhaarImage.replace('file://', '') : adhaarImage,
         name: 'adhaar.jpg',
         type: 'image/jpeg',
       };
-      const licenseFile = {
-        uri: Platform.OS === 'ios' ? licenseImage.replace('file://', '') : licenseImage,
-        name: 'license.jpg',
-        type: 'image/jpeg',
-      };
-
       // @ts-ignore
       formData.append('adhaarImage', adhaarFile);
-      // @ts-ignore
-      formData.append('licenseImage', licenseFile);
+
+      // Append optional image
+      if (licenseImage) {
+        const licenseFile = {
+          uri: Platform.OS === 'ios' ? licenseImage.replace('file://', '') : licenseImage,
+          name: 'license.jpg',
+          type: 'image/jpeg',
+        };
+        // @ts-ignore
+        formData.append('licenseImage', licenseFile);
+      }
 
       const res = await register(formData);
       if (res.success) {
@@ -164,7 +170,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Aadhaar Number</Text>
+            <Text style={styles.label}>Aadhaar Number (Mandatory)</Text>
             <TextInput
               style={styles.input}
               placeholder="12-digit Aadhaar"
@@ -177,7 +183,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Shop License / GST Number</Text>
+            <Text style={styles.label}>Shop License / GST Number (Optional)</Text>
             <TextInput
               style={styles.input}
               placeholder="License or GST Registration"
@@ -194,7 +200,7 @@ export default function RegisterScreen() {
               onPress={() => pickImage('adhaar')}
             >
               <Icon name={adhaarImage ? "check-circle" : "file-upload"} size={20} color={adhaarImage ? Colors.success : Colors.primary} library="material" />
-              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar Uploaded" : "Upload Aadhaar"}</Text>
+              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar (Required)" : "Upload Aadhaar"}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -202,7 +208,7 @@ export default function RegisterScreen() {
               onPress={() => pickImage('license')}
             >
               <Icon name={licenseImage ? "check-circle" : "file-upload"} size={20} color={licenseImage ? Colors.success : Colors.primary} library="material" />
-              <Text style={[styles.docButtonText, licenseImage && styles.docButtonTextActive]}>{licenseImage ? "License Uploaded" : "Upload License"}</Text>
+              <Text style={[styles.docButtonText, licenseImage && styles.docButtonTextActive]}>{licenseImage ? "License (Added)" : "Upload License (Opt)"}</Text>
             </TouchableOpacity>
           </View>
 

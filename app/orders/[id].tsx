@@ -4,13 +4,19 @@ import { Colors } from '@/constants/colors';
 import { Order } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosInstance from '@/api/axiosInstance';
 
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -93,6 +99,62 @@ export default function OrderDetailsScreen() {
     }
   };
 
+  const handleDownloadInvoice = async () => {
+    if (!order) return;
+    try {
+      setDownloading(true);
+      const invoiceUrl = `${axiosInstance.defaults.baseURL}/order/${id}/invoice`;
+      
+      // We use expo-file-system to download the file to a temporary location
+      const filename = `Invoice_${order.orderNumber}.pdf`;
+
+      if (Platform.OS === 'web') {
+        // Direct fetch and download for Web
+        const response = await fetch(invoiceUrl, {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+          }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Mobile flow using FileSystem and Sharing
+        const fileUri = `${FileSystem.documentDirectory}${filename}`;
+        
+        const downloadRes = await FileSystem.downloadAsync(
+          invoiceUrl,
+          fileUri,
+          {
+            headers: {
+              'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`
+            }
+          }
+        );
+
+        if (downloadRes.status !== 200) {
+          throw new Error('Failed to download invoice');
+        }
+
+        // Professional Share/Save for Mobile
+        await Sharing.shareAsync(downloadRes.uri, { 
+          UTI: '.pdf', 
+          mimeType: 'application/pdf',
+          dialogTitle: `Download Invoice #${order.orderNumber}`
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to download invoice from server');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
@@ -150,8 +212,31 @@ export default function OrderDetailsScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', marginBottom: 4 }}>ORDER TOTAL</Text>
               <Text style={{ color: '#fff', fontSize: 32, fontWeight: '800' }}>₹{order.total}</Text>
             </View>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 6 }}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>#{order.orderNumber}</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+                <TouchableOpacity 
+                onPress={handleDownloadInvoice}
+                disabled={downloading}
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  backgroundColor: 'rgba(255,255,255,0.2)', 
+                  paddingHorizontal: 12, 
+                  paddingVertical: 8, 
+                  borderRadius: 12,
+                  marginBottom: 8,
+                  gap: 6,
+                  opacity: downloading ? 0.6 : 1
+                }}>
+                {downloading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Icon name="file-download" size={16} color="#fff" library="material" />
+                )}
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>{downloading ? 'WAIT...' : 'INVOICE'}</Text>
+              </TouchableOpacity>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>#{order.orderNumber}</Text>
+              </View>
             </View>
           </View>
         </View>

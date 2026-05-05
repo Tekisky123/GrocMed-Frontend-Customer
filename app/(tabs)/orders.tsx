@@ -235,9 +235,17 @@ export default function OrdersScreen() {
                         <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary }}>₹{item.total}</Text>
                       </View>
 
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ color: Colors.primary, fontSize: 14, fontWeight: '700', marginRight: 4 }}>View Details</Text>
-                        <Icon name="chevron-right" size={20} color={Colors.primary} library="material" />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity 
+                          onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}
+                          style={{ backgroundColor: '#F8800E15', padding: 8, borderRadius: 10 }}
+                        >
+                          <Icon name="file-download" size={20} color={Colors.primary} library="material" />
+                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ color: Colors.primary, fontSize: 14, fontWeight: '700', marginRight: 4 }}>Details</Text>
+                          <Icon name="chevron-right" size={18} color={Colors.primary} library="material" />
+                        </View>
                       </View>
                     </View>
                   </TouchableOpacity>

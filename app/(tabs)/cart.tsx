@@ -49,7 +49,7 @@ export default function CartScreen() {
           </View>
           <Text className="text-2xl font-extrabold text-gray-900 mb-3">Your Cart is Empty</Text>
           <Text className="text-center text-gray-500 mb-8 leading-6 text-[15px]">
-            Looks like you haven't added anything to your cart yet. Discover fresh products now!
+            Looks like you haven&apos;t added anything to your cart yet. Discover fresh products now!
           </Text>
           <TouchableOpacity
             onPress={() => router.push('/(tabs)')}

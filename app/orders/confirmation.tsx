@@ -41,7 +41,7 @@ export default function OrderConfirmationScreen() {
             </Text>
 
             <Text style={{ fontSize: 16, color: Colors.textSecondary, marginBottom: 30, textAlign: 'center', lineHeight: 24 }}>
-                Your order <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{orderId ? `#${orderId.toString().slice(-6)}` : ''}</Text> has been successfully placed. We'll deliver your items shortly.
+                Your order <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{orderId ? `#${orderId.toString().slice(-6)}` : ''}</Text> has been successfully placed. We&apos;ll deliver your items shortly.
             </Text>
 
             <View style={{ width: '100%', gap: 16 }}>

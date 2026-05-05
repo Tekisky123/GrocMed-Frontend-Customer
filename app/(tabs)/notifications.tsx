@@ -88,7 +88,7 @@ export default function NotificationsScreen() {
                 <Icon name="notifications-none" size={48} color={Colors.gray300} library="material" />
             </View>
             <Text style={styles.emptyTitle}>Inboxes Are Quiet</Text>
-            <Text style={styles.emptySubtitle}>You'll find your latest alerts and offers here once they arrive.</Text>
+            <Text style={styles.emptySubtitle}>You&apos;ll find your latest alerts and offers here once they arrive.</Text>
         </View>
     );
 

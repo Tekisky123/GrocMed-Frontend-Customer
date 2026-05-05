@@ -120,7 +120,7 @@ export default function OrdersScreen() {
             </View>
             <Text style={{ fontSize: 20, color: Colors.textPrimary, fontWeight: '700', marginBottom: 8 }}>No orders yet</Text>
             <Text style={{ fontSize: 14, color: Colors.textTertiary, textAlign: 'center', paddingHorizontal: 40, marginBottom: 32 }}>
-              It looks like you haven't placed any orders yet. Start shopping to see them here!
+              It looks like you haven&apos;t placed any orders yet. Start shopping to see them here!
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/')}

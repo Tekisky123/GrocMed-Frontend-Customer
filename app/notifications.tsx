@@ -125,7 +125,7 @@ export default function NotificationsScreen() {
                 No notifications
               </Text>
               <Text style={{ color: Colors.textSecondary, textAlign: 'center', fontSize: 17, fontWeight: '500' }}>
-                You're all caught up!
+                You&apos;re all caught up!
               </Text>
             </GlassCard>
           </Animated.View>

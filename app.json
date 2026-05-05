@@ -7,7 +7,6 @@
     "icon": "./assets/images/logo.png",
     "scheme": "reactnative",
     "userInterfaceStyle": "automatic",
-    "entryPoint": "./node_modules/expo-router/entry",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.grocmed.app"

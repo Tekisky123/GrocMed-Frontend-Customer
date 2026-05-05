@@ -1,12 +1,11 @@
 import { orderApi } from '@/api/orderApi';
-import { Icon, Icons } from '@/components/ui/Icon';
+import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
 import { Order } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ActivityIndicator, Animated, Easing, Image, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,54 +17,12 @@ export default function OrderDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
-  // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const truckAnim = useRef(new Animated.Value(0)).current;
-  const truckLoopRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  useEffect(() => {
-    if (id) fetchDetails();
-  }, [id]);
-
-  useEffect(() => {
-    const entranceAnim = Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true, easing: Easing.out(Easing.cubic) })
-    ]);
-    entranceAnim.start();
-
-    // Store loop ref so we can stop it on unmount (prevents memory leak)
-    truckLoopRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(truckAnim, { toValue: 1, duration: 3000, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(truckAnim, { toValue: 0, duration: 0, useNativeDriver: true })
-      ])
-    );
-    truckLoopRef.current.start();
-
-    return () => {
-      truckLoopRef.current?.stop();
-      entranceAnim.stop();
-    };
-  }, []);
-
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     try {
       setLoading(true);
       const res = await orderApi.getOrderDetails(id as string);
       if (res.success && res.data) {
         const o = res.data;
-        // Parse address if string
-        let parsedAddress = o.shippingAddress;
-        try {
-          if (typeof o.shippingAddress === 'string') {
-            parsedAddress = JSON.parse(o.shippingAddress);
-          }
-        } catch (e) {
-          console.log("Address parse error");
-        }
-
         const mappedOrder = {
           id: o._id || o.id,
           orderNumber: o.orderId || o._id?.slice(-6).toUpperCase() || 'UNKNOWN',
@@ -97,7 +54,40 @@ export default function OrderDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) fetchDetails();
+  }, [id, fetchDetails]);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const truckAnim = useRef(new Animated.Value(0)).current;
+  const truckLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    const entranceAnim = Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true, easing: Easing.out(Easing.cubic) })
+    ]);
+    entranceAnim.start();
+
+    // Store loop ref so we can stop it on unmount (prevents memory leak)
+    truckLoopRef.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(truckAnim, { toValue: 1, duration: 3000, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(truckAnim, { toValue: 0, duration: 0, useNativeDriver: true })
+      ])
+    );
+    truckLoopRef.current.start();
+
+    return () => {
+      truckLoopRef.current?.stop();
+      entranceAnim.stop();
+    };
+  }, [fadeAnim, slideAnim, truckAnim]);
+
 
   const handleDownloadInvoice = async () => {
     if (!order) return;

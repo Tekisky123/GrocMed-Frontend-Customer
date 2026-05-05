@@ -42,7 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: res.data.name,
             email: res.data.email,
             phone: res.data.phone,
-            addresses: res.data.addresses || [],
+            addresses: (res.data.addresses || []).map((addr: any) => ({
+              ...addr,
+              id: addr._id || addr.id
+            })),
             pan: res.data.pan,
             adhaar: res.data.adhaar,
             createdAt: res.data.createdAt,
@@ -83,7 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: profileRes.data.name,
           email: profileRes.data.email,
           phone: profileRes.data.phone,
-          addresses: profileRes.data.addresses || [],
+          addresses: (profileRes.data.addresses || []).map((addr: any) => ({
+            ...addr,
+            id: addr._id || addr.id
+          })),
           pan: profileRes.data.pan,
           adhaar: profileRes.data.adhaar,
           createdAt: profileRes.data.createdAt,
@@ -119,7 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: profileRes.data.name,
             email: profileRes.data.email,
             phone: profileRes.data.phone,
-            addresses: profileRes.data.addresses || [],
+            addresses: (profileRes.data.addresses || []).map((addr: any) => ({
+              ...addr,
+              id: addr._id || addr.id
+            })),
             pan: profileRes.data.pan,
             adhaar: profileRes.data.adhaar,
             createdAt: profileRes.data.createdAt,
@@ -161,7 +170,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: res.data.name,
         email: res.data.email,
         phone: res.data.phone,
-        addresses: res.data.addresses || [],
+        addresses: (res.data.addresses || []).map((addr: any) => ({
+          ...addr,
+          id: addr._id || addr.id
+        })),
         createdAt: res.data.createdAt,
         isVerified: true
       };

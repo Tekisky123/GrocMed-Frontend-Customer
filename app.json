@@ -22,6 +22,9 @@
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED"
       ],
+      "blockedPermissions": [
+      "android.permission.CAMERA"
+    ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo.png"

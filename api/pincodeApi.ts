@@ -5,6 +5,9 @@ export interface PincodeOption {
     pincode: string;
     deliveryNote?: string;
     isActive: boolean;
+    city?: string;
+    state?: string;
+    area?: string;
 }
 
 export const pincodeApi = {

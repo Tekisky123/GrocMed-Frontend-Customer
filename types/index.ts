@@ -158,7 +158,7 @@ export type OrderStatus =
   | 'refunded';
 
 export type PaymentMethod = 'cod' | 'card' | 'upi' | 'wallet' | 'netbanking';
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'Paid' | 'Pending' | 'Failed' | 'Refunded';
 
 export interface OrderTracking {
   status: OrderStatus;

@@ -97,7 +97,7 @@ export default function CheckoutScreen() {
     }, []);
 
     useEffect(() => {
-        if (user?.addresses?.length > 0 && !selectedAddressId) {
+        if (user?.addresses && user.addresses.length > 0 && !selectedAddressId) {
             const def = user.addresses.find(a => a.isDefault);
             setSelectedAddressId(def?.id || user.addresses[0].id);
         }
@@ -256,7 +256,7 @@ export default function CheckoutScreen() {
                         <View style={styles.cardHeader}>
                             <Icon name="location-on" size={20} color={Colors.primary} library="material" />
                             <Text style={styles.cardTitle}>Delivery Address</Text>
-                            {!isAddingAddress && user?.addresses?.length > 0 && (
+                            {!isAddingAddress && user?.addresses && user.addresses.length > 0 && (
                                 <TouchableOpacity onPress={() => setShowAddressModal(true)}>
                                     <Text style={styles.editLink}>Change</Text>
                                 </TouchableOpacity>
@@ -308,16 +308,16 @@ export default function CheckoutScreen() {
                             </View>
                         ) : (
                             <View>
-                                {user?.addresses?.length > 0 ? (
+                                {user?.addresses && user.addresses.length > 0 ? (
                                     <View style={styles.selectedAddress}>
                                         <View style={styles.addressInfo}>
                                             <View style={styles.badge}>
-                                                <Text style={styles.badgeText}>{user.addresses.find(a => a.id === selectedAddressId)?.type || 'Home'}</Text>
+                                                <Text style={styles.badgeText}>{user?.addresses?.find(a => a.id === selectedAddressId)?.type || 'Home'}</Text>
                                             </View>
                                             <Text style={styles.addressText} numberOfLines={2}>
-                                                {user.addresses.find(a => a.id === selectedAddressId)?.street}
+                                                {user?.addresses?.find(a => a.id === selectedAddressId)?.street}
                                             </Text>
-                                            <Text style={styles.zipText}>Pincode: {user.addresses.find(a => a.id === selectedAddressId)?.zip}</Text>
+                                            <Text style={styles.zipText}>Pincode: {user?.addresses?.find(a => a.id === selectedAddressId)?.zip}</Text>
                                         </View>
                                         <Icon name="check-circle" size={24} color={Colors.success} library="material" />
                                     </View>
@@ -403,7 +403,7 @@ export default function CheckoutScreen() {
                         <View style={styles.itemList}>
                             {cart.items.map(item => (
                                 <View key={item.id} style={styles.itemRow}>
-                                    <View style={itemNameContainerStyle}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <View style={styles.dot} />
                                         <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
                                         <Text style={styles.itemQty}>x {item.quantity}</Text>

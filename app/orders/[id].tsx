@@ -43,7 +43,15 @@ export default function OrderDetailsScreen() {
           deliveryFee: 0,
           discount: 0,
           placedAt: o.createdAt,
-          shippingAddress: o.shippingAddress || {},
+          shippingAddress: o.shippingAddress ? {
+            fullName: o.shippingAddress.fullName || '',
+            phoneNumber: o.shippingAddress.phoneNumber || '',
+            streetAddress: o.shippingAddress.street || o.shippingAddress.streetAddress || '',
+            city: o.shippingAddress.city || '',
+            state: o.shippingAddress.state || '',
+            postalCode: o.shippingAddress.zip || o.shippingAddress.postalCode || '',
+            country: o.shippingAddress.country || '',
+          } : undefined,
           paymentMethod: o.paymentMethod || 'COD',
           paymentStatus: o.paymentStatus || 'Pending'
         };
@@ -387,9 +395,9 @@ export default function OrderDetailsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }}>Delivery Address</Text>
                 <Text style={{ fontSize: 13, color: Colors.textSecondary, lineHeight: 18 }}>
-                  {order.shippingAddress?.street}{'\n'}
+                  {order.shippingAddress?.streetAddress}{'\n'}
                   {order.shippingAddress?.city}{order.shippingAddress?.state ? `, ${order.shippingAddress?.state}` : ''}{'\n'}
-                  Pincode: {order.shippingAddress?.zip}
+                  Pincode: {order.shippingAddress?.postalCode}
                 </Text>
               </View>
             </View>

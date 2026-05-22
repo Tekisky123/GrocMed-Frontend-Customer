@@ -72,7 +72,7 @@ export default function RegisterScreen() {
 
       // Append mandatory image
       const adhaarFile = {
-        uri: Platform.OS === 'ios' ? adhaarImage.replace('file://', '') : adhaarImage,
+        uri: adhaarImage,
         name: 'adhaar.jpg',
         type: 'image/jpeg',
       };
@@ -82,7 +82,7 @@ export default function RegisterScreen() {
       // Append optional image
       if (licenseImage) {
         const licenseFile = {
-          uri: Platform.OS === 'ios' ? licenseImage.replace('file://', '') : licenseImage,
+          uri: licenseImage,
           name: 'license.jpg',
           type: 'image/jpeg',
         };

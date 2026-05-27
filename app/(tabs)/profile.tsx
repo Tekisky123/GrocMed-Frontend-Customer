@@ -57,6 +57,7 @@ export default function ProfileScreen() {
     { icon: Icons.support, title: 'Customer Support', route: '/support', color: Colors.accent },
     { icon: { name: 'description', library: 'material' as const }, title: 'Terms & Conditions', route: '/terms', color: Colors.primary },
     { icon: { name: 'lock', library: 'material' as const }, title: 'Privacy Policy', route: '/privacy', color: Colors.gray600 },
+    { icon: { name: 'local-shipping', library: 'material' as const }, title: 'Pricing & Refund Policy', route: '/refund', color: Colors.primary },
   ];
 
   return (

@@ -2,7 +2,7 @@
   "expo": {
     "name": "GrocMed",
     "slug": "grocmed-hu7gc6cggntrepcpb-se",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "reactnative",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.grocmed.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "INTERNET",

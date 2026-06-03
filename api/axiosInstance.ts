@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 
-const BASE_URL = 'https://groc-med-backend.vercel.app/api';
+const BASE_URL = 'https://grocmed-backend-production.up.railway.app/api';
 // const BASE_URL = 'http://localhost:3000/api';
 
 // Create axios instance

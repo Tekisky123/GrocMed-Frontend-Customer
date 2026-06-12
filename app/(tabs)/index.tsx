@@ -13,6 +13,10 @@ import { bannerApi, Banner } from '@/api/bannerApi';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { customerApi } from '@/api/customerApi';
+import { useAuth } from '@/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -55,10 +59,41 @@ export default function HomeScreen() {
     const [banners, setBanners] = useState<Banner[]>([]);
     const [currentBanner, setCurrentBanner] = useState(0);
     const [isAutoPlay, setIsAutoPlay] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const { getItemCount } = useCart();
     const { setCartIconPosition } = useCartAnimation();
+    const { isAuthenticated, user } = useAuth();
     const scrollViewRef = useRef<ScrollView>(null);
+
+    const loadUnreadCount = useCallback(async () => {
+        if (!isAuthenticated) {
+            setUnreadCount(0);
+            return;
+        }
+        try {
+            const res = await customerApi.getNotifications();
+            if (res.success && res.notifications) {
+                const lastViewedTimeStr = await AsyncStorage.getItem(`@notification_last_viewed_time_${user?.id || 'guest'}`);
+                const lastViewedTime = lastViewedTimeStr ? new Date(lastViewedTimeStr).getTime() : 0;
+                
+                const count = res.notifications.filter((n: any) => {
+                    const sentTime = new Date(n.sentAt || n.createdAt).getTime();
+                    return sentTime > lastViewedTime;
+                }).length;
+                
+                setUnreadCount(count);
+            }
+        } catch (error) {
+            console.error('Error loading unread notification count:', error);
+        }
+    }, [isAuthenticated, user?.id]);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadUnreadCount();
+        }, [loadUnreadCount])
+    );
 
     // Auto-slide banner
     useEffect(() => {
@@ -149,9 +184,11 @@ export default function HomeScreen() {
                             className="mr-3 p-2.5 bg-gray-50 rounded-xl border border-gray-200 relative"
                         >
                             <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
-                            <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1 border-2 border-white">
-                                <Text className="text-white text-[9px] font-extrabold">3</Text>
-                            </View>
+                            {unreadCount > 0 && (
+                                <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1 border-2 border-white">
+                                    <Text className="text-white text-[9px] font-extrabold">{unreadCount}</Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
 
                         <TouchableOpacity

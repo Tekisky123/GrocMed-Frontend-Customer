@@ -4,6 +4,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     ActivityIndicator,
     FlatList,
@@ -29,7 +30,7 @@ const formatRelativeTime = (dateString: string) => {
 };
 
 export default function NotificationsScreen() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -47,6 +48,9 @@ export default function NotificationsScreen() {
             const res = await customerApi.getNotifications();
             if (res.success) {
                 setNotifications(res.notifications);
+                // Mark all notifications as read by saving current time
+                const nowStr = new Date().toISOString();
+                await AsyncStorage.setItem(`@notification_last_viewed_time_${user?.id || 'guest'}`, nowStr);
             }
         } catch (error) {
             console.error('Failed to fetch notifications:', error);

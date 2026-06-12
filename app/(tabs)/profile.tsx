@@ -53,7 +53,7 @@ export default function ProfileScreen() {
 
   const menuItems = [
     { icon: Icons.profile, title: 'Edit Profile', route: '/profile/edit', color: Colors.primary },
-    { icon: Icons.notification, title: 'Notifications', route: '/notifications', color: Colors.accent },
+    { icon: Icons.notification, title: 'Notifications', route: '/(tabs)/notifications', color: Colors.accent },
     { icon: Icons.support, title: 'Customer Support', route: '/support', color: Colors.accent },
     { icon: { name: 'description', library: 'material' as const }, title: 'Terms & Conditions', route: '/terms', color: Colors.primary },
     { icon: { name: 'lock', library: 'material' as const }, title: 'Privacy Policy', route: '/privacy', color: Colors.gray600 },

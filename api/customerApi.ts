@@ -16,13 +16,44 @@ export interface CustomerProfileResponse {
 export const customerApi = {
     register: async (data: any): Promise<CustomerAuthResponse> => {
         try {
-            const response = await axiosInstance.post('/customer/register', data);
-            return response.data;
+            const url = `${axiosInstance.defaults.baseURL}/customer/register`;
+            console.log(`[customerApi.register] Sending POST request to: ${url}`);
+            console.log(`[customerApi.register] Payload type: ${data?.constructor?.name || typeof data}`);
+            
+            // Log FormData keys if parts are visible
+            if (data && data._parts) {
+                console.log(`[customerApi.register] FormData keys being sent:`, data._parts.map((p: any) => p[0]));
+            }
+
+            // Use standard fetch to bypass Axios FormData serialization issues on React Native/Hermes
+            const response = await fetch(url, {
+                method: 'POST',
+                body: data,
+                // Let the native layer set multipart/form-data with the boundary automatically
+            });
+
+            console.log(`[customerApi.register] Response status: ${response.status} ${response.statusText}`);
+            const text = await response.text();
+            console.log(`[customerApi.register] Response body text:`, text);
+
+            try {
+                const parsed = JSON.parse(text);
+                console.log(`[customerApi.register] Parsed JSON response:`, parsed);
+                return parsed;
+            } catch (jsonError) {
+                console.error(`[customerApi.register] JSON parse error:`, jsonError);
+                return {
+                    success: false,
+                    token: '',
+                    message: `Invalid server response: ${text.substring(0, 100)}`
+                };
+            }
         } catch (error: any) {
+            console.error(`[customerApi.register] Fetch exception:`, error);
             return {
                 success: false,
                 token: '',
-                message: error.response?.data?.message || 'Registration failed',
+                message: error.message || 'Registration failed',
             };
         }
     },

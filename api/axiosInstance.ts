@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 
-const BASE_URL = 'https://grocmed-backend-production.up.railway.app/api';
+export const BASE_URL = 'https://grocmed-backend-production.up.railway.app/api';
 // const BASE_URL = 'http://localhost:3000/api';
 
 // Create axios instance
@@ -11,9 +11,6 @@ const axiosInstance = axios.create({
   timeout: 60000, // 60 seconds timeout for file uploads (Vercel allows up to 60s on Pro plan)
   maxContentLength: Infinity, // Allow large content
   maxBodyLength: Infinity, // Allow large body
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Token storage keys
@@ -30,15 +27,17 @@ axiosInstance.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      // For FormData, let the browser/React Native set the Content-Type with boundary
-      // Don't set it manually - it will be set automatically
-      if (config.data instanceof FormData) {
-        // Remove any existing Content-Type to let the platform set it with boundary
-        delete config.headers['Content-Type'];
-        // Also ensure we're not transforming the FormData
-        if (!config.transformRequest) {
-          config.transformRequest = [];
-        }
+      // Check if data is FormData robustly (handling React Native environment)
+      const isFormData = config.data && (
+        config.data instanceof FormData || 
+        (typeof config.data === 'object' && (typeof config.data.append === 'function' || '_parts' in config.data))
+      );
+      if (isFormData) {
+        // Delete Content-Type header to let the native request generator set it automatically
+        // with the correct multipart boundary parameter.
+        config.headers.delete('Content-Type');
+      } else if (!config.headers.get('Content-Type')) {
+        config.headers.set('Content-Type', 'application/json');
       }
     } catch {
       // Error getting token from storage

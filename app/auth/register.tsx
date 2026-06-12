@@ -38,15 +38,28 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const pickImage = async (type: 'adhaar' | 'license') => {
+    console.log(`[ImagePicker] Requesting media library permissions for picking ${type} image...`);
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log('[ImagePicker] Permission result:', permissionResult);
+    
+    if (!permissionResult.granted) {
+      showToast('Permission to access camera roll is required to upload documents.', 'error');
+      return;
+    }
+
+    console.log('[ImagePicker] Launching image library...');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       quality: 0.7,
     });
 
+    console.log('[ImagePicker] Selection result canceled:', result.canceled);
     if (!result.canceled) {
-      if (type === 'adhaar') setAdhaarImage(result.assets[0].uri);
-      else setLicenseImage(result.assets[0].uri);
+      const selectedUri = result.assets[0].uri;
+      console.log(`[ImagePicker] Selected ${type} image URI:`, selectedUri);
+      if (type === 'adhaar') setAdhaarImage(selectedUri);
+      else setLicenseImage(selectedUri);
     }
   };
 
@@ -59,6 +72,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
+      console.log('[Register] Preparing FormData...');
       const formData = new FormData();
       formData.append('name', name);
       formData.append('email', email);
@@ -70,27 +84,57 @@ export default function RegisterScreen() {
       // Optional fields
       if (licenseNumber) formData.append('licenseNumber', licenseNumber);
 
-      // Append mandatory image
-      const adhaarFile = {
-        uri: adhaarImage,
-        name: 'adhaar.jpg',
-        type: 'image/jpeg',
+      // Helper to append file correctly for Web vs Mobile
+      const appendFile = async (fieldName: string, uri: string, defaultName: string) => {
+        if (Platform.OS === 'web') {
+          console.log(`[Register] Processing file upload for Web field [${fieldName}]...`);
+          try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            const filename = uri.split('/').pop() || defaultName;
+            // Native browser File object
+            const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+            formData.append(fieldName, file);
+            console.log(`[Register] Appended real File on Web: ${filename} (${blob.type})`);
+          } catch (e) {
+            console.error(`[Register] Error converting file on Web:`, e);
+            formData.append(fieldName, uri); // fallback
+          }
+        } else {
+          console.log(`[Register] Processing file upload for Mobile field [${fieldName}]...`);
+          const filename = uri.split('/').pop() || defaultName;
+          const match = /\.(\w+)$/.exec(filename);
+          const fileType = match ? `image/${match[1]}` : `image/jpeg`;
+          
+          const fileObject = {
+            uri: uri,
+            name: filename,
+            type: fileType,
+          };
+          console.log(`[Register] Appended React Native file object:`, fileObject);
+          // @ts-ignore
+          formData.append(fieldName, fileObject);
+        }
       };
-      // @ts-ignore
-      formData.append('adhaarImage', adhaarFile);
 
-      // Append optional image
+      // Append files asynchronously
+      await appendFile('adhaarImage', adhaarImage, 'adhaar.jpg');
       if (licenseImage) {
-        const licenseFile = {
-          uri: licenseImage,
-          name: 'license.jpg',
-          type: 'image/jpeg',
-        };
-        // @ts-ignore
-        formData.append('licenseImage', licenseFile);
+        await appendFile('licenseImage', licenseImage, 'license.jpg');
       }
 
+      // Log the full FormData structure in React Native
+      // @ts-ignore
+      if (formData._parts) {
+        // @ts-ignore
+        console.log('[Register] FormData parts payload:', JSON.stringify(formData._parts, null, 2));
+      } else {
+        console.log('[Register] FormData object constructed.');
+      }
+
+      console.log('[Register] Sending payload to auth registration...');
       const res = await register(formData);
+      console.log('[Register] Received registration response:', res);
       if (res.success) {
         showToast('Registration successful! Please login.', 'success');
         router.replace('/auth/login');
@@ -164,7 +208,7 @@ export default function RegisterScreen() {
               placeholder="9876543210"
               placeholderTextColor={Colors.textTertiary}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(text) => setPhone(text.replace(/\D/g, ''))}
               keyboardType="phone-pad"
             />
           </View>
@@ -176,7 +220,7 @@ export default function RegisterScreen() {
               placeholder="12-digit Aadhaar"
               placeholderTextColor={Colors.textTertiary}
               value={adhaar}
-              onChangeText={setAdhaar}
+              onChangeText={(text) => setAdhaar(text.replace(/\D/g, ''))}
               keyboardType="number-pad"
               maxLength={12}
             />

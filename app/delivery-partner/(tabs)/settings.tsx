@@ -107,7 +107,7 @@ export default function SettingsScreen() {
             <View style={styles.sectionContent}>
               <TouchableOpacity
                 style={styles.settingItem}
-                onPress={() => Alert.alert('App Version', 'GrocMed Admin v1.0.0')}
+                onPress={() => Alert.alert('App Version', 'GrocMed Admin v2.0.3')}
                 activeOpacity={0.7}
               >
                 <View style={styles.settingItemLeft}>

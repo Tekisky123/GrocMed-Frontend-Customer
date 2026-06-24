@@ -61,7 +61,7 @@ export default function HomeScreen() {
     const [isAutoPlay, setIsAutoPlay] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const { getItemCount } = useCart();
+    const { getItemCount, refreshCart } = useCart();
     const { setCartIconPosition } = useCartAnimation();
     const { isAuthenticated, user } = useAuth();
     const scrollViewRef = useRef<ScrollView>(null);
@@ -92,7 +92,8 @@ export default function HomeScreen() {
     useFocusEffect(
         useCallback(() => {
             loadUnreadCount();
-        }, [loadUnreadCount])
+            refreshCart();
+        }, [loadUnreadCount, refreshCart])
     );
 
     // Auto-slide banner

@@ -17,6 +17,7 @@ interface CartContextType {
   removeCoupon: () => void;
   getItemCount: () => number;
   getItemQuantity: (productId: string) => number;
+  refreshCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -350,6 +351,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeCoupon,
         getItemCount,
         getItemQuantity,
+        refreshCart: fetchServerCart,
       }}
     >
       {children}

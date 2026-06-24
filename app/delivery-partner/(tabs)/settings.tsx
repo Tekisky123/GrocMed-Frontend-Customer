@@ -5,6 +5,7 @@ import React, { useRef } from 'react';
 import {
   Alert,
   Animated,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -122,7 +123,18 @@ export default function SettingsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.settingItem}
-                onPress={() => Alert.alert('Help & Support', 'Contact support@grocmed.com')}
+                onPress={() => {
+                  Alert.alert(
+                    'Help & Support',
+                    'Choose a contact option:',
+                    [
+                      { text: 'Call us on 9381078548', onPress: () => Linking.openURL('tel:9381078548') },
+                      { text: 'Info@grocmed.com', onPress: () => Linking.openURL('mailto:Info@grocmed.com') },
+                      { text: 'Whatsapp no. 9381078548', onPress: () => Linking.openURL('https://wa.me/919381078548') },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  );
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.settingItemLeft}>

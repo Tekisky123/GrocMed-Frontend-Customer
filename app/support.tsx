@@ -8,9 +8,9 @@ export default function SupportScreen() {
 
   const handleContact = (type: 'phone' | 'email' | 'whatsapp') => {
     switch (type) {
-      case 'phone': Linking.openURL('tel:+919876543210'); break;
-      case 'email': Linking.openURL('mailto:support@grocmed.com'); break;
-      case 'whatsapp': Linking.openURL('whatsapp://send?phone=+919876543210'); break;
+      case 'phone': Linking.openURL('tel:9381078548'); break;
+      case 'email': Linking.openURL('mailto:Info@grocmed.com'); break;
+      case 'whatsapp': Linking.openURL('https://wa.me/919381078548'); break;
     }
   };
 
@@ -33,8 +33,8 @@ export default function SupportScreen() {
               <Icon name="phone" library="material" size={24} color="#1565C0" />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Call Us</Text>
-              <Text style={styles.cardDesc}>Speak directly with an agent</Text>
+              <Text style={styles.cardTitle}>Call us on 9381078548</Text>
+              <Text style={styles.cardDesc}>Speak directly with our support team</Text>
             </View>
             <Icon name="chevron-right" library="material" size={20} color={Colors.gray400} />
           </TouchableOpacity>
@@ -44,8 +44,8 @@ export default function SupportScreen() {
               <Icon name="email" library="material" size={24} color="#2E7D32" />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Email Support</Text>
-              <Text style={styles.cardDesc}>Get response within 24hrs</Text>
+              <Text style={styles.cardTitle}>Info@grocmed.com</Text>
+              <Text style={styles.cardDesc}>Drop us an email for any queries</Text>
             </View>
             <Icon name="chevron-right" library="material" size={20} color={Colors.gray400} />
           </TouchableOpacity>
@@ -55,22 +55,11 @@ export default function SupportScreen() {
               <Icon name="whatsapp" library="fontawesome" size={24} color="#00695C" />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>WhatsApp</Text>
-              <Text style={styles.cardDesc}>Chat with us instantly</Text>
+              <Text style={styles.cardTitle}>Whatsapp no. 9381078548</Text>
+              <Text style={styles.cardDesc}>Chat with us instantly on WhatsApp</Text>
             </View>
             <Icon name="chevron-right" library="material" size={20} color={Colors.gray400} />
           </TouchableOpacity>
-        </View>
-
-        {/* FAQS Section Placeholder */}
-        <View style={styles.faqSection}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          {['How do I track my order?', 'Change delivery address?', 'Return policy?'].map((q, i) => (
-            <View key={i} style={styles.faqItem}>
-              <Text style={styles.faqText}>{q}</Text>
-              <Icon name="add" library="material" size={20} color={Colors.textSecondary} />
-            </View>
-          ))}
         </View>
       </ScrollView>
     </View>

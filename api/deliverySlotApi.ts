@@ -6,6 +6,9 @@ export interface DeliverySlot {
     startTime: string;
     endTime: string;
     isActive: boolean;
+    currentOrders?: number;
+    maxOrders?: number;
+    isFull?: boolean;
 }
 
 export interface AvailabilityResponse {

@@ -30,6 +30,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width } = Dimensions.get('window');
 const IS_SMALL_DEVICE = width < 375;
 
+const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function CheckoutScreen() {
     const { cart, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
@@ -51,7 +58,7 @@ export default function CheckoutScreen() {
     // Delivery Slots State
     const [availableSlots, setAvailableSlots] = useState<any[]>([]);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString(new Date()));
     const [availabilityInfo, setAvailabilityInfo] = useState<any>(null);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -65,7 +72,7 @@ export default function CheckoutScreen() {
             date.setDate(date.getDate() + i);
             dates.push({
                 label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
-                value: date.toISOString().split('T')[0],
+                value: getLocalDateString(date),
                 isToday: i === 0
             });
         }
@@ -126,16 +133,24 @@ export default function CheckoutScreen() {
             const res = await deliverySlotApi.getAvailability(selectedDate);
             if (res.success) {
                 setAvailabilityInfo(res.data);
-                setAvailableSlots(res.data.availableSlots || []);
+                const slots = res.data.availableSlots || [];
+                setAvailableSlots(slots);
                 
+                // Determine first available (non-full) slot
+                const firstAvailableSlot = slots.find((s: any) => !s.isFull);
+
                 // If today is full and we selected today, switch to tomorrow
-                if (res.data.isFull && selectedDate === new Date().toISOString().split('T')[0]) {
+                if (res.data.isFull && selectedDate === getLocalDateString(new Date())) {
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
-                    setSelectedDate(tomorrow.toISOString().split('T')[0]);
+                    setSelectedDate(getLocalDateString(tomorrow));
                     showToast('Orders full for today. Switching to tomorrow.', 'info');
-                } else if (res.data.availableSlots?.length > 0 && !selectedSlot) {
-                    setSelectedSlot(res.data.availableSlots[0].name);
+                } else {
+                    // Check if current selectedSlot is available and not full in the loaded slots
+                    const currentSlotValid = slots.find((s: any) => s.name === selectedSlot && !s.isFull);
+                    if (!currentSlotValid) {
+                        setSelectedSlot(firstAvailableSlot ? firstAvailableSlot.name : null);
+                    }
                 }
             }
         } catch (e) {
@@ -343,20 +358,23 @@ export default function CheckoutScreen() {
                         <Text style={styles.cardTitleSmall}>Select Date</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateList}>
                             {deliveryDates.map((date) => {
-                                const isFull = date.isToday && availabilityInfo?.isFull;
+                                const d = new Date(date.value);
+                                const dayName = date.label === 'Today' ? 'Today' : date.label === 'Tomorrow' ? 'Tomorrow' : d.toLocaleDateString('en-IN', { weekday: 'short' });
+                                const dayNum = d.getDate();
+                                const monthName = d.toLocaleDateString('en-IN', { month: 'short' });
+                                
                                 return (
                                     <TouchableOpacity
                                         key={date.value}
-                                        onPress={() => !isFull && setSelectedDate(date.value)}
-                                        disabled={isFull}
+                                        onPress={() => setSelectedDate(date.value)}
                                         style={[
-                                            styles.dateChip,
-                                            selectedDate === date.value && styles.dateChipActive,
-                                            isFull && styles.dateChipDisabled
+                                            styles.premiumDateCard,
+                                            selectedDate === date.value && styles.premiumDateCardActive,
                                         ]}
                                     >
-                                        <Text style={[styles.dateLabel, selectedDate === date.value && styles.dateLabelActive, isFull && styles.dateLabelDisabled]}>{date.label}</Text>
-                                        {isFull && <Text style={styles.fullBadge}>FULL</Text>}
+                                        <Text style={[styles.premiumDateDay, selectedDate === date.value && styles.premiumDateDayActive]}>{dayName}</Text>
+                                        <Text style={[styles.premiumDateNum, selectedDate === date.value && styles.premiumDateNumActive]}>{dayNum}</Text>
+                                        <Text style={[styles.premiumDateMonth, selectedDate === date.value && styles.premiumDateMonthActive]}>{monthName}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -367,28 +385,124 @@ export default function CheckoutScreen() {
                         {slotsLoading ? (
                             <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
                         ) : (
-                            <View style={styles.slotGrid}>
+                            <View style={styles.premiumSlotList}>
                                 {availableSlots.length > 0 ? (
-                                    availableSlots.map((slot: any) => (
-                                        <TouchableOpacity
-                                            key={slot._id}
-                                            onPress={() => setSelectedSlot(slot.name)}
-                                            style={[styles.slotChip, selectedSlot === slot.name && styles.slotChipActive]}
-                                        >
-                                            <Text style={[styles.slotText, selectedSlot === slot.name && styles.slotTextActive]}>{slot.name}</Text>
-                                            <Text style={[styles.slotTime, selectedSlot === slot.name && styles.slotTimeActive]}>{slot.startTime} - {slot.endTime}</Text>
-                                        </TouchableOpacity>
-                                    ))
+                                    availableSlots.map((slot: any) => {
+                                        const isSelected = selectedSlot === slot.name;
+                                        const isFull = slot.isFull;
+                                        
+                                        // Pick an icon based on slot name / times
+                                        let iconName = 'wb-sunny'; // Default
+                                        let iconColor = '#FFA000'; // Amber
+                                        
+                                        const slotNameLower = slot.name.toLowerCase();
+                                        if (slotNameLower.includes('morning') || slot.startTime.localeCompare('12:00') < 0) {
+                                            iconName = 'brightness-5'; // sunrise
+                                            iconColor = '#FF9800';
+                                        } else if (slotNameLower.includes('evening') || slotNameLower.includes('night') || slot.startTime.localeCompare('17:00') >= 0) {
+                                            iconName = 'nights-stay'; // evening/moon
+                                            iconColor = '#3F51B5';
+                                        } else if (slotNameLower.includes('afternoon') || (slot.startTime.localeCompare('12:00') >= 0 && slot.startTime.localeCompare('17:00') < 0)) {
+                                            iconName = 'wb-sunny';
+                                            iconColor = '#F57C00';
+                                        }
+
+                                        // Format slot times nicely to 12-hour AM/PM format
+                                        const formatTime12 = (time24: string) => {
+                                            if (!time24) return '';
+                                            const [hours, minutes] = time24.split(':');
+                                            const hr = parseInt(hours, 10);
+                                            const ampm = hr >= 12 ? 'PM' : 'AM';
+                                            const hr12 = hr % 12 || 12;
+                                            return `${hr12}:${minutes} ${ampm}`;
+                                        };
+
+                                        const formattedTimeRange = `${formatTime12(slot.startTime)} - ${formatTime12(slot.endTime)}`;
+
+                                        // Calculate slot remaining status if we have the data
+                                        const showCapacity = slot.maxOrders && slot.currentOrders !== undefined;
+                                        const remaining = showCapacity ? (slot.maxOrders - slot.currentOrders) : 0;
+                                        
+                                        return (
+                                            <TouchableOpacity
+                                                key={slot._id}
+                                                onPress={() => !isFull && setSelectedSlot(slot.name)}
+                                                disabled={isFull}
+                                                style={[
+                                                    styles.premiumSlotCard,
+                                                    isSelected && styles.premiumSlotCardActive,
+                                                    isFull && styles.premiumSlotCardDisabled
+                                                ]}
+                                            >
+                                                <View style={styles.premiumSlotLeft}>
+                                                    <View style={[
+                                                        styles.premiumSlotIconContainer,
+                                                        isSelected && styles.premiumSlotIconContainerActive,
+                                                        isFull && styles.premiumSlotIconContainerDisabled
+                                                    ]}>
+                                                        <Icon 
+                                                            name={iconName} 
+                                                            size={20} 
+                                                            color={isFull ? '#9E9E9E' : (isSelected ? Colors.primary : iconColor)} 
+                                                            library="material" 
+                                                        />
+                                                    </View>
+                                                    
+                                                    <View style={styles.premiumSlotInfo}>
+                                                        <Text style={[
+                                                            styles.premiumSlotName,
+                                                            isSelected && styles.premiumSlotNameActive,
+                                                            isFull && styles.premiumSlotNameDisabled
+                                                        ]}>
+                                                            {slot.name}
+                                                        </Text>
+                                                        <Text style={[
+                                                            styles.premiumSlotTime,
+                                                            isSelected && styles.premiumSlotTimeActive,
+                                                            isFull && styles.premiumSlotTimeDisabled
+                                                        ]}>
+                                                            {formattedTimeRange}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                <View style={styles.premiumSlotRight}>
+                                                    {isFull ? (
+                                                        <View style={styles.premiumFullBadge}>
+                                                            <Text style={styles.premiumFullBadgeText}>FULL</Text>
+                                                        </View>
+                                                    ) : (
+                                                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                                                            <View style={[
+                                                                styles.premiumRadio,
+                                                                isSelected && styles.premiumRadioActive
+                                                            ]}>
+                                                                {isSelected && <View style={styles.premiumRadioInner} />}
+                                                            </View>
+                                                            {showCapacity && remaining <= 5 && remaining > 0 && (
+                                                                <Text style={styles.premiumRemainingText}>
+                                                                    {remaining} slot{remaining > 1 ? 's' : ''} left
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })
                                 ) : (
-                                    <Text style={styles.noSlotsText}>No slots available for this date</Text>
+                                    <View style={styles.premiumNoSlotsContainer}>
+                                        <Icon name="event-busy" size={40} color={Colors.textTertiary} library="material" />
+                                        <Text style={styles.noSlotsText}>No delivery slots available for this date</Text>
+                                    </View>
                                 )}
                             </View>
                         )}
 
-                        {availabilityInfo?.isFull && selectedDate === new Date().toISOString().split('T')[0] && (
+                        {availabilityInfo?.isFull && (
                             <View style={styles.fullWarning}>
                                 <Icon name="info-outline" size={16} color="#E65100" library="material" />
-                                <Text style={styles.fullWarningText}>Today is fully booked. Please select a future date.</Text>
+                                <Text style={styles.fullWarningText}>This date is fully booked. Please select a future date.</Text>
                             </View>
                         )}
                     </View>
@@ -1204,5 +1318,185 @@ const styles = StyleSheet.create({
         color: '#E65100',
         fontWeight: '700',
         flex: 1,
+    },
+    premiumDateCard: {
+        width: 80,
+        height: 95,
+        borderRadius: 16,
+        backgroundColor: '#F8F9FA',
+        marginRight: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#E9ECEF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    premiumDateCardActive: {
+        backgroundColor: '#FFF9F4',
+        borderColor: Colors.primary,
+        shadowColor: Colors.primary,
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    premiumDateDay: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: Colors.textTertiary,
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    premiumDateDayActive: {
+        color: Colors.primary,
+        fontWeight: '800',
+    },
+    premiumDateNum: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: Colors.textPrimary,
+        marginBottom: 2,
+    },
+    premiumDateNumActive: {
+        color: Colors.primary,
+    },
+    premiumDateMonth: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: Colors.textTertiary,
+        textTransform: 'uppercase',
+    },
+    premiumDateMonthActive: {
+        color: Colors.primary,
+        fontWeight: '800',
+    },
+    premiumSlotList: {
+        gap: 12,
+        marginTop: 4,
+    },
+    premiumSlotCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: '#F8F9FA',
+        borderWidth: 1.5,
+        borderColor: '#E9ECEF',
+    },
+    premiumSlotCardActive: {
+        backgroundColor: '#FFF9F4',
+        borderColor: Colors.primary,
+    },
+    premiumSlotCardDisabled: {
+        backgroundColor: '#F1F3F5',
+        borderColor: '#E9ECEF',
+        opacity: 0.6,
+    },
+    premiumSlotLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    premiumSlotIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#FFF3E0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    premiumSlotIconContainerActive: {
+        backgroundColor: '#FFE8D6',
+    },
+    premiumSlotIconContainerDisabled: {
+        backgroundColor: '#E9ECEF',
+    },
+    premiumSlotInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    premiumSlotName: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        marginBottom: 2,
+    },
+    premiumSlotNameActive: {
+        color: Colors.primary,
+    },
+    premiumSlotNameDisabled: {
+        color: Colors.textTertiary,
+        textDecorationLine: 'line-through',
+    },
+    premiumSlotTime: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    premiumSlotTimeActive: {
+        color: Colors.primary,
+        opacity: 0.9,
+    },
+    premiumSlotTimeDisabled: {
+        color: Colors.textTertiary,
+    },
+    premiumSlotRight: {
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        marginLeft: 12,
+    },
+    premiumRadio: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        borderColor: '#CED4DA',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    premiumRadioActive: {
+        borderColor: Colors.primary,
+    },
+    premiumRadioInner: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: Colors.primary,
+    },
+    premiumFullBadge: {
+        backgroundColor: '#FFEBEE',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#FFCDD2',
+    },
+    premiumFullBadgeText: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#C62828',
+    },
+    premiumRemainingText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#E65100',
+        textTransform: 'uppercase',
+    },
+    premiumNoSlotsContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#E9ECEF',
+        borderStyle: 'dashed',
+        gap: 8,
     },
 });

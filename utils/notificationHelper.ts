@@ -6,7 +6,7 @@ let messaging: any;
 
 try {
     messaging = require('@react-native-firebase/messaging').default;
-    
+
     // Mount Killed-State Background Handler Outside React Component Lifecycle
     messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
         console.log('Background FCM Message Received:', remoteMessage);

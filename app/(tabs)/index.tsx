@@ -10,8 +10,8 @@ import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import { Product } from '@/types';
 import { router } from 'expo-router';
 import { bannerApi, Banner } from '@/api/bannerApi';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { Animated, Dimensions, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { customerApi } from '@/api/customerApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +50,119 @@ const BANNER_ASPECT_RATIO = 2 / 1; // Standard modern mobile banner ratio
 const BANNER_WIDTH = width;
 const BANNER_HEIGHT = BANNER_WIDTH / BANNER_ASPECT_RATIO;
 
+// Memoized Banner component to encapsulate currentBanner state and auto-play interval
+const HomeBanners = React.memo(({ banners, loading, refreshing, router }: { banners: Banner[], loading: boolean, refreshing: boolean, router: any }) => {
+    const [currentBanner, setCurrentBanner] = useState(0);
+    const [isAutoPlay, setIsAutoPlay] = useState(true);
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    // Auto-slide banner
+    useEffect(() => {
+        if (!isAutoPlay || loading || refreshing) return;
+        
+        const bannerCount = banners.length > 0 ? banners.length : HOME_BANNERS.length;
+        const interval = setInterval(() => {
+            setCurrentBanner((prev) => {
+                const next = (prev + 1) % bannerCount;
+                scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
+                return next;
+            });
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [isAutoPlay, banners, loading, refreshing]);
+
+    if (loading && !refreshing) {
+        return <SkeletonLoader height={BANNER_HEIGHT} width={BANNER_WIDTH} />;
+    }
+
+    const items = banners.length > 0 ? banners : HOME_BANNERS;
+
+    return (
+        <View className="mb-6 relative">
+            <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScrollBeginDrag={() => setIsAutoPlay(false)}
+                onMomentumScrollEnd={(event) => {
+                    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / BANNER_WIDTH);
+                    setCurrentBanner(slideIndex);
+                    setIsAutoPlay(true);
+                }}
+                snapToInterval={BANNER_WIDTH}
+                decelerationRate="fast"
+            >
+                {items.map((banner: any) => (
+                    <View 
+                        key={banner._id || banner.id} 
+                        style={{ 
+                            width: BANNER_WIDTH,
+                        }}
+                    >
+                        <TouchableOpacity 
+                            activeOpacity={1}
+                            onPress={() => banner.link && router.push(banner.link as any)}
+                            style={{
+                                height: BANNER_HEIGHT, 
+                                backgroundColor: banner.color || Colors.primary, 
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {/* Background Image */}
+                            {banner.image ? (
+                                <Image 
+                                    source={{ uri: banner.image }} 
+                                    style={{ width: '100%', height: '100%' }} 
+                                    resizeMode="cover" 
+                                />
+                            ) : (
+                                <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+                                    <View style={{ position: 'absolute', right: -50, top: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                                    <View>
+                                        <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 12 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '900', color: 'white', textTransform: 'uppercase' }}>{banner.tag || 'PROMO'}</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 32, fontWeight: '900', color: 'white', lineHeight: 36 }}>{banner.title || ''}</Text>
+                                        <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginTop: 4 }}>{banner.subtitle || ''}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            
+                            {/* Standard Text Overlay for Dynamic Banners */}
+                            {banners.length > 0 && banner.title && (
+                                <View 
+                                    style={{ 
+                                        position: 'absolute', 
+                                        bottom: 0, 
+                                        left: 0, 
+                                        right: 0, 
+                                        padding: 20,
+                                        backgroundColor: 'rgba(0,0,0,0.35)',
+                                    }}
+                                >
+                                    <Text style={{ color: 'white', fontSize: 22, fontWeight: '900' }}>{banner.title || ''}</Text>
+                                    {banner.description && (
+                                        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4 }} numberOfLines={1}>
+                                            {banner.description || ''}
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                ))}
+            </ScrollView>
+            <View style={{ position: 'absolute', bottom: 25, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                {items.map((_, index) => (
+                    <View key={index} style={{ height: 4, width: index === currentBanner ? 20 : 6, borderRadius: 2, backgroundColor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)' }} />
+                ))}
+            </View>
+        </View>
+    );
+});
+
 export default function HomeScreen() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -57,14 +170,16 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [banners, setBanners] = useState<Banner[]>([]);
-    const [currentBanner, setCurrentBanner] = useState(0);
-    const [isAutoPlay, setIsAutoPlay] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    // Infinite scroll pagination states
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+ 
     const { getItemCount, refreshCart } = useCart();
     const { setCartIconPosition } = useCartAnimation();
     const { isAuthenticated, user } = useAuth();
-    const scrollViewRef = useRef<ScrollView>(null);
 
     const loadUnreadCount = useCallback(async () => {
         if (!isAuthenticated) {
@@ -96,32 +211,18 @@ export default function HomeScreen() {
         }, [loadUnreadCount, refreshCart])
     );
 
-    // Auto-slide banner
-    useEffect(() => {
-        if (!isAutoPlay) return;
-        
-        const interval = setInterval(() => {
-            const bannerCount = banners.length > 0 ? banners.length : HOME_BANNERS.length;
-            setCurrentBanner((prev) => {
-                const next = (prev + 1) % bannerCount;
-                scrollViewRef.current?.scrollTo({ x: next * width, animated: true });
-                return next;
-            });
-        }, 3000);
-
-        return () => clearInterval(interval);
-    }, [isAutoPlay]);
-
     const loadData = useCallback(async () => {
         try {
+            setPage(1);
             const [productsRes, categoriesRes, bannersRes] = await Promise.all([
-                productApi.getAllProducts().catch(() => ({ success: false, data: [] as ApiProduct[] })),
+                productApi.getAllProducts(1, 20).catch(() => ({ success: false, data: [] as ApiProduct[], totalPages: 1 })),
                 categoryApi.getAllCategories().catch(() => ({ success: false, data: [] as Category[] })),
                 bannerApi.getBanners().catch(() => ({ success: false, data: [] as Banner[] })),
             ]);
 
             if (productsRes.success && Array.isArray(productsRes.data)) {
                 setProducts(mapApiProductsToUiProducts(productsRes.data));
+                setTotalPages(productsRes.totalPages || 1);
             } else if (products.length === 0) {
                 setError('Unable to load products');
             }
@@ -143,6 +244,25 @@ export default function HomeScreen() {
             setRefreshing(false);
         }
     }, []);
+
+    const loadMoreProducts = async () => {
+        if (isLoadingMore || page >= totalPages) return;
+
+        setIsLoadingMore(true);
+        try {
+            const nextPage = page + 1;
+            const res = await productApi.getAllProducts(nextPage, 20);
+            if (res.success && Array.isArray(res.data)) {
+                const newProducts = mapApiProductsToUiProducts(res.data);
+                setProducts((prev) => [...prev, ...newProducts]);
+                setPage(nextPage);
+            }
+        } catch (err) {
+            console.error('Error loading more products:', err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -168,6 +288,86 @@ export default function HomeScreen() {
             params: { categoryName: category.name },
         });
     };
+
+    const renderHeader = useMemo(() => {
+        return (
+            <View className="pb-3">
+                {/* Banner Section */}
+                <HomeBanners 
+                    banners={banners} 
+                    loading={loading} 
+                    refreshing={refreshing} 
+                    router={router} 
+                />
+
+                {/* Categories Section */}
+                <View className="mb-6">
+                    <View className="flex-row justify-between items-center px-5 mb-4">
+                        <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Shop by Category</Text>
+                        <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
+                            <Text className="text-orange-500 font-bold text-sm">See All</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {loading && !refreshing ? (
+                        <View className="flex-row px-5 gap-3.5">
+                            {[1, 2, 3, 4].map((i) => (
+                                <View key={i} className="items-center">
+                                    <SkeletonLoader width={75} height={75} borderRadius={38} />
+                                    <SkeletonLoader width={60} height={12} style={{ marginTop: 8 }} />
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <FlatList
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+                            data={categories.filter(c => c)}
+                            keyExtractor={(item, index) => index.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity className="items-center w-[75px]" onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
+                                    <View className="w-[75px] h-[75px] rounded-full bg-white justify-center items-center mb-2.5 border border-gray-100 shadow-sm">
+                                        {item.image ? <Image source={{ uri: item.image }} className="w-[52px] h-[52px]" resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
+                                    </View>
+                                    <Text className="text-xs font-bold text-gray-900 text-center leading-tight" numberOfLines={2}>{item.name}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    )}
+                </View>
+
+                {/* Recent/Popular Products Section */}
+                {products.slice(0, 8).length > 0 && (
+                    <View className="mb-8">
+                        <View className="flex-row justify-between items-center px-5 mb-4">
+                            <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Top Picks for You</Text>
+                            <TouchableOpacity onPress={() => router.push('/products/search')}>
+                                <Text className="text-orange-500 font-bold text-sm">View All</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+                            data={products.slice(0, 8)}
+                            keyExtractor={(item) => `popular_${item.id}`}
+                            renderItem={({ item }) => (
+                                <View style={{ width: width * 0.44 }}>
+                                    <ProductCard product={item} onPress={() => handleProductPress(item)} />
+                                </View>
+                            )}
+                        />
+                    </View>
+                )}
+
+                {/* All Products Header */}
+                <View className="px-5 mb-4">
+                    <Text className="text-xl font-extrabold text-gray-900 tracking-tight">All Products</Text>
+                </View>
+            </View>
+        );
+    }, [banners, loading, refreshing, categories, products]);
 
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -256,168 +456,20 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
                 ) : null}
-                ListHeaderComponent={() => (
-                    <View className="pb-3">
-                        {/* Banner Section */}
-                        <View className="mb-6">
-                            {loading && !refreshing ? (
-                                <SkeletonLoader height={BANNER_HEIGHT} width={BANNER_WIDTH} />
-                            ) : (
-                                <>
-                                    <ScrollView
-                                        ref={scrollViewRef}
-                                        horizontal
-                                        pagingEnabled
-                                        showsHorizontalScrollIndicator={false}
-                                        onScrollBeginDrag={() => setIsAutoPlay(false)}
-                                        onMomentumScrollEnd={(event) => {
-                                            const slideIndex = Math.round(event.nativeEvent.contentOffset.x / BANNER_WIDTH);
-                                            setCurrentBanner(slideIndex);
-                                            setIsAutoPlay(true);
-                                        }}
-                                        snapToInterval={BANNER_WIDTH}
-                                        decelerationRate="fast"
-                                    >
-                                        {(banners.length > 0 ? banners : HOME_BANNERS).map((banner: any, index) => (
-                                            <View 
-                                                key={banner._id || banner.id} 
-                                                style={{ 
-                                                    width: BANNER_WIDTH,
-                                                }}
-                                            >
-                                                <TouchableOpacity 
-                                                    activeOpacity={1}
-                                                    onPress={() => banner.link && router.push(banner.link as any)}
-                                                    style={{
-                                                        height: BANNER_HEIGHT, 
-                                                        backgroundColor: banner.color || Colors.primary, 
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
-                                                    {/* Background Image */}
-                                                    {banner.image ? (
-                                                        <Image 
-                                                            source={{ uri: banner.image }} 
-                                                            style={{ width: '100%', height: '100%' }} 
-                                                            resizeMode="cover" 
-                                                        />
-                                                    ) : (
-                                                        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
-                                                            <View style={{ position: 'absolute', right: -50, top: -50, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                                                            <View>
-                                                                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4, alignSelf: 'flex-start', marginBottom: 12 }}>
-                                                                    <Text style={{ fontSize: 10, fontWeight: '900', color: 'white', textTransform: 'uppercase' }}>{banner.tag || 'PROMO'}</Text>
-                                                                </View>
-                                                                <Text style={{ fontSize: 32, fontWeight: '900', color: 'white', lineHeight: 36 }}>{banner.title || ''}</Text>
-                                                                <Text style={{ fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginTop: 4 }}>{banner.subtitle || ''}</Text>
-                                                            </View>
-                                                        </View>
-                                                    )}
-                                                    
-                                                    {/* Standard Text Overlay for Dynamic Banners */}
-                                                    {banners.length > 0 && banner.title && (
-                                                        <View 
-                                                            style={{ 
-                                                                position: 'absolute', 
-                                                                bottom: 0, 
-                                                                left: 0, 
-                                                                right: 0, 
-                                                                padding: 20,
-                                                                backgroundColor: 'rgba(0,0,0,0.35)',
-                                                            }}
-                                                        >
-                                                            <Text style={{ color: 'white', fontSize: 22, fontWeight: '900' }}>{banner.title || ''}</Text>
-                                                            {banner.description && (
-                                                                <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4 }} numberOfLines={1}>
-                                                                    {banner.description || ''}
-                                                                </Text>
-                                                            )}
-                                                        </View>
-                                                    )}
-                                                </TouchableOpacity>
-                                            </View>
-                                        ))}
-                                    </ScrollView>
-                                    <View style={{ position: 'absolute', bottom: 25, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
-                                        {(banners.length > 0 ? banners : HOME_BANNERS).map((_, index) => (
-                                            <View key={index} style={{ height: 4, width: index === currentBanner ? 20 : 6, borderRadius: 2, backgroundColor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)' }} />
-                                        ))}
-                                    </View>
-                                </>
-                            )}
-                        </View>
-
-                        {/* Categories Section */}
-                        <View className="mb-6">
-                            <View className="flex-row justify-between items-center px-5 mb-4">
-                                <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Shop by Category</Text>
-                                <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-                                    <Text className="text-orange-500 font-bold text-sm">See All</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {loading && !refreshing ? (
-                                <View className="flex-row px-5 gap-3.5">
-                                    {[1, 2, 3, 4].map((i) => (
-                                        <View key={i} className="items-center">
-                                            <SkeletonLoader width={75} height={75} borderRadius={38} />
-                                            <SkeletonLoader width={60} height={12} style={{ marginTop: 8 }} />
-                                        </View>
-                                    ))}
-                                </View>
-                            ) : (
-                                <FlatList
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-                                    data={categories.filter(c => c)}
-                                    keyExtractor={(item, index) => index.toString()}
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity className="items-center w-[75px]" onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
-                                            <View className="w-[75px] h-[75px] rounded-full bg-white justify-center items-center mb-2.5 border border-gray-100 shadow-sm">
-                                                {item.image ? <Image source={{ uri: item.image }} className="w-[52px] h-[52px]" resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
-                                            </View>
-                                            <Text className="text-xs font-bold text-gray-900 text-center leading-tight" numberOfLines={2}>{item.name}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                />
-                            )}
-                        </View>
-
-                        {/* Recent/Popular Products Section */}
-                        {products.length > 0 && (
-                            <View className="mb-8">
-                                <View className="flex-row justify-between items-center px-5 mb-4">
-                                    <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Top Picks for You</Text>
-                                    <TouchableOpacity onPress={() => router.push('/products/search')}>
-                                        <Text className="text-orange-500 font-bold text-sm">View All</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <FlatList
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
-                                    data={products.slice(0, 8)}
-                                    keyExtractor={(item) => `popular_${item.id}`}
-                                    renderItem={({ item }) => (
-                                        <View style={{ width: width * 0.44 }}>
-                                            <ProductCard product={item} onPress={() => handleProductPress(item)} />
-                                        </View>
-                                    )}
-                                />
-                            </View>
-                        )}
-
-                        {/* All Products Header */}
-                        <View className="px-5 mb-4">
-                            <Text className="text-xl font-extrabold text-gray-900 tracking-tight">All Products</Text>
-                        </View>
-                    </View>
-                )}
+                ListHeaderComponent={renderHeader}
                 renderItem={({ item }) => (
                     <View className="flex-1">
                         <ProductCard product={item} onPress={() => handleProductPress(item)} />
                     </View>
+                )}
+                onEndReached={loadMoreProducts}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={() => (
+                    isLoadingMore ? (
+                        <View className="py-6 items-center">
+                            <ActivityIndicator size="small" color={Colors.primary} />
+                        </View>
+                    ) : null
                 )}
             />
         </SafeAreaView>

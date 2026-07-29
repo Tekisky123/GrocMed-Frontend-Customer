@@ -2,6 +2,7 @@ import { Icon, Icons } from '@/components/ui/Icon';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { Address } from '@/types';
 import React, { useState } from 'react';
 import {
@@ -35,6 +36,7 @@ const labelStyle = {
 
 export default function AddressesScreen() {
     const { user, updateProfile } = useAuth();
+    const { showToast } = useToast();
     const [showAddForm, setShowAddForm] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState<Partial<Address>>({
@@ -47,7 +49,24 @@ export default function AddressesScreen() {
     });
 
     const handleSaveAddress = async () => {
-        if (!formData.street || !formData.city || !formData.state || !formData.zip) {
+        if (!formData.street?.trim()) {
+            showToast('Please enter your Street Address', 'error');
+            return;
+        }
+        if (!formData.city?.trim()) {
+            showToast('Please enter your City', 'error');
+            return;
+        }
+        if (!formData.state?.trim()) {
+            showToast('Please enter your State', 'error');
+            return;
+        }
+        if (!formData.zip?.trim()) {
+            showToast('Please enter your Pincode', 'error');
+            return;
+        }
+        if (formData.zip.trim().length !== 6) {
+            showToast('Pincode must be exactly 6 digits', 'error');
             return;
         }
 

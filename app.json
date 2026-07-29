@@ -59,6 +59,13 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#00B074"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow GrocMed to access your photos.",

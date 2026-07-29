@@ -41,15 +41,20 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
   count?: number;
+  total?: number;
+  page?: number;
+  totalPages?: number;
   errorDetails?: any;
 }
 
 // Product API functions
 export const productApi = {
   // Get all products (public)
-  async getAllProducts(): Promise<ApiResponse<Product[]>> {
+  async getAllProducts(page?: number, limit?: number): Promise<ApiResponse<Product[]>> {
     try {
-      const response = await axiosInstance.get<ApiResponse<Product[]>>('/product/getAllProducts');
+      const response = await axiosInstance.get<ApiResponse<Product[]>>('/product/getAllProducts', {
+        params: { page, limit }
+      });
       return response.data;
     } catch (error: any) {
       return {

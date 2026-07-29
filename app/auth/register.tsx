@@ -64,9 +64,51 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    // Basic validations - Aadhaar and Personal details are mandatory
-    if (!name || !email || !phone || !password || !shopName || !adhaar || !adhaarImage) {
-      showToast('Please fill all mandatory fields and upload Aadhaar', 'error');
+    // Robust granular validations
+    if (!name.trim()) {
+      showToast('Please enter your Full Name', 'error');
+      return;
+    }
+    if (!shopName.trim()) {
+      showToast('Please enter your Shop Name', 'error');
+      return;
+    }
+    if (!email.trim()) {
+      showToast('Please enter your Email Address', 'error');
+      return;
+    }
+    // Simple email regex validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showToast('Please enter a valid Email Address', 'error');
+      return;
+    }
+    if (!phone.trim()) {
+      showToast('Please enter your Phone Number', 'error');
+      return;
+    }
+    if (phone.trim().length !== 10) {
+      showToast('Phone Number must be exactly 10 digits', 'error');
+      return;
+    }
+    if (!adhaar.trim()) {
+      showToast('Please enter your Aadhaar Number', 'error');
+      return;
+    }
+    if (adhaar.trim().length !== 12) {
+      showToast('Aadhaar Number must be exactly 12 digits', 'error');
+      return;
+    }
+    if (!adhaarImage) {
+      showToast('Please upload your Aadhaar document', 'error');
+      return;
+    }
+    if (!password) {
+      showToast('Please create a Password', 'error');
+      return;
+    }
+    if (password.length < 6) {
+      showToast('Password must be at least 6 characters long', 'error');
       return;
     }
 
@@ -167,7 +209,7 @@ export default function RegisterScreen() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>Full Name *</Text>
             <TextInput
               style={styles.input}
               placeholder="John Doe"
@@ -178,7 +220,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Shop Name</Text>
+            <Text style={styles.label}>Shop Name *</Text>
             <TextInput
               style={styles.input}
               placeholder="GrocMed Store"
@@ -189,7 +231,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>Email Address *</Text>
             <TextInput
               style={styles.input}
               placeholder="john@example.com"
@@ -202,7 +244,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={styles.label}>Phone Number *</Text>
             <TextInput
               style={styles.input}
               placeholder="9876543210"
@@ -214,7 +256,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Aadhaar Number (Mandatory)</Text>
+            <Text style={styles.label}>Aadhaar Number *</Text>
             <TextInput
               style={styles.input}
               placeholder="12-digit Aadhaar"
@@ -244,7 +286,7 @@ export default function RegisterScreen() {
               onPress={() => pickImage('adhaar')}
             >
               <Icon name={adhaarImage ? "check-circle" : "file-upload"} size={20} color={adhaarImage ? Colors.success : Colors.primary} library="material" />
-              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar (Required)" : "Upload Aadhaar"}</Text>
+              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar (Required)" : "Upload Aadhaar *"}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -257,7 +299,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Password *</Text>
             <TextInput
               style={styles.input}
               placeholder="Create a strong password"

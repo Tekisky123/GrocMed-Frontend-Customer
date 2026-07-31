@@ -7,9 +7,28 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:740046456842:android:6e8b8e44f06c53ac4af7f3",
+        "mobilesdk_app_id": "1:740046456842:android:b55ad6a20c7e34474af7f3",
         "android_client_info": {
-          "package_name": "com.tekisky.grocmed.customer"
+          "package_name": "com.grocmed.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1IdzHExIzBhMbzVVk4klgJdkryRhekrk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:740046456842:android:83e02c7790d351634af7f3",
+        "android_client_info": {
+          "package_name": "com.grocmed.deliverypartner"
         }
       },
       "oauth_client": [],

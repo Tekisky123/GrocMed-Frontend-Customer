@@ -8,6 +8,8 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import * as ImagePicker from 'expo-image-picker';
+
 export default function EditProfileScreen() {
     const { user, updateProfile } = useAuth();
     const { showToast } = useToast();
@@ -17,7 +19,27 @@ export default function EditProfileScreen() {
     const [phone, setPhone] = useState(user?.phone || '');
     const [pan, setPan] = useState(user?.pan || '');
     const [adhaar, setAdhaar] = useState(user?.adhaar || '');
+    const [adhaarImage, setAdhaarImage] = useState<string | null>(null);
+    const [licenseImage, setLicenseImage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const pickImage = async (type: 'adhaar' | 'license') => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets[0].uri) {
+                if (type === 'adhaar') setAdhaarImage(result.assets[0].uri);
+                if (type === 'license') setLicenseImage(result.assets[0].uri);
+                showToast('Image attached successfully', 'success');
+            }
+        } catch (e) {
+            showToast('Failed to pick image', 'error');
+        }
+    };
 
     // Address State
     const [modalVisible, setModalVisible] = useState(false);
@@ -228,6 +250,29 @@ export default function EditProfileScreen() {
                                 maxLength={12}
                                 placeholderTextColor={Colors.textTertiary}
                             />
+                        </View>
+
+                        {/* Document Image Uploads */}
+                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                            <TouchableOpacity 
+                                style={[styles.docButton, adhaarImage && styles.docButtonActive]}
+                                onPress={() => pickImage('adhaar')}
+                            >
+                                <Icon name={adhaarImage ? "check-circle" : "file-upload"} size={18} color={adhaarImage ? Colors.success : Colors.primary} library="material" />
+                                <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>
+                                    {adhaarImage ? "Aadhaar Added" : "Upload Aadhaar Image"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.docButton, licenseImage && styles.docButtonActive]}
+                                onPress={() => pickImage('license')}
+                            >
+                                <Icon name={licenseImage ? "check-circle" : "file-upload"} size={18} color={licenseImage ? Colors.success : Colors.primary} library="material" />
+                                <Text style={[styles.docButtonText, licenseImage && styles.docButtonTextActive]}>
+                                    {licenseImage ? "License Added" : "Upload GST/License"}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -507,5 +552,30 @@ const styles = StyleSheet.create({
     },
     activeTypeText: {
         color: Colors.primary
-    }
+    },
+    docButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.surface,
+        borderWidth: 1.5,
+        borderColor: Colors.gray200,
+        borderRadius: 12,
+        paddingVertical: 14,
+        gap: 6,
+    },
+    docButtonActive: {
+        borderColor: Colors.success,
+        backgroundColor: Colors.success + '10',
+    },
+    docButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    docButtonTextActive: {
+        color: Colors.success,
+        fontWeight: '700',
+    },
 });

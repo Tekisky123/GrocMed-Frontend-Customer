@@ -91,16 +91,8 @@ export default function RegisterScreen() {
       showToast('Phone Number must be exactly 10 digits', 'error');
       return;
     }
-    if (!adhaar.trim()) {
-      showToast('Please enter your Aadhaar Number', 'error');
-      return;
-    }
-    if (adhaar.trim().length !== 12) {
+    if (adhaar.trim() && adhaar.trim().length !== 12) {
       showToast('Aadhaar Number must be exactly 12 digits', 'error');
-      return;
-    }
-    if (!adhaarImage) {
-      showToast('Please upload your Aadhaar document', 'error');
       return;
     }
     if (!password) {
@@ -121,7 +113,7 @@ export default function RegisterScreen() {
       formData.append('phone', phone);
       formData.append('password', password);
       formData.append('shopName', shopName);
-      formData.append('adhaar', adhaar);
+      if (adhaar.trim()) formData.append('adhaar', adhaar.trim());
       
       // Optional fields
       if (licenseNumber) formData.append('licenseNumber', licenseNumber);
@@ -256,7 +248,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Aadhaar Number *</Text>
+            <Text style={styles.label}>Aadhaar Number (Optional)</Text>
             <TextInput
               style={styles.input}
               placeholder="12-digit Aadhaar"
@@ -286,7 +278,7 @@ export default function RegisterScreen() {
               onPress={() => pickImage('adhaar')}
             >
               <Icon name={adhaarImage ? "check-circle" : "file-upload"} size={20} color={adhaarImage ? Colors.success : Colors.primary} library="material" />
-              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar (Required)" : "Upload Aadhaar *"}</Text>
+              <Text style={[styles.docButtonText, adhaarImage && styles.docButtonTextActive]}>{adhaarImage ? "Aadhaar (Added)" : "Upload Aadhaar (Opt)"}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 

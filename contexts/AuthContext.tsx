@@ -53,14 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           setUser(userData);
 
-          // Sync FCM Token quietly on load
-          const hasPermission = await requestUserPermission();
-          if (hasPermission) {
-            const fcmToken = await getFCMToken();
-            if (fcmToken) {
-              customerApi.updateFcmToken(fcmToken);
+          // Sync FCM Token asynchronously in background without blocking app startup
+          setTimeout(async () => {
+            try {
+              const hasPermission = await requestUserPermission();
+              if (hasPermission) {
+                const fcmToken = await getFCMToken();
+                if (fcmToken) {
+                  customerApi.updateFcmToken(fcmToken);
+                }
+              }
+            } catch (err) {
+              // Ignore background fcm error
             }
-          }
+          }, 100);
         } else {
           logout();
         }

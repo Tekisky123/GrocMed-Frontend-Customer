@@ -23,35 +23,40 @@ export default function OrderDetailsScreen() {
       const res = await orderApi.getOrderDetails(id as string);
       if (res.success && res.data) {
         const o = res.data;
+        const rawAddr = o.shippingAddress || o.address || o.deliveryAddress || {};
         const mappedOrder = {
           id: o._id || o.id,
           orderNumber: o.orderId || o._id?.slice(-6).toUpperCase() || 'UNKNOWN',
-          items: (o.items || []).map((i: any) => ({
-            id: i._id,
-            productId: i.product?._id || i._id,
-            product: {
-              name: i.name || i.product?.name || 'Product',
-              image: i.image || i.product?.image || '',
-            } as any,
-            quantity: i.quantity,
-            price: i.price,
-            total: (i.price * i.quantity)
-          })),
+          items: (o.items || []).map((i: any) => {
+            const img = i.image || i.product?.image || (Array.isArray(i.product?.images) ? i.product?.images[0] : '') || '';
+            const imgUrl = typeof img === 'string' ? img : img?.url || '';
+            return {
+              id: i._id || Math.random().toString(),
+              productId: i.product?._id || i.product || i._id,
+              product: {
+                name: i.name || i.product?.name || i.productName || 'Product Item',
+                image: imgUrl,
+              } as any,
+              quantity: i.quantity || 1,
+              price: i.price || 0,
+              total: (i.price || 0) * (i.quantity || 1)
+            };
+          }),
           status: o.orderStatus || o.status || 'Placed',
-          total: o.totalAmount,
-          subtotal: o.totalAmount,
-          deliveryFee: 0,
+          total: o.totalAmount || 0,
+          subtotal: o.totalAmount || 0,
+          deliveryFee: o.deliveryCharge || 0,
           discount: 0,
-          placedAt: o.createdAt,
-          shippingAddress: o.shippingAddress ? {
-            fullName: o.shippingAddress.fullName || '',
-            phoneNumber: o.shippingAddress.phoneNumber || '',
-            streetAddress: o.shippingAddress.street || o.shippingAddress.streetAddress || '',
-            city: o.shippingAddress.city || '',
-            state: o.shippingAddress.state || '',
-            postalCode: o.shippingAddress.zip || o.shippingAddress.postalCode || '',
-            country: o.shippingAddress.country || '',
-          } : undefined,
+          placedAt: o.createdAt || new Date().toISOString(),
+          shippingAddress: {
+            fullName: rawAddr.fullName || rawAddr.name || o.customer?.name || 'Customer',
+            phoneNumber: rawAddr.phoneNumber || rawAddr.phone || o.customer?.phone || '',
+            streetAddress: rawAddr.street || rawAddr.streetAddress || rawAddr.address || 'Delivery Address',
+            city: rawAddr.city || 'Store Area',
+            state: rawAddr.state || '',
+            postalCode: rawAddr.zip || rawAddr.postalCode || rawAddr.pincode || '',
+            country: rawAddr.country || 'India',
+          },
           paymentMethod: o.paymentMethod || 'COD',
           paymentStatus: o.paymentStatus || 'Pending'
         };

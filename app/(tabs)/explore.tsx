@@ -182,15 +182,18 @@ export default function ExploreScreen() {
                         borderWidth: 1,
                         borderColor: Colors.gray100
                       }}>
-                        {category.image ? (
-                          <Image
-                            source={{ uri: category.image }}
-                            style={{ width: '60%', height: '60%' }}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <Icon name="category" size={32} color={Colors.primary} library="material" />
-                        )}
+                        {(() => {
+                          const catImgUrl = typeof category.image === 'string' && category.image.trim() ? category.image.trim() : (category.image as any)?.url || (category as any).imageUrl;
+                          return catImgUrl ? (
+                            <Image
+                              source={{ uri: catImgUrl }}
+                              style={{ width: '85%', height: '85%', borderRadius: 14 }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <Icon name="category" size={32} color={Colors.primary} library="material" />
+                          );
+                        })()}
                       </View>
                       <Text
                         style={{

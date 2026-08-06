@@ -627,7 +627,7 @@ export default function CheckoutScreen() {
                                     key={addr.id}
                                     style={[
                                         styles.pincodeRow, 
-                                        selectedAddressId === addr.id && { backgroundColor: '#FFF9F4', borderColor: Colors.primary, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10 }
+                                        selectedAddressId === addr.id && { backgroundColor: '#FFF9F4', borderColor: Colors.primary, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 12 }
                                     ]}
                                     onPress={() => {
                                         setSelectedAddressId(addr.id);
@@ -637,26 +637,55 @@ export default function CheckoutScreen() {
                                     <View style={{ flex: 1 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                             <View style={styles.badge}>
-                                                <Text style={styles.badgeText}>{addr.type}</Text>
+                                                <Text style={styles.badgeText}>{addr.type || 'Home'}</Text>
                                             </View>
                                             {addr.isDefault && <Text style={{ fontSize: 10, color: Colors.success, fontWeight: '800' }}>DEFAULT</Text>}
                                         </View>
-                                        <Text style={[styles.addressText, { fontSize: 14 }]} numberOfLines={2}>{addr.street}</Text>
+                                        <Text style={[styles.addressText, { fontSize: 14, fontWeight: '700', color: Colors.textPrimary }]} numberOfLines={2}>{addr.street}</Text>
                                         <Text style={styles.zipText}>{addr.city}, {addr.zip}</Text>
                                     </View>
-                                    {selectedAddressId === addr.id && <Icon name="check-circle" size={20} color={Colors.primary} library="material" />}
+
+                                    <View style={{
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        backgroundColor: selectedAddressId === addr.id ? Colors.primary : '#F3F4F6',
+                                        borderRadius: 10,
+                                        marginLeft: 10,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}>
+                                        <Text style={{ color: selectedAddressId === addr.id ? '#FFFFFF' : Colors.textPrimary, fontSize: 12, fontWeight: '800' }}>
+                                            {selectedAddressId === addr.id ? 'Selected' : 'Use Address'}
+                                        </Text>
+                                    </View>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
 
                         <TouchableOpacity 
-                            style={[styles.btnPrimary, { marginTop: 16, width: '100%', height: 50, justifyContent: 'center' }]}
+                            style={{
+                                marginTop: 16,
+                                width: '100%',
+                                height: 50,
+                                backgroundColor: Colors.primary,
+                                borderRadius: 14,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                shadowColor: Colors.primary,
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 8,
+                                elevation: 4
+                            }}
                             onPress={() => {
                                 setShowAddressModal(false);
                                 setIsAddingAddress(true);
                             }}
+                            activeOpacity={0.8}
                         >
-                            <Text style={styles.btnPrimaryText}>+ Add New Address</Text>
+                            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800', textAlign: 'center' }}>
+                                + Add New Address
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

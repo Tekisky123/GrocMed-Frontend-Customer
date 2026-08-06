@@ -54,17 +54,21 @@ export default function OrdersScreen() {
         const mappedOrders = res.data.map((o: any) => ({
           id: o._id || o.id,
           orderNumber: o.orderId || o._id?.slice(-6).toUpperCase() || 'UNKNOWN',
-          items: (o.items || []).map((i: any) => ({
-            id: i._id,
-            name: i.name || i.product?.name || 'Product',
-            image: i.image || i.product?.image,
-            quantity: i.quantity,
-            price: i.price,
-          })),
+          items: (o.items || []).map((i: any) => {
+            const img = i.image || i.product?.image || (Array.isArray(i.product?.images) ? i.product?.images[0] : '') || '';
+            const imgUrl = typeof img === 'string' ? img : img?.url || '';
+            return {
+              id: i._id || Math.random().toString(),
+              name: i.name || i.product?.name || i.productName || 'Product',
+              image: imgUrl,
+              quantity: i.quantity || 1,
+              price: i.price || 0,
+            };
+          }),
           status: o.orderStatus || o.status || 'Placed',
           total: o.totalAmount || 0,
-          placedAt: o.createdAt,
-          shippingAddress: o.shippingAddress,
+          placedAt: o.createdAt || new Date().toISOString(),
+          shippingAddress: o.shippingAddress || o.address || o.deliveryAddress,
         }));
         setOrders(mappedOrders.reverse());
       }

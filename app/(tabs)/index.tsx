@@ -324,15 +324,22 @@ export default function HomeScreen() {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
                             data={categories.filter(c => c)}
-                            keyExtractor={(item, index) => index.toString()}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity className="items-center w-[75px]" onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
-                                    <View className="w-[75px] h-[75px] rounded-full bg-white justify-center items-center mb-2.5 border border-gray-100 shadow-sm">
-                                        {item.image ? <Image source={{ uri: item.image }} className="w-[52px] h-[52px]" resizeMode="contain" /> : <Icon name="category" size={34} color={Colors.primary} library="material" />}
-                                    </View>
-                                    <Text className="text-xs font-bold text-gray-900 text-center leading-tight" numberOfLines={2}>{item.name}</Text>
-                                </TouchableOpacity>
-                            )}
+                            keyExtractor={(item, index) => item.name || index.toString()}
+                            renderItem={({ item }) => {
+                                const catImgUrl = typeof item.image === 'string' && item.image.trim() ? item.image.trim() : (item.image as any)?.url || (item as any).imageUrl;
+                                return (
+                                    <TouchableOpacity className="items-center w-[75px]" onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
+                                        <View className="w-[75px] h-[75px] rounded-full bg-white justify-center items-center mb-2.5 border border-gray-100 shadow-sm overflow-hidden p-1">
+                                            {catImgUrl ? (
+                                                <Image source={{ uri: catImgUrl }} className="w-full h-full rounded-full" resizeMode="cover" />
+                                            ) : (
+                                                <Icon name="category" size={34} color={Colors.primary} library="material" />
+                                            )}
+                                        </View>
+                                        <Text className="text-xs font-bold text-gray-900 text-center leading-tight" numberOfLines={2}>{item.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
                     )}
                 </View>

@@ -102,6 +102,7 @@ export interface Cart {
   discount: number;
   total: number;
   couponCode?: string;
+  minOrderValue?: number;
 }
 
 export interface Address {

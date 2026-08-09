@@ -7,8 +7,11 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { mapApiProductToUiProduct } from '@/utils/productHelper';
 
+import { settingApi, SystemSettings } from '@/api/settingApi';
+
 interface CartContextType {
   cart: Cart;
+  settings: SystemSettings;
   addToCart: (product: Product, quantity: number, packagingOptionId?: string) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -22,18 +25,26 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const DELIVERY_FEE = 0;
+const DEFAULT_SETTINGS: SystemSettings = {
+  minOrderValue: 1000,
+  freeDeliveryThreshold: 1500,
+  deliveryCharge: 30,
+  maxOrdersPerDay: 50,
+  maxOrdersPerSlot: 20,
+};
 
 const emptyCart: Cart = {
   items: [],
   subtotal: 0,
-  deliveryFee: DELIVERY_FEE,
+  deliveryFee: 0,
   discount: 0,
   total: 0,
+  minOrderValue: 1000,
 };
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart>(emptyCart);
+  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
 
   const apiTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingDiffs = useRef<Map<string, number>>(new Map());
@@ -42,22 +53,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
 
+  const fetchSystemSettings = useCallback(async () => {
+    try {
+      const res = await settingApi.getSettings();
+      if (res.success && res.data && isMounted.current) {
+        setSettings(res.data);
+        return res.data;
+      }
+    } catch (e) {
+      console.error('fetchSystemSettings error:', e);
+    }
+    return null;
+  }, []);
+
   useEffect(() => {
     isMounted.current = true;
+    fetchSystemSettings();
     return () => {
       isMounted.current = false;
       apiTimers.current.forEach(t => clearTimeout(t));
       apiTimers.current.clear();
     };
-  }, []);
+  }, [fetchSystemSettings]);
 
   // Stable helper to build cart from items
-  const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string): Cart => {
+  const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string, currentSettings?: SystemSettings): Cart => {
+    const activeSettings = currentSettings || settings;
     const subtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
-    const deliveryFee = (subtotal >= 1000 || subtotal === 0) ? 0 : 50;
+    const freeThreshold = activeSettings?.freeDeliveryThreshold ?? 1500;
+    const delCharge = activeSettings?.deliveryCharge ?? 30;
+    const minOrder = activeSettings?.minOrderValue ?? 1000;
+    const deliveryFee = (subtotal >= freeThreshold || subtotal === 0) ? 0 : delCharge;
     const total = subtotal + deliveryFee - discount;
-    return { items, subtotal, deliveryFee, discount, total, couponCode };
-  }, []);
+    return { items, subtotal, deliveryFee, discount, total, couponCode, minOrderValue: minOrder };
+  }, [settings]);
 
   // Stable fetchServerCart
   const fetchServerCart = useCallback(async () => {
@@ -343,6 +372,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider
       value={{
         cart,
+        settings,
         addToCart,
         removeFromCart,
         updateQuantity,

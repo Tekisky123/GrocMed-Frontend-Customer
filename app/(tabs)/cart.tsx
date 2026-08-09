@@ -2,15 +2,21 @@ import { Icon } from '@/components/ui/Icon';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Colors } from '@/constants/colors';
 import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/contexts/ToastContext';
 import { router } from 'expo-router';
 import React from 'react';
 import { Animated, FlatList, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CartScreen() {
-  const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { cart, settings, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { showToast } = useToast();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+
+  const minOrderValue = cart.minOrderValue ?? settings?.minOrderValue ?? 1000;
+  const isBelowMinOrder = cart.subtotal < minOrderValue;
+  const minOrderShortfall = Math.max(0, minOrderValue - cart.subtotal);
 
   const totalGST = cart.items.reduce((sum, item) => {
     const gstRate = item.product?.gstRate || 0;
@@ -28,6 +34,17 @@ export default function CartScreen() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  const handleCheckoutPress = () => {
+    if (isBelowMinOrder) {
+      showToast(
+        `Minimum order amount is ₹${minOrderValue}. Please add ₹${minOrderShortfall} more to proceed.`,
+        'info'
+      );
+      return;
+    }
+    router.push('/checkout');
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -157,6 +174,21 @@ export default function CartScreen() {
                       <Text className="text-[22px] font-extrabold text-orange-500">₹{cart.total}</Text>
                     </View>
                   </View>
+
+                  {/* Minimum Order Warning Banner */}
+                  {isBelowMinOrder && (
+                    <View className="mt-4 bg-amber-50 border border-amber-200/80 rounded-[20px] p-4 flex-row items-center shadow-sm">
+                      <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center mr-3">
+                        <Icon name="error-outline" size={22} color="#D97706" library="material" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-amber-900 font-extrabold text-[14px]">Minimum Order Requirement</Text>
+                        <Text className="text-amber-700 text-[13px] mt-0.5 font-medium leading-snug">
+                          Minimum order is ₹{minOrderValue}. Add items worth <Text className="font-extrabold text-amber-950">₹{minOrderShortfall}</Text> more to checkout.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
                 <View className="flex-row items-center justify-center mt-6 opacity-60">
                   <Icon name="verified-user" size={14} color={Colors.textSecondary} library="material" />
@@ -172,17 +204,19 @@ export default function CartScreen() {
             style={{ paddingBottom: Math.max(insets.bottom, 24) }}
           >
             <TouchableOpacity
-              onPress={() => router.push('/checkout')}
-              className="bg-orange-500 flex-row items-center justify-between py-[18px] px-6 rounded-[20px] shadow-sm shadow-orange-500/30"
+              onPress={handleCheckoutPress}
+              className={`${isBelowMinOrder ? 'bg-amber-600' : 'bg-orange-500'} flex-row items-center justify-between py-[18px] px-6 rounded-[20px] shadow-sm ${isBelowMinOrder ? 'shadow-amber-600/30' : 'shadow-orange-500/30'}`}
               activeOpacity={0.85}
             >
               <View>
                 <Text className="text-white/80 text-[11px] font-semibold tracking-wider uppercase">TOTAL</Text>
                 <Text className="text-white text-lg font-extrabold">₹{cart.total}</Text>
               </View>
-              <View className="flex-row items-center bg-black/10 px-4 py-2 rounded-xl">
-                <Text className="text-white text-[15px] font-bold mr-2">Checkout</Text>
-                <Icon name="arrow-forward" size={18} color="#fff" library="material" />
+              <View className="flex-row items-center bg-black/15 px-4 py-2 rounded-xl">
+                <Text className="text-white text-[14px] font-bold mr-2">
+                  {isBelowMinOrder ? `Add ₹${minOrderShortfall} More` : 'Checkout'}
+                </Text>
+                <Icon name={isBelowMinOrder ? 'add-shopping-cart' : 'arrow-forward'} size={18} color="#fff" library="material" />
               </View>
             </TouchableOpacity>
           </View>

@@ -38,9 +38,13 @@ const getLocalDateString = (date: Date) => {
 };
 
 export default function CheckoutScreen() {
-    const { cart, clearCart } = useCart();
+    const { cart, settings, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
     const { showToast } = useToast();
+
+    const minOrderValue = cart.minOrderValue ?? settings?.minOrderValue ?? 1000;
+    const isBelowMinOrder = cart.subtotal < minOrderValue;
+    const minOrderShortfall = Math.max(0, minOrderValue - cart.subtotal);
 
     // State
     const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -195,6 +199,10 @@ export default function CheckoutScreen() {
     };
 
     const handlePlaceOrder = async () => {
+        if (isBelowMinOrder) {
+            return showToast(`Minimum order amount is ₹${minOrderValue}. Please add ₹${minOrderShortfall} more to place order.`, 'error');
+        }
+
         const addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
         if (!addressObject) return showToast('Please select a delivery address', 'info');
 
@@ -555,6 +563,27 @@ export default function CheckoutScreen() {
                             <Text style={styles.billTotalLabel}>Grand Total</Text>
                             <Text style={styles.billTotalValue}>₹{cart.total}</Text>
                         </View>
+
+                        {isBelowMinOrder && (
+                            <View style={{
+                                marginTop: 12,
+                                backgroundColor: '#FFFBEB',
+                                borderColor: '#FDE68A',
+                                borderWidth: 1,
+                                borderRadius: 16,
+                                padding: 14,
+                                flexDirection: 'row',
+                                alignItems: 'center'
+                            }}>
+                                <Icon name="error-outline" size={20} color="#D97706" library="material" />
+                                <View style={{ marginLeft: 10, flex: 1 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>Minimum Order Requirement</Text>
+                                    <Text style={{ fontSize: 12, color: '#B45309', marginTop: 2, fontWeight: '500' }}>
+                                        Minimum order amount is ₹{minOrderValue}. Add ₹{minOrderShortfall} more to place order.
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
                     </View>
 
                     {/* Payment Method */}
@@ -595,7 +624,7 @@ export default function CheckoutScreen() {
                     <Text style={styles.totalPrice}>₹{cart.total}</Text>
                 </View>
                 <TouchableOpacity 
-                    style={[styles.placeOrderBtn, loading && styles.btnDisabled]}
+                    style={[styles.placeOrderBtn, (loading || isBelowMinOrder) && { backgroundColor: '#D1D5DB' }]}
                     onPress={handlePlaceOrder}
                     disabled={loading}
                 >
@@ -603,8 +632,10 @@ export default function CheckoutScreen() {
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <>
-                            <Text style={styles.placeOrderText}>PLACE ORDER</Text>
-                            <Icon name="chevron-right" size={20} color="#fff" library="material" />
+                            <Text style={styles.placeOrderText}>
+                                {isBelowMinOrder ? `ADD ₹${minOrderShortfall} MORE` : 'PLACE ORDER'}
+                            </Text>
+                            <Icon name={isBelowMinOrder ? 'add-shopping-cart' : 'chevron-right'} size={20} color="#fff" library="material" />
                         </>
                     )}
                 </TouchableOpacity>

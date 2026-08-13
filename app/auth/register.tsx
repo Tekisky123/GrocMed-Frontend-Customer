@@ -119,7 +119,8 @@ export default function RegisterScreen() {
       if (licenseNumber) formData.append('licenseNumber', licenseNumber);
 
       // Helper to append file correctly for Web vs Mobile
-      const appendFile = async (fieldName: string, uri: string, defaultName: string) => {
+      const appendFile = async (fieldName: string, uri: string | null, defaultName: string) => {
+        if (!uri) return;
         if (Platform.OS === 'web') {
           console.log(`[Register] Processing file upload for Web field [${fieldName}]...`);
           try {
@@ -151,8 +152,10 @@ export default function RegisterScreen() {
         }
       };
 
-      // Append files asynchronously
-      await appendFile('adhaarImage', adhaarImage, 'adhaar.jpg');
+      // Append files asynchronously if selected
+      if (adhaarImage) {
+        await appendFile('adhaarImage', adhaarImage, 'adhaar.jpg');
+      }
       if (licenseImage) {
         await appendFile('licenseImage', licenseImage, 'license.jpg');
       }
@@ -170,8 +173,8 @@ export default function RegisterScreen() {
       const res = await register(formData);
       console.log('[Register] Received registration response:', res);
       if (res.success) {
-        showToast('Registration successful! Please login.', 'success');
-        router.replace('/auth/login');
+        showToast('Registration successful! Welcome to GrocMed.', 'success');
+        router.replace('/(tabs)');
       } else {
         showToast(res.message || 'Registration failed', 'error');
       }

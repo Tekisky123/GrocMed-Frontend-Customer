@@ -18,16 +18,7 @@ export const ProductCard = React.memo(
     const isStoreClosed = settings?.storeStatus && !settings.storeStatus.isOpen;
     const startAnimation = useCartAnimation()?.startAnimation || (() => {});
     const scaleAnim = React.useRef(new Animated.Value(1)).current;
-    const fadeAnim = React.useRef(new Animated.Value(0)).current;
     const imageRef = React.useRef<View>(null);
-
-    React.useEffect(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }, []);
 
     const [isAdding, setIsAdding] = React.useState(false);
 
@@ -65,7 +56,7 @@ export const ProductCard = React.memo(
 
     if (variant === 'horizontal') {
       return (
-        <Animated.View style={{ opacity: fadeAnim }} className="w-full">
+        <View className="w-full">
           <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.85}
@@ -146,13 +137,13 @@ export const ProductCard = React.memo(
               </View>
             </View>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       );
     }
 
     // Vertical variant (default)
     return (
-      <Animated.View style={{ opacity: fadeAnim }} className="w-full flex-1">
+      <View className="w-full flex-1">
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
@@ -244,7 +235,7 @@ export const ProductCard = React.memo(
             </Animated.View>
           </View>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   }
 );

@@ -354,6 +354,10 @@ export default function HomeScreen() {
                             contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                             data={products.slice(0, 8)}
                             keyExtractor={(item) => `popular_${item.id}`}
+                            initialNumToRender={4}
+                            maxToRenderPerBatch={4}
+                            windowSize={3}
+                            removeClippedSubviews={true}
                             renderItem={({ item }) => (
                                 <View style={{ width: width * 0.44 }}>
                                     <ProductCard product={item} onPress={() => handleProductPress(item)} />
@@ -370,6 +374,12 @@ export default function HomeScreen() {
             </View>
         );
     }, [banners, loading, refreshing, categories, products]);
+
+    const renderProductItem = useCallback(({ item }: { item: Product }) => (
+        <View className="flex-1">
+            <ProductCard product={item} onPress={() => handleProductPress(item)} />
+        </View>
+    ), [handleProductPress]);
 
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -410,10 +420,11 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
-                initialNumToRender={6}
-                maxToRenderPerBatch={4}
-                windowSize={5}
-                removeClippedSubviews={Platform.OS === 'android'}
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                windowSize={3}
+                updateCellsBatchingPeriod={50}
+                removeClippedSubviews={true}
                 columnWrapperStyle={{ paddingHorizontal: 20, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
@@ -438,11 +449,7 @@ export default function HomeScreen() {
                     </View>
                 ) : null}
                 ListHeaderComponent={renderHeader}
-                renderItem={({ item }) => (
-                    <View className="flex-1">
-                        <ProductCard product={item} onPress={() => handleProductPress(item)} />
-                    </View>
-                )}
+                renderItem={renderProductItem}
                 onEndReached={loadMoreProducts}
                 onEndReachedThreshold={0.3}
                 ListFooterComponent={() => (

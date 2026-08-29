@@ -17,6 +17,13 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { setupNotificationListeners } from '@/utils/notificationHelper';
 import { StickyCartBar } from '@/components/ui/StickyCartBar';
+import { StoreStatusModal } from '@/components/StoreStatusModal';
+import { useCart } from '@/contexts/CartContext';
+
+function GlobalStoreStatusModal() {
+  const { settings } = useCart();
+  return <StoreStatusModal storeStatus={settings?.storeStatus} />;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -72,6 +79,7 @@ export default function RootLayout() {
                 <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: true }} />
                 <StatusBar hidden />
                 <StickyCartBar />
+                <GlobalStoreStatusModal />
               </ThemeProvider>
             </CartProvider>
           </CartAnimationProvider>

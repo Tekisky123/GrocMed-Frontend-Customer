@@ -2,7 +2,9 @@ import { Category, categoryApi } from '@/api/categoryApi';
 import { Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { StoreStatusBanner } from '@/components/StoreStatusBanner';
 import { Colors } from '@/constants/colors';
+import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types';
 import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 import { router } from 'expo-router';
@@ -14,6 +16,7 @@ const SECTION_PADDING = 20;
 const ITEM_SPACING = 12;
 
 export default function SearchScreen() {
+  const { settings } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -115,7 +118,7 @@ export default function SearchScreen() {
                       marginRight: 10,
                       paddingHorizontal: 18,
                       paddingVertical: 8,
-                      borderRadius: 25,
+                      borderRadius: 5,
                       backgroundColor: isSelected ? Colors.primary : Colors.surface,
                       borderWidth: 1,
                       borderColor: isSelected ? Colors.primary : Colors.border,
@@ -223,10 +226,6 @@ export default function SearchScreen() {
         paddingHorizontal: 20,
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
         zIndex: 1000,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -235,17 +234,13 @@ export default function SearchScreen() {
             activeOpacity={0.7}
             style={{
               backgroundColor: Colors.surface,
-              borderRadius: 12,
+              borderRadius: 5,
               width: 44,
               height: 44,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
               borderColor: Colors.border,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
             }}
           >
             <Icon name={Icons.back.name} size={24} color={Colors.textPrimary} library={Icons.back.library} />
@@ -253,17 +248,13 @@ export default function SearchScreen() {
           <View style={{
             flex: 1,
             backgroundColor: Colors.surface,
-            borderRadius: 12,
+            borderRadius: 5,
             paddingHorizontal: 14,
             height: 44,
             flexDirection: 'row',
             alignItems: 'center',
             borderWidth: 1,
             borderColor: Colors.border,
-            shadowColor: Colors.shadow,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
           }}>
             <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
             <TextInput
@@ -291,6 +282,8 @@ export default function SearchScreen() {
           </View>
         </View>
       </View>
+
+      <StoreStatusBanner storeStatus={settings?.storeStatus} />
 
       <FlatList
         data={products}

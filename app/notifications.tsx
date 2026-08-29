@@ -76,7 +76,7 @@ export default function NotificationsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity
               onPress={() => testLocalNotification()}
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 }}
             >
               <Text style={{ color: Colors.textWhite, fontSize: 12, fontWeight: '600' }}>Test Push</Text>
             </TouchableOpacity>
@@ -84,7 +84,7 @@ export default function NotificationsScreen() {
             {unreadCount > 0 && (
               <View style={{
                 backgroundColor: Colors.error,
-                borderRadius: 12,
+                borderRadius: 5,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderWidth: 2,
@@ -113,7 +113,7 @@ export default function NotificationsScreen() {
             >
               <View style={{
                 backgroundColor: `${Colors.info}15`,
-                borderRadius: 80,
+                borderRadius: 5,
                 padding: 36,
                 marginBottom: 28,
                 borderWidth: 3,
@@ -168,7 +168,7 @@ export default function NotificationsScreen() {
                       <View style={{
                         width: 56,
                         height: 56,
-                        borderRadius: 28,
+                        borderRadius: 5,
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginRight: 16,

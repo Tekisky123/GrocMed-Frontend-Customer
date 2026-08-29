@@ -28,26 +28,26 @@ export function PageHeader({
   
   return (
     <View 
-      className="bg-white px-5 pb-4 border-b border-gray-100"
-      style={[{ paddingTop: Math.max(insets.top + 10, Platform.OS === 'ios' ? 54 : 34) }, style]}
+      className="bg-white px-5 pb-3 border-b border-gray-100"
+      style={[{ paddingTop: Math.max(insets.top + 4, Platform.OS === 'ios' ? 44 : 20) }, style]}
     >
-      <View className="flex-row items-center min-h-[60px] gap-3">
+      <View className="flex-row items-center min-h-[44px] gap-3">
         {showBackButton && (
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
-            className="w-10 h-10 items-center justify-center rounded-full bg-gray-50"
+            className="w-9 h-9 items-center justify-center rounded-[5px] bg-gray-50"
           >
             <Icon
               name={Icons.back.name}
-              size={24}
+              size={22}
               color={Colors.textPrimary}
               library={Icons.back.library}
             />
           </TouchableOpacity>
         )}
         <View className="flex-1 justify-center">
-          <Text className="text-2xl font-bold text-gray-900 tracking-tight leading-7">
+          <Text className="text-xl font-bold text-gray-900 tracking-tight leading-6">
             {title}
           </Text>
           {subtitle && (
@@ -63,7 +63,7 @@ export function PageHeader({
         ) : showCart ? (
           <TouchableOpacity
             onPress={() => router.push('/(tabs)/cart')}
-            className="w-12 h-12 items-center justify-center rounded-2xl bg-gray-50 border border-gray-200"
+            className="w-12 h-12 items-center justify-center rounded-[5px] bg-gray-50 border border-gray-200"
           >
             <Icon
               name="shopping-cart"

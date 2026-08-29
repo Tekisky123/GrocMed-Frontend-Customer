@@ -102,21 +102,17 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.textWhite,
-    borderRadius: 16,
+    borderRadius: 5,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.gray200,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 5,
-    // elevation: 2
   },
   iconBox: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16
@@ -145,7 +141,7 @@ const styles = StyleSheet.create({
   },
   faqItem: {
     backgroundColor: Colors.textWhite,
-    borderRadius: 12,
+    borderRadius: 5,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',

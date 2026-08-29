@@ -2,8 +2,11 @@ import axiosInstance from './axiosInstance';
 import { ApiResponse, Product } from './productApi';
 
 export interface Category {
+    _id?: string;
+    id?: string;
     name: string;
     image: string;
+    icon?: string;
     productCount: number;
 }
 

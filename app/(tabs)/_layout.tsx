@@ -1,37 +1,29 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, Text } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarInactiveTintColor: Colors.neutralLight,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: Colors.textWhite,
-          borderTopColor: Colors.gray200,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E2E8F0',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 90 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
-          paddingTop: 10,
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          // elevation: 8,
+          height: Platform.OS === 'ios' ? 88 : 66,
+          paddingBottom: Platform.OS === 'ios' ? 26 : 8,
+          paddingTop: 6,
         },
-        tabBarShowLabel: false, // We'll use custom labels
-        tabBarIconStyle: {
-          marginTop: 4,
+        tabBarShowLabel: true,
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
       }}>
       <Tabs.Screen
@@ -39,20 +31,22 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={Icons.home.name}
-              size={focused ? 26 : 24}
-              color={color}
-              library={Icons.home.library}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon
+                name={focused ? "home" : "home-outline"}
+                size={22}
+                color={focused ? Colors.primary : "#94A3B8"}
+                library="ionicons"
+              />
+            </View>
           ),
           tabBarLabel: ({ color, focused }) => (
             <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '500',
-              color: color,
-              marginTop: 4,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: focused ? '800' : '600',
+              color: focused ? Colors.primary : '#94A3B8',
+              marginTop: 2,
+              letterSpacing: 0.1,
             }}>
               Home
             </Text>
@@ -64,20 +58,22 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={Icons.search.name}
-              size={focused ? 26 : 24}
-              color={color}
-              library={Icons.search.library}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon
+                name={focused ? "search" : "search-outline"}
+                size={22}
+                color={focused ? Colors.primary : "#94A3B8"}
+                library="ionicons"
+              />
+            </View>
           ),
           tabBarLabel: ({ color, focused }) => (
             <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '500',
-              color: color,
-              marginTop: 4,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: focused ? '800' : '600',
+              color: focused ? Colors.primary : '#94A3B8',
+              marginTop: 2,
+              letterSpacing: 0.1,
             }}>
               Explore
             </Text>
@@ -87,7 +83,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          href: null, // Hide from tab bar
+          href: null, // Hidden tab route
         }}
       />
       <Tabs.Screen
@@ -95,20 +91,22 @@ export default function TabLayout() {
         options={{
           title: 'Orders',
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={Icons.orders.name}
-              size={focused ? 26 : 24}
-              color={color}
-              library={Icons.orders.library}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon
+                name={focused ? "receipt" : "receipt-outline"}
+                size={22}
+                color={focused ? Colors.primary : "#94A3B8"}
+                library="ionicons"
+              />
+            </View>
           ),
           tabBarLabel: ({ color, focused }) => (
             <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '500',
-              color: color,
-              marginTop: 4,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: focused ? '800' : '600',
+              color: focused ? Colors.primary : '#94A3B8',
+              marginTop: 2,
+              letterSpacing: 0.1,
             }}>
               Orders
             </Text>
@@ -120,20 +118,22 @@ export default function TabLayout() {
         options={{
           title: 'Inbox',
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={Icons.notifications.name}
-              size={focused ? 26 : 24}
-              color={color}
-              library={Icons.notifications.library}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon
+                name={focused ? "notifications" : "notifications-outline"}
+                size={22}
+                color={focused ? Colors.primary : "#94A3B8"}
+                library="ionicons"
+              />
+            </View>
           ),
           tabBarLabel: ({ color, focused }) => (
             <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '500',
-              color: color,
-              marginTop: 4,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: focused ? '800' : '600',
+              color: focused ? Colors.primary : '#94A3B8',
+              marginTop: 2,
+              letterSpacing: 0.1,
             }}>
               Inbox
             </Text>
@@ -145,20 +145,22 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Icon
-              name={Icons.profile.name}
-              size={focused ? 26 : 24}
-              color={color}
-              library={Icons.profile.library}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Icon
+                name={focused ? "person" : "person-outline"}
+                size={22}
+                color={focused ? Colors.primary : "#94A3B8"}
+                library="ionicons"
+              />
+            </View>
           ),
           tabBarLabel: ({ color, focused }) => (
             <Text style={{
-              fontSize: 12,
-              fontWeight: focused ? '700' : '500',
-              color: color,
-              marginTop: 4,
-              letterSpacing: 0.2,
+              fontSize: 11,
+              fontWeight: focused ? '800' : '600',
+              color: focused ? Colors.primary : '#94A3B8',
+              marginTop: 2,
+              letterSpacing: 0.1,
             }}>
               Profile
             </Text>

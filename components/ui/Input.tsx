@@ -48,7 +48,7 @@ export function Input({
             backgroundColor: Colors.gray50,
             borderWidth: error ? 1.5 : 1,
             borderColor: error ? Colors.error : Colors.gray200,
-            borderRadius: 16,
+            borderRadius: 5,
             paddingHorizontal: leftIcon ? 52 : 18,
             paddingRight: rightIcon ? 52 : 18,
             paddingVertical: 16,

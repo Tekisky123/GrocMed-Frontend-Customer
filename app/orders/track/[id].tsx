@@ -72,7 +72,7 @@ export default function OrderTrackingScreen() {
                     <Text style={{ color: Colors.textSecondary }}>Arriving soon</Text>
                 </View>
 
-                <View style={{ backgroundColor: Colors.textWhite, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: Colors.gray200 }}>
+                <View style={{ backgroundColor: Colors.textWhite, borderRadius: 5, padding: 20, borderWidth: 1, borderColor: Colors.gray200 }}>
                     {steps.map((step, index) => {
                         // Determine state of this step
                         // Simple logic: if index <= step found in history or based on currentStatus priority
@@ -93,7 +93,7 @@ export default function OrderTrackingScreen() {
                                     <View style={{
                                         width: 32,
                                         height: 32,
-                                        borderRadius: 16,
+                                        borderRadius: 5,
                                         backgroundColor: isCompleted ? Colors.primary : Colors.gray200,
                                         alignItems: 'center',
                                         justifyContent: 'center',

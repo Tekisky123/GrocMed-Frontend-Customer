@@ -2,6 +2,8 @@ import { Category, categoryApi } from '@/api/categoryApi';
 import { Product as ApiProduct, productApi } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { CategoryTile } from '@/components/ui/CategoryTile';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Colors } from '@/constants/colors';
 import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { useCart } from '@/contexts/CartContext';
@@ -17,6 +19,8 @@ import { customerApi } from '@/api/customerApi';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { StoreStatusBanner } from '@/components/StoreStatusBanner';
+
 
 const { width } = Dimensions.get('window');
 
@@ -99,6 +103,7 @@ const HomeBanners = React.memo(({ banners, loading, refreshing, router }: { bann
                         key={banner._id || banner.id} 
                         style={{ 
                             width: BANNER_WIDTH,
+                            paddingHorizontal: 16,
                         }}
                     >
                         <TouchableOpacity 
@@ -108,6 +113,7 @@ const HomeBanners = React.memo(({ banners, loading, refreshing, router }: { bann
                                 height: BANNER_HEIGHT, 
                                 backgroundColor: banner.color || Colors.primary, 
                                 overflow: 'hidden',
+                                borderRadius: 5,
                             }}
                         >
                             {/* Background Image */}
@@ -154,11 +160,6 @@ const HomeBanners = React.memo(({ banners, loading, refreshing, router }: { bann
                     </View>
                 ))}
             </ScrollView>
-            <View style={{ position: 'absolute', bottom: 25, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
-                {items.map((_, index) => (
-                    <View key={index} style={{ height: 4, width: index === currentBanner ? 20 : 6, borderRadius: 2, backgroundColor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)' }} />
-                ))}
-            </View>
         </View>
     );
 });
@@ -177,9 +178,10 @@ export default function HomeScreen() {
     const [totalPages, setTotalPages] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
  
-    const { getItemCount, refreshCart } = useCart();
+    const { getItemCount, refreshCart, refreshSettings, settings } = useCart();
     const { setCartIconPosition } = useCartAnimation();
     const { isAuthenticated, user } = useAuth();
+
 
     const loadUnreadCount = useCallback(async () => {
         if (!isAuthenticated) {
@@ -208,7 +210,8 @@ export default function HomeScreen() {
         useCallback(() => {
             loadUnreadCount();
             refreshCart();
-        }, [loadUnreadCount, refreshCart])
+            refreshSettings();
+        }, [loadUnreadCount, refreshCart, refreshSettings])
     );
 
     const loadData = useCallback(async () => {
@@ -271,6 +274,7 @@ export default function HomeScreen() {
     const onRefresh = () => {
         setRefreshing(true);
         loadData();
+        refreshSettings();
     };
 
     const handleProductPress = (product: Product) => {
@@ -300,63 +304,54 @@ export default function HomeScreen() {
                     router={router} 
                 />
 
-                {/* Categories Section */}
+                {/* Categories Section - Displaying All Categories */}
                 <View className="mb-6">
-                    <View className="flex-row justify-between items-center px-5 mb-4">
-                        <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Shop by Category</Text>
-                        <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-                            <Text className="text-orange-500 font-bold text-sm">See All</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <SectionHeader 
+                        title="Shop by Category" 
+                        actionText="See All" 
+                        onActionPress={() => router.push('/categories')} 
+                    />
 
                     {loading && !refreshing ? (
-                        <View className="flex-row px-5 gap-3.5">
-                            {[1, 2, 3, 4].map((i) => (
+                        <View className="flex-row px-4 gap-1.5">
+                            {[1, 2, 3, 4, 5].map((i) => (
                                 <View key={i} className="items-center">
-                                    <SkeletonLoader width={75} height={75} borderRadius={38} />
-                                    <SkeletonLoader width={60} height={12} style={{ marginTop: 8 }} />
+                                    <SkeletonLoader width={58} height={58} borderRadius={5} />
+                                    <SkeletonLoader width={50} height={10} style={{ marginTop: 6 }} />
                                 </View>
                             ))}
                         </View>
                     ) : (
-                        <FlatList
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-                            data={categories.filter(c => c)}
-                            keyExtractor={(item, index) => item.name || index.toString()}
-                            renderItem={({ item }) => {
-                                const catImgUrl = typeof item.image === 'string' && item.image.trim() ? item.image.trim() : (item.image as any)?.url || (item as any).imageUrl;
+                        <View className="flex-row flex-wrap px-4 justify-start gap-1.5 gap-y-3">
+                            {categories.filter(c => c).map((item, index) => {
+                                const tileWidth = Math.floor((width - 32 - 24) / 5);
                                 return (
-                                    <TouchableOpacity className="items-center w-[75px]" onPress={() => handleCategoryPress(item)} activeOpacity={0.7}>
-                                        <View className="w-[75px] h-[75px] rounded-full bg-white justify-center items-center mb-2.5 border border-gray-100 shadow-sm overflow-hidden p-1">
-                                            {catImgUrl ? (
-                                                <Image source={{ uri: catImgUrl }} className="w-full h-full rounded-full" resizeMode="cover" />
-                                            ) : (
-                                                <Icon name="category" size={34} color={Colors.primary} library="material" />
-                                            )}
-                                        </View>
-                                        <Text className="text-xs font-bold text-gray-900 text-center leading-tight" numberOfLines={2}>{item.name}</Text>
-                                    </TouchableOpacity>
+                                    <CategoryTile
+                                        key={item.name || index.toString()}
+                                        name={item.name}
+                                        image={typeof item.image === 'string' ? item.image : (item.image as any)?.url}
+                                        icon={(item as any).icon}
+                                        size={tileWidth}
+                                        onPress={() => handleCategoryPress(item)}
+                                    />
                                 );
-                            }}
-                        />
+                            })}
+                        </View>
                     )}
                 </View>
 
                 {/* Recent/Popular Products Section */}
                 {products.slice(0, 8).length > 0 && (
-                    <View className="mb-8">
-                        <View className="flex-row justify-between items-center px-5 mb-4">
-                            <Text className="text-xl font-extrabold text-gray-900 tracking-tight">Top Picks for You</Text>
-                            <TouchableOpacity onPress={() => router.push('/products/search')}>
-                                <Text className="text-orange-500 font-bold text-sm">View All</Text>
-                            </TouchableOpacity>
-                        </View>
+                    <View className="mb-6">
+                        <SectionHeader 
+                            title="Top Picks for You" 
+                            actionText="View All" 
+                            onActionPress={() => router.push('/products/search')} 
+                        />
                         <FlatList
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}
+                            contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                             data={products.slice(0, 8)}
                             keyExtractor={(item) => `popular_${item.id}`}
                             renderItem={({ item }) => (
@@ -369,8 +364,8 @@ export default function HomeScreen() {
                 )}
 
                 {/* All Products Header */}
-                <View className="px-5 mb-4">
-                    <Text className="text-xl font-extrabold text-gray-900 tracking-tight">All Products</Text>
+                <View className="px-4 mb-3">
+                    <Text className="text-lg font-black text-slate-900 tracking-tight">All Products</Text>
                 </View>
             </View>
         );
@@ -378,56 +373,35 @@ export default function HomeScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-            <View className="bg-white px-5 py-3 border-b border-gray-100">
-                <View className="flex-row items-center justify-between mb-3">
+            <View className="bg-white px-4 py-2 border-b border-slate-100 flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
                     <Image
                         source={require('@/assets/images/logo-removebg-preview.png')}
-                        style={{ width: 130, height: 45 }}
+                        style={{ width: 36, height: 36 }}
                         resizeMode="contain"
                     />
-
-                    <View className="flex-row items-center">
-                        <TouchableOpacity
-                            onPress={() => router.push('/(tabs)/notifications')}
-                            className="mr-3 p-2.5 bg-gray-50 rounded-xl border border-gray-200 relative"
-                        >
-                            <Icon name="notifications-none" size={24} color={Colors.textPrimary} library="material" />
-                            {unreadCount > 0 && (
-                                <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1 border-2 border-white">
-                                    <Text className="text-white text-[9px] font-extrabold">{unreadCount}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onLayout={(e) => {
-                                const { x, y, width: w, height: h } = e.nativeEvent.layout;
-                                setCartIconPosition({ x, y, width: w, height: h });
-                            }}
-                            onPress={() => router.push('/(tabs)/cart')}
-                            className="relative p-2.5 bg-gray-50 rounded-xl border border-gray-200"
-                        >
-                            <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
-                            {getItemCount() > 0 && (
-                                <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[20px] h-[20px] items-center justify-center px-1 border-2 border-white">
-                                    <Text className="text-white text-[10px] font-extrabold">
-                                        {getItemCount() > 99 ? '99+' : getItemCount()}
-                                    </Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 }}>
+                        Groc<Text style={{ color: Colors.primary }}>Med</Text>
+                    </Text>
                 </View>
 
                 <TouchableOpacity
-                    onPress={() => router.push('/products/search')}
+                    onLayout={(e) => {
+                        const { x, y, width: w, height: h } = e.nativeEvent.layout;
+                        setCartIconPosition({ x, y, width: w, height: h });
+                    }}
+                    onPress={() => router.push('/(tabs)/cart')}
+                    className="relative p-2"
                     activeOpacity={0.8}
-                    className="flex-row items-center bg-gray-50 rounded-xl px-4 h-12 border border-gray-200 shadow-sm"
                 >
-                    <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
-                    <Text className="ml-3 text-gray-400 text-[15px] font-medium flex-1">
-                        Search for products...
-                    </Text>
+                    <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
+                    {getItemCount() > 0 && (
+                        <View className="absolute top-0 right-0 bg-red-500 rounded-[5px] min-w-[18px] h-[18px] items-center justify-center px-1 border-2 border-white">
+                            <Text className="text-white text-[9px] font-extrabold">
+                                {getItemCount() > 99 ? '99+' : getItemCount()}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -446,19 +420,19 @@ export default function HomeScreen() {
                 ListEmptyComponent={loading && !refreshing ? () => (
                     <View className="px-5">
                         <View className="flex-row gap-3 mb-3">
-                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
-                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={5} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={5} />
                         </View>
                         <View className="flex-row gap-3">
-                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
-                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={18} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={5} />
+                            <SkeletonLoader height={240} width={(width - 52) / 2} borderRadius={5} />
                         </View>
                     </View>
                 ) : error ? (
                     <View className="p-10 items-center">
                         <Icon name="error-outline" size={48} color={Colors.error} library="material" />
                         <Text className="text-gray-500 text-center mt-4 text-base">{error}</Text>
-                        <TouchableOpacity onPress={onRefresh} className="mt-6 px-6 py-3 bg-orange-500 rounded-xl">
+                        <TouchableOpacity onPress={onRefresh} className="mt-6 px-6 py-3 bg-orange-500 rounded-[5px]">
                             <Text className="text-white font-bold">Retry</Text>
                         </TouchableOpacity>
                     </View>

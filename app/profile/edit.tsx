@@ -289,7 +289,7 @@ export default function EditProfileScreen() {
                         {(user?.addresses || []).map((addr, index) => (
                             <View key={index} style={styles.addressCard}>
                                 <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.gray100, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <View style={{ width: 32, height: 32, borderRadius: 5, backgroundColor: Colors.gray100, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                         <Icon
                                             name={addr.type === 'Home' ? 'home' : addr.type === 'Work' ? 'work' : 'location-pin'}
                                             size={16}
@@ -467,15 +467,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: Colors.gray200,
-        borderRadius: 12,
+        borderRadius: 5,
         padding: 16,
         fontSize: 16,
         color: Colors.textPrimary,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        // elevation: 1
     },
     footer: {
         padding: 20,
@@ -485,15 +480,10 @@ const styles = StyleSheet.create({
     },
     saveBtn: {
         backgroundColor: Colors.primary,
-        borderRadius: 14,
+        borderRadius: 5,
         paddingVertical: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        // elevation: 4
     },
     disabledBtn: {
         opacity: 0.7
@@ -508,14 +498,10 @@ const styles = StyleSheet.create({
     addressCard: {
         backgroundColor: '#FFFFFF',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 5,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: Colors.gray200,
-        shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 5,
-        // elevation: 1
     },
     modalOverlay: {
         flex: 1,
@@ -524,8 +510,8 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderTopLeftRadius: 5,
+        borderTopRightRadius: 5,
         padding: 24,
         height: '80%'
     },
@@ -537,7 +523,7 @@ const styles = StyleSheet.create({
     typeChip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 5,
         borderWidth: 1,
         borderColor: Colors.gray300,
         backgroundColor: Colors.gray50
@@ -561,7 +547,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.surface,
         borderWidth: 1.5,
         borderColor: Colors.gray200,
-        borderRadius: 12,
+        borderRadius: 5,
         paddingVertical: 14,
         gap: 6,
     },

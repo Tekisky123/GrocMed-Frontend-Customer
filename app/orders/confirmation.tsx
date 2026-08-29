@@ -22,16 +22,11 @@ export default function OrderConfirmationScreen() {
             <View style={{
                 width: 120,
                 height: 120,
-                borderRadius: 60,
+                borderRadius: 5,
                 backgroundColor: Colors.success,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 30,
-                shadowColor: Colors.success,
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                // elevation: 10
             }}>
                 <Icon name="check" size={60} color={Colors.textWhite} library="material" />
             </View>
@@ -50,13 +45,8 @@ export default function OrderConfirmationScreen() {
                     style={{
                         backgroundColor: Colors.primary,
                         paddingVertical: 16,
-                        borderRadius: 12,
+                        borderRadius: 5,
                         alignItems: 'center',
-                        shadowColor: Colors.primary,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 8,
-                        // elevation: 4
                     }}
                     activeOpacity={0.8}
                 >
@@ -70,7 +60,7 @@ export default function OrderConfirmationScreen() {
                     style={{
                         backgroundColor: Colors.textWhite,
                         paddingVertical: 16,
-                        borderRadius: 12,
+                        borderRadius: 5,
                         alignItems: 'center',
                         borderWidth: 1,
                         borderColor: Colors.border

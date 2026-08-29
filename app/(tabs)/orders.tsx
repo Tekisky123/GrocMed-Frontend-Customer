@@ -132,11 +132,7 @@ export default function OrdersScreen() {
                 paddingHorizontal: 32,
                 paddingVertical: 16,
                 backgroundColor: Colors.primary,
-                borderRadius: 16,
-                shadowColor: Colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
+                borderRadius: 5,
               }}
             >
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Start Shopping</Text>
@@ -162,15 +158,10 @@ export default function OrdersScreen() {
                     onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}
                     style={{
                       backgroundColor: '#fff',
-                      borderRadius: 20,
+                      borderRadius: 5,
                       padding: 16,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.05,
-                      shadowRadius: 8,
-                      elevation: 2,
                       borderWidth: 1,
-                      borderColor: 'rgba(0,0,0,0.03)'
+                      borderColor: 'rgba(0,0,0,0.06)'
                     }}
                   >
                     {/* ID & Date */}
@@ -183,7 +174,7 @@ export default function OrdersScreen() {
                           {new Date(item.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {new Date(item.placedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       </View>
-                      <View style={{ backgroundColor: statusStyle.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                      <View style={{ backgroundColor: statusStyle.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 }}>
                         <Text style={{ color: statusStyle.text, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                           {item.status}
                         </Text>
@@ -199,7 +190,7 @@ export default function OrdersScreen() {
                         <View key={idx} style={{
                           width: 56,
                           height: 56,
-                          borderRadius: 12,
+                          borderRadius: 5,
                           backgroundColor: '#F8F9FA',
                           marginRight: 10,
                           borderWidth: 1,
@@ -222,7 +213,7 @@ export default function OrdersScreen() {
                         <View style={{
                           width: 56,
                           height: 56,
-                          borderRadius: 12,
+                          borderRadius: 5,
                           backgroundColor: '#F3F4F6',
                           justifyContent: 'center',
                           alignItems: 'center'
@@ -242,7 +233,7 @@ export default function OrdersScreen() {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                         <TouchableOpacity 
                           onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}
-                          style={{ backgroundColor: '#F8800E15', padding: 8, borderRadius: 10 }}
+                          style={{ backgroundColor: '#F8800E15', padding: 8, borderRadius: 5 }}
                         >
                           <Icon name="file-download" size={20} color={Colors.primary} library="material" />
                         </TouchableOpacity>

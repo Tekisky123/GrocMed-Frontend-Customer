@@ -38,11 +38,7 @@ export default function ProfileScreen() {
             backgroundColor: Colors.primary,
             paddingVertical: 16,
             paddingHorizontal: 32,
-            borderRadius: 16,
-            shadowColor: Colors.primary,
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.25,
-            shadowRadius: 16,
+            borderRadius: 5,
           }}
         >
           <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Go to Login</Text>
@@ -70,13 +66,8 @@ export default function ProfileScreen() {
             paddingTop: 50,
             paddingBottom: 32,
             paddingHorizontal: SECTION_PADDING,
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
-            shadowColor: Colors.primary,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            // elevation: 4,
+            borderBottomLeftRadius: 5,
+            borderBottomRightRadius: 5,
           }}>
             <View style={{ alignItems: 'center' }}>
               <View style={{
@@ -101,7 +92,7 @@ export default function ProfileScreen() {
                   backgroundColor: Colors.accent,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
-                  borderRadius: 6,
+                  borderRadius: 5,
                   flexDirection: 'row',
                   alignItems: 'center',
                 }}>
@@ -126,22 +117,17 @@ export default function ProfileScreen() {
             >
               <View style={{
                 backgroundColor: Colors.textWhite,
-                borderRadius: 8,
-                padding: 16,
+                borderRadius: 5,
+                padding: 14,
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: Colors.gray200,
-                shadowColor: Colors.shadow,
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
-                // elevation: 1,
+                borderColor: '#E2E8F0',
               }}>
                 <View style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 20,
+                  borderRadius: 5,
                   backgroundColor: `${item.color}15`,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -150,37 +136,38 @@ export default function ProfileScreen() {
                   <Icon name={item.icon.name} size={20} color={item.color} library={item.icon.library} />
                 </View>
                 <Text style={{
-                  fontSize: 16,
-                  fontWeight: '500',
+                  fontSize: 15,
+                  fontWeight: '600',
                   color: Colors.textPrimary,
                   flex: 1,
                 }}>
                   {item.title}
                 </Text>
-                <Icon name={Icons.arrowForward.name} size={20} color={Colors.textTertiary} library={Icons.arrowForward.library} />
+                <Icon name={Icons.arrowForward.name} size={18} color={Colors.textTertiary} library={Icons.arrowForward.library} />
               </View>
             </TouchableOpacity>
           ))}
         </Animated.View>
 
         {/* Modern Logout */}
-        <Animated.View style={{ padding: SECTION_PADDING, paddingTop: 24, opacity: fadeAnim }}>
+        <Animated.View style={{ padding: SECTION_PADDING, paddingTop: 16, paddingBottom: 40, opacity: fadeAnim }}>
           <TouchableOpacity
             onPress={() => {
               logout();
               router.replace('/auth/login');
             }}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <View style={{
-              backgroundColor: Colors.textWhite,
-              borderRadius: 8,
-              padding: 16,
+              backgroundColor: '#FEF2F2',
+              borderRadius: 5,
+              padding: 14,
               borderWidth: 1,
-              borderColor: Colors.error,
+              borderColor: '#FCA5A5',
+              alignItems: 'center',
             }}>
-              <Text style={{ color: Colors.error, fontWeight: '600', fontSize: 15, textAlign: 'center' }}>
-                Logout
+              <Text style={{ color: Colors.error, fontWeight: '700', fontSize: 15 }}>
+                Log Out
               </Text>
             </View>
           </TouchableOpacity>

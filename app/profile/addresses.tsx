@@ -17,7 +17,7 @@ import {
 const inputStyle = {
     borderWidth: 1,
     borderColor: Colors.gray200,
-    borderRadius: 10,
+    borderRadius: 5,
     padding: 12,
     marginBottom: 12,
     fontSize: 14,
@@ -130,7 +130,7 @@ export default function AddressesScreen() {
             >
                 {/* Add Address Form */}
                 {showAddForm && (
-                    <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: Colors.gray100 }}>
+                    <View style={{ backgroundColor: '#fff', borderRadius: 5, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: Colors.gray100 }}>
                         <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20 }}>
                             New Address
                         </Text>
@@ -180,7 +180,7 @@ export default function AddressesScreen() {
                                         flex: 1,
                                         paddingVertical: 10,
                                         alignItems: 'center',
-                                        borderRadius: 8,
+                                        borderRadius: 5,
                                         backgroundColor: formData.type === type ? Colors.primary : Colors.gray100,
                                         borderWidth: 1,
                                         borderColor: formData.type === type ? Colors.primary : Colors.gray200,
@@ -199,14 +199,14 @@ export default function AddressesScreen() {
                                     setShowAddForm(false);
                                     setFormData({ type: 'Home', street: '', city: '', state: '', zip: '', isDefault: false });
                                 }}
-                                style={{ flex: 1, padding: 14, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: Colors.gray200 }}
+                                style={{ flex: 1, padding: 14, alignItems: 'center', borderRadius: 5, borderWidth: 1, borderColor: Colors.gray200 }}
                             >
                                 <Text style={{ color: Colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleSaveAddress}
                                 disabled={saving}
-                                style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 12, padding: 14, alignItems: 'center' }}
+                                style={{ flex: 1, backgroundColor: Colors.primary, borderRadius: 5, padding: 14, alignItems: 'center' }}
                             >
                                 {saving ? (
                                     <ActivityIndicator color="#fff" size="small" />
@@ -221,7 +221,7 @@ export default function AddressesScreen() {
                 {/* Address List */}
                 {!user?.addresses || user.addresses.length === 0 ? (
                     <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-                        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                        <View style={{ width: 80, height: 80, borderRadius: 5, backgroundColor: Colors.gray100, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
                             <Icon name={Icons.location.name} size={40} color={Colors.gray400} library={Icons.location.library} />
                         </View>
                         <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 }}>
@@ -232,7 +232,7 @@ export default function AddressesScreen() {
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowAddForm(true)}
-                            style={{ backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14 }}
+                            style={{ backgroundColor: Colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 5 }}
                         >
                             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Add Address</Text>
                         </TouchableOpacity>
@@ -243,26 +243,22 @@ export default function AddressesScreen() {
                             key={address.id}
                             style={{
                                 backgroundColor: '#fff',
-                                borderRadius: 16,
+                                borderRadius: 5,
                                 padding: 16,
                                 marginBottom: 14,
                                 borderWidth: 1,
                                 borderColor: address.isDefault ? Colors.primary : Colors.gray100,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.05,
-                                shadowRadius: 6,
                             }}
                         >
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <View style={{ backgroundColor: Colors.gray100, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                    <View style={{ backgroundColor: Colors.gray100, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 }}>
                                         <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase' }}>
                                             {address.type}
                                         </Text>
                                     </View>
                                     {address.isDefault && (
-                                        <View style={{ backgroundColor: Colors.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                        <View style={{ backgroundColor: Colors.primary, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 }}>
                                             <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>Default</Text>
                                         </View>
                                     )}

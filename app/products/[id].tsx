@@ -6,26 +6,26 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { mapApiProductsToUiProducts, mapApiProductToUiProduct } from '@/utils/productHelper';
 import { formatSafeDate } from '@/utils/dateHelper';
+import { StoreStatusBanner } from '@/components/StoreStatusBanner';
 import { Product } from '@/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
-    Dimensions,
     Image,
     ScrollView,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
-
 export default function ProductDetailScreen() {
+    const { width } = useWindowDimensions();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { addToCart, getItemQuantity } = useCart();
+    const { addToCart, getItemQuantity, settings } = useCart();
     const { showToast } = useToast();
 
     const [apiProduct, setApiProduct] = useState<ApiProduct | null>(null);
@@ -108,7 +108,13 @@ export default function ProductDetailScreen() {
         setQuantity(newQty);
     };
 
+    const isStoreClosed = !!(settings?.storeStatus && !settings.storeStatus.isOpen);
+
     const handleAddToCart = () => {
+        if (isStoreClosed) {
+            showToast(settings?.storeStatus?.statusMessage || 'Store is currently closed for orders', 'error');
+            return;
+        }
         if (!product || !isInStock) return;
         if (selectedOption) {
             const optionProduct: Product = {
@@ -165,13 +171,15 @@ export default function ProductDetailScreen() {
                 <Text className="flex-1 ml-3 text-lg font-bold text-gray-900" numberOfLines={1}>{product.name}</Text>
             </View>
 
+            <StoreStatusBanner storeStatus={settings?.storeStatus} />
+
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 <Animated.View style={{ opacity: fadeAnim }}>
 
                     {/* Image Section */}
                     <View className="bg-gray-50 py-5 items-center relative">
                         {(optionDiscount > 0 || (product.discount ?? 0) > 0) && (
-                            <View className="absolute top-4 left-4 bg-red-500 px-2 py-1 rounded-lg z-10 shadow-sm shadow-red-500/30">
+                            <View className="absolute top-4 left-4 bg-red-500 px-2 py-1 rounded-[5px] z-10">
                                 <Text className="text-white text-xs font-extrabold tracking-wider">
                                     {optionDiscount > 0 ? optionDiscount : product.discount}% OFF
                                 </Text>
@@ -179,16 +187,19 @@ export default function ProductDetailScreen() {
                         )}
                         <ScrollView
                             horizontal
-                            pagingEnabled
+                            pagingEnabled={true}
                             showsHorizontalScrollIndicator={false}
-                            onMomentumScrollEnd={(e) =>
-                                setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))
-                            }
-                            snapToInterval={width}
-                            decelerationRate="fast"
+                            scrollEventThrottle={16}
+                            onMomentumScrollEnd={(e) => {
+                                const offset = e.nativeEvent.contentOffset.x;
+                                if (width > 0) {
+                                    setActiveImageIndex(Math.round(offset / width));
+                                }
+                            }}
+                            style={{ width }}
                         >
                             {displayImages.map((uri, index) => (
-                                <View key={index} style={{ width }} className="items-center justify-center">
+                                <View key={index} style={{ width, height: 300 }} className="items-center justify-center">
                                     <Image source={{ uri }} style={{ width: width - 32, height: 300 }} resizeMode="contain" />
                                 </View>
                             ))}
@@ -231,7 +242,7 @@ export default function ProductDetailScreen() {
                                                 key={opt._id}
                                                 onPress={() => !outOfStock && handleOptionSelect(opt)}
                                                 activeOpacity={0.8}
-                                                className={`w-[148px] p-3 rounded-2xl border-2 relative bg-white ${isSelected ? 'border-orange-500 bg-orange-50 shadow-sm shadow-orange-500/20' : 'border-gray-200'} ${outOfStock ? 'opacity-45' : ''}`}
+                                                className={`w-[148px] p-3 rounded-[5px] border-2 relative bg-white ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-gray-200'} ${outOfStock ? 'opacity-45' : ''}`}
                                             >
                                                 {isSelected && (
                                                     <View className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full bg-orange-500 items-center justify-center">
@@ -240,7 +251,7 @@ export default function ProductDetailScreen() {
                                                 )}
 
                                                 {optDiscount > 0 && (
-                                                    <View className="self-start bg-orange-100 px-1.5 py-0.5 rounded mb-2">
+                                                    <View className="self-start bg-orange-100 px-1.5 py-0.5 rounded-[5px] mb-2">
                                                         <Text className="text-[10px] font-bold text-orange-600">{optDiscount}% off</Text>
                                                     </View>
                                                 )}
@@ -266,7 +277,7 @@ export default function ProductDetailScreen() {
                                                     <Text className="text-[10px] text-gray-500 mt-1">Min {opt.minQty} packs</Text>
                                                 )}
 
-                                                <View className={`mt-2 px-2 py-1 rounded-md self-start ${outOfStock ? 'bg-red-50' : 'bg-green-50'}`}>
+                                                <View className={`mt-2 px-2 py-1 rounded-[5px] self-start ${outOfStock ? 'bg-red-50' : 'bg-green-50'}`}>
                                                     <Text className={`text-[10px] font-bold ${outOfStock ? 'text-red-500' : 'text-green-600'}`}>
                                                         {outOfStock ? 'Out of stock' : `${opt.stock} left`}
                                                     </Text>
@@ -279,7 +290,7 @@ export default function ProductDetailScreen() {
                         )}
 
                         {/* Price & Stock Block */}
-                        <View className="flex-row justify-between items-center bg-gray-50 rounded-2xl p-4 border border-black/5 mb-6 shadow-sm shadow-black/5">
+                        <View className="flex-row justify-between items-center bg-gray-50 rounded-[5px] p-4 border border-black/5 mb-6">
                             <View>
                                 <View className="flex-row items-baseline gap-2">
                                     <Text className="text-[26px] font-extrabold text-gray-900">₹{activePrice}</Text>
@@ -299,7 +310,7 @@ export default function ProductDetailScreen() {
                                 )}
                             </View>
                             <View className="items-end">
-                                <View className={`px-2.5 py-1 rounded-md ${isInStock ? 'bg-green-50' : 'bg-red-50'}`}>
+                                <View className={`px-2.5 py-1 rounded-[5px] ${isInStock ? 'bg-green-50' : 'bg-red-50'}`}>
                                     <Text className={`text-xs font-bold tracking-wider ${isInStock ? 'text-green-600' : 'text-red-500'}`}>
                                         {isInStock ? 'IN STOCK' : 'OUT OF STOCK'}
                                     </Text>
@@ -319,11 +330,11 @@ export default function ProductDetailScreen() {
                                 Quantity{selectedOption ? ` (packs)` : ''}
                             </Text>
                             <View className="flex-row items-center justify-between">
-                                <View className="flex-row items-center bg-gray-100 rounded-xl p-1">
+                                <View className="flex-row items-center bg-gray-100 rounded-[5px] p-1">
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity - 1)}
                                         disabled={quantity <= activeMinQty}
-                                        className={`w-11 h-11 bg-white rounded-lg items-center justify-center shadow-sm shadow-black/10 ${quantity <= activeMinQty ? 'opacity-40' : ''}`}
+                                        className={`w-11 h-11 bg-white rounded-[5px] items-center justify-center ${quantity <= activeMinQty ? 'opacity-40' : ''}`}
                                     >
                                         <Icon name="remove" size={20} color={Colors.textPrimary} library="material" />
                                     </TouchableOpacity>
@@ -333,7 +344,7 @@ export default function ProductDetailScreen() {
                                     <TouchableOpacity
                                         onPress={() => handleQuantityChange(quantity + 1)}
                                         disabled={quantity >= activeStock}
-                                        className={`w-11 h-11 bg-orange-500 rounded-lg items-center justify-center shadow-sm ${quantity >= activeStock ? 'opacity-40' : ''}`}
+                                        className={`w-11 h-11 bg-orange-500 rounded-[5px] items-center justify-center ${quantity >= activeStock ? 'opacity-40' : ''}`}
                                     >
                                         <Icon name="add" size={20} color="#fff" library="material" />
                                     </TouchableOpacity>
@@ -412,17 +423,23 @@ export default function ProductDetailScreen() {
                         {/* Add to Cart Button */}
                         <TouchableOpacity
                             onPress={handleAddToCart}
-                            disabled={!isInStock}
+                            disabled={!isInStock || isStoreClosed}
                             activeOpacity={0.85}
-                            className={`flex-row items-center justify-center gap-2.5 py-4 rounded-2xl shadow-sm shadow-orange-500/25 ${isInStock ? 'bg-orange-500' : 'bg-gray-300'}`}
+                            className={`flex-row items-center justify-center px-4 py-3.5 rounded-[5px] ${isInStock && !isStoreClosed ? 'bg-orange-500' : 'bg-gray-300'}`}
                         >
                             <Icon name="shopping-cart" size={20} color="#fff" library="material" />
-                            <Text className="text-[15px] font-extrabold text-white tracking-wider">
-                                {isInStock
-                                    ? selectedOption
-                                        ? `Add ${quantity} × ${selectedOption.label} — ₹${(activePrice * quantity).toFixed(2)}`
-                                        : 'ADD TO CART'
-                                    : 'OUT OF STOCK'}
+                            <Text 
+                                className="ml-2.5 text-[14px] sm:text-[15px] font-black text-white tracking-wider text-center flex-shrink"
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
+                            >
+                                {isStoreClosed
+                                    ? 'STORE CLOSED'
+                                    : isInStock
+                                        ? selectedOption
+                                            ? `Add ${quantity} × ${selectedOption.label} — ₹${(activePrice * quantity).toFixed(2)}`
+                                            : 'ADD TO CART'
+                                        : 'OUT OF STOCK'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -441,7 +458,7 @@ export default function ProductDetailScreen() {
                                     contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                                 >
                                     {suggestedProducts.map((item) => (
-                                        <View key={item.id} className="w-[154px]">
+                                        <View key={item.id} className="w-[165px]">
                                             <ProductCard
                                                 product={item}
                                                 onPress={() => router.push(`/products/${item.id}`)}

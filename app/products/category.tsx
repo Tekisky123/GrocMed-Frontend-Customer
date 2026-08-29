@@ -3,7 +3,9 @@ import { Product as ApiProduct } from '@/api/productApi';
 import { Icon, Icons } from '@/components/ui/Icon';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ProductCard } from '@/components/ui/ProductCard';
+import { StoreStatusBanner } from '@/components/StoreStatusBanner';
 import { Colors } from '@/constants/colors';
+import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types';
 import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,6 +17,7 @@ const SECTION_PADDING = 20;
 
 export default function CategoryScreen() {
   const { categoryName } = useLocalSearchParams<{ categoryName: string }>();
+  const { settings } = useCart();
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -79,6 +82,7 @@ export default function CategoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <PageHeader title={categoryName || 'Category'} variant="primary" />
+      <StoreStatusBanner storeStatus={settings?.storeStatus} />
 
       {/* Modern Products */}
       {sortedProducts.length === 0 ? (

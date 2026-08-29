@@ -44,11 +44,6 @@ export function Button({
   const variantStyles = {
     primary: {
       backgroundColor: Colors.primary,
-      shadowColor: Colors.primary,
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.4,
-      shadowRadius: 16,
-      // elevation: 10,
     },
     secondary: {
       backgroundColor: Colors.gray100,
@@ -82,7 +77,7 @@ export function Button({
     <Animated.View style={{ transform: [{ scale: scaleAnim }], width: fullWidth ? '100%' : undefined }}>
       <TouchableOpacity
         style={{
-          borderRadius: 18,
+          borderRadius: 5,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',

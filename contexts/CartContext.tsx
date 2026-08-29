@@ -21,6 +21,7 @@ interface CartContextType {
   getItemCount: () => number;
   getItemQuantity: (productId: string) => number;
   refreshCart: () => Promise<void>;
+  refreshSettings: () => Promise<SystemSettings | null>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -144,6 +145,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback(
     (product: Product, quantity: number, packagingOptionId?: string) => {
+      if (settings?.storeStatus && !settings.storeStatus.isOpen) {
+        showToast(settings.storeStatus.statusMessage || 'Store is currently closed for orders', 'error');
+        return;
+      }
+
       if (!isAuthenticated) {
         showToast('Please login to add items to cart', 'info');
         router.push('/auth/login');
@@ -261,6 +267,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = useCallback(
     (productId: string, quantity: number) => {
       if (!isAuthenticated) return;
+
+      if (settings?.storeStatus && !settings.storeStatus.isOpen) {
+        const item = cart.items.find(i => i.productId === productId);
+        if (item && quantity > item.quantity) {
+          showToast(settings.storeStatus.statusMessage || 'Store is currently closed for orders', 'error');
+          return;
+        }
+      }
 
       let itemKeyToSync = productId;
       let finalDiff = 0;
@@ -382,6 +396,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         getItemCount,
         getItemQuantity,
         refreshCart: fetchServerCart,
+        refreshSettings: fetchSystemSettings,
       }}
     >
       {children}

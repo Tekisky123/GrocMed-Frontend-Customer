@@ -1,6 +1,7 @@
 import { orderApi } from '@/api/orderApi';
 import { pincodeApi, PincodeOption } from '@/api/pincodeApi';
 import { deliverySlotApi } from '@/api/deliverySlotApi';
+import { couponApi } from '@/api/couponApi';
 import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StoreStatusBanner } from '@/components/StoreStatusBanner';
+
 
 const { width } = Dimensions.get('window');
 const IS_SMALL_DEVICE = width < 375;
@@ -66,6 +69,42 @@ export default function CheckoutScreen() {
     const [availabilityInfo, setAvailabilityInfo] = useState<any>(null);
     const [slotsLoading, setSlotsLoading] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
+
+    // Coupon State
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCouponCode, setAppliedCouponCode] = useState('');
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [couponApplying, setCouponApplying] = useState(false);
+
+    const handleApplyCoupon = async () => {
+        if (!couponInput.trim()) {
+            return showToast('Please enter a coupon code', 'info');
+        }
+        try {
+            setCouponApplying(true);
+            const res = await couponApi.applyCoupon(couponInput.trim(), cart.subtotal);
+            if (res.success && res.data) {
+                setAppliedCouponCode(res.data.code);
+                setCouponDiscount(res.data.discountAmount);
+                showToast(`Coupon ${res.data.code} applied! Saved ₹${res.data.discountAmount}`, 'success');
+            } else {
+                showToast(res.message || 'Invalid or expired coupon code', 'error');
+            }
+        } catch (e: any) {
+            showToast(e.message || 'Failed to apply coupon', 'error');
+        } finally {
+            setCouponApplying(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCouponCode('');
+        setCouponDiscount(0);
+        setCouponInput('');
+        showToast('Coupon removed', 'info');
+    };
+
+    const finalPayableTotal = Math.max(0, cart.total - couponDiscount);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -198,7 +237,14 @@ export default function CheckoutScreen() {
         }
     };
 
+    const storeStatus = settings?.storeStatus;
+    const isStoreClosed = !!(storeStatus && !storeStatus.isOpen);
+
     const handlePlaceOrder = async () => {
+        if (isStoreClosed) {
+            return showToast(storeStatus?.statusMessage || 'Store is currently closed for orders', 'error');
+        }
+
         if (isBelowMinOrder) {
             return showToast(`Minimum order amount is ₹${minOrderValue}. Please add ₹${minOrderShortfall} more to place order.`, 'error');
         }
@@ -219,6 +265,7 @@ export default function CheckoutScreen() {
                 paymentMethod: paymentMethod.toUpperCase(),
                 deliveryDate: selectedDate,
                 deliverySlot: selectedSlot,
+                couponCode: appliedCouponCode || undefined,
             };
 
             const res = await orderApi.placeOrder(orderData);
@@ -228,7 +275,7 @@ export default function CheckoutScreen() {
                     pathname: '/orders/confirmation',
                     params: {
                         orderId: res.data?._id || `ORD-${Date.now()}`,
-                        total: cart.total.toString(),
+                        total: finalPayableTotal.toString(),
                     },
                 });
             } else {
@@ -273,6 +320,7 @@ export default function CheckoutScreen() {
                 contentContainerStyle={styles.scrollContent}
             >
                 <Animated.View style={{ opacity: fadeAnim }}>
+                    <StoreStatusBanner storeStatus={storeStatus} />
                     
                     {/* Address Section */}
                     <View style={styles.card}>
@@ -536,6 +584,81 @@ export default function CheckoutScreen() {
                         </View>
                     </View>
 
+                    {/* Coupon Section */}
+                    <View style={styles.card}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <Icon name="local-offer" size={20} color={Colors.primary} library="material" />
+                            <Text style={styles.cardTitle}>Coupons & Offers</Text>
+                        </View>
+
+                        {appliedCouponCode ? (
+                            <View style={{
+                                backgroundColor: '#ECFDF5',
+                                borderColor: '#A7F3D0',
+                                borderWidth: 1,
+                                borderRadius: 5,
+                                padding: 12,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                            }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Icon name="check-circle" size={20} color={Colors.success} library="material" />
+                                    <View>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>
+                                            '{appliedCouponCode}' APPLIED
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: '#047857', fontWeight: '600' }}>
+                                            You save ₹{couponDiscount} on this order!
+                                        </Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity onPress={handleRemoveCoupon} style={{ padding: 4 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.error }}>REMOVE</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <TextInput
+                                    placeholder="Enter Coupon Code (e.g. GROC20)"
+                                    value={couponInput}
+                                    onChangeText={(text) => setCouponInput(text.toUpperCase())}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: Colors.gray50,
+                                        borderWidth: 1,
+                                        borderColor: Colors.gray200,
+                                        borderRadius: 5,
+                                        paddingHorizontal: 14,
+                                        height: 46,
+                                        fontSize: 14,
+                                        fontWeight: '700',
+                                        color: Colors.textPrimary,
+                                    }}
+                                    autoCapitalize="characters"
+                                />
+                                <TouchableOpacity
+                                    onPress={handleApplyCoupon}
+                                    disabled={couponApplying || !couponInput.trim()}
+                                    style={{
+                                        backgroundColor: couponInput.trim() ? Colors.primary : Colors.gray200,
+                                        borderRadius: 5,
+                                        paddingHorizontal: 18,
+                                        height: 46,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    {couponApplying ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>APPLY</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+
                     {/* Bill Details */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitleSmall}>Bill Details</Text>
@@ -543,6 +666,14 @@ export default function CheckoutScreen() {
                             <Text style={styles.billLabel}>Item Total</Text>
                             <Text style={styles.billValue}>₹{cart.items.reduce((sum, i) => sum + i.total, 0)}</Text>
                         </View>
+                        {couponDiscount > 0 && (
+                            <View style={styles.billRow}>
+                                <Text style={styles.billLabel}>Coupon Discount ({appliedCouponCode})</Text>
+                                <Text style={[styles.billValue, { color: Colors.success, fontWeight: '800' }]}>
+                                    -₹{couponDiscount}
+                                </Text>
+                            </View>
+                        )}
                         <View style={styles.billRow}>
                             <View style={styles.rowWithIcon}>
                                 <Text style={styles.billLabel}>Delivery Fee</Text>
@@ -561,7 +692,7 @@ export default function CheckoutScreen() {
                         <View style={styles.billDivider} />
                         <View style={styles.billRow}>
                             <Text style={styles.billTotalLabel}>Grand Total</Text>
-                            <Text style={styles.billTotalValue}>₹{cart.total}</Text>
+                            <Text style={styles.billTotalValue}>₹{finalPayableTotal}</Text>
                         </View>
 
                         {isBelowMinOrder && (
@@ -570,7 +701,7 @@ export default function CheckoutScreen() {
                                 backgroundColor: '#FFFBEB',
                                 borderColor: '#FDE68A',
                                 borderWidth: 1,
-                                borderRadius: 16,
+                                borderRadius: 5,
                                 padding: 14,
                                 flexDirection: 'row',
                                 alignItems: 'center'
@@ -621,21 +752,21 @@ export default function CheckoutScreen() {
             <View style={styles.bottomBar}>
                 <View>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
-                    <Text style={styles.totalPrice}>₹{cart.total}</Text>
+                    <Text style={styles.totalPrice}>₹{finalPayableTotal}</Text>
                 </View>
                 <TouchableOpacity 
-                    style={[styles.placeOrderBtn, (loading || isBelowMinOrder) && { backgroundColor: '#D1D5DB' }]}
+                    style={[styles.placeOrderBtn, (loading || isBelowMinOrder || isStoreClosed) && { backgroundColor: '#D1D5DB' }]}
                     onPress={handlePlaceOrder}
-                    disabled={loading}
+                    disabled={loading || isStoreClosed}
                 >
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <>
                             <Text style={styles.placeOrderText}>
-                                {isBelowMinOrder ? `ADD ₹${minOrderShortfall} MORE` : 'PLACE ORDER'}
+                                {isStoreClosed ? 'STORE IS CLOSED' : isBelowMinOrder ? `ADD ₹${minOrderShortfall} MORE` : 'PLACE ORDER'}
                             </Text>
-                            <Icon name={isBelowMinOrder ? 'add-shopping-cart' : 'chevron-right'} size={20} color="#fff" library="material" />
+                            <Icon name={isStoreClosed ? 'event-busy' : isBelowMinOrder ? 'add-shopping-cart' : 'chevron-right'} size={20} color="#fff" library="material" />
                         </>
                     )}
                 </TouchableOpacity>
@@ -658,7 +789,7 @@ export default function CheckoutScreen() {
                                     key={addr.id}
                                     style={[
                                         styles.pincodeRow, 
-                                        selectedAddressId === addr.id && { backgroundColor: '#FFF9F4', borderColor: Colors.primary, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 12 }
+                                        selectedAddressId === addr.id && { backgroundColor: '#FFF9F4', borderColor: Colors.primary, borderWidth: 1.5, borderRadius: 5, paddingHorizontal: 12 }
                                     ]}
                                     onPress={() => {
                                         setSelectedAddressId(addr.id);
@@ -680,7 +811,7 @@ export default function CheckoutScreen() {
                                         paddingHorizontal: 14,
                                         paddingVertical: 8,
                                         backgroundColor: selectedAddressId === addr.id ? Colors.primary : '#F3F4F6',
-                                        borderRadius: 10,
+                                        borderRadius: 5,
                                         marginLeft: 10,
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -699,14 +830,9 @@ export default function CheckoutScreen() {
                                 width: '100%',
                                 height: 50,
                                 backgroundColor: Colors.primary,
-                                borderRadius: 14,
+                                borderRadius: 5,
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                shadowColor: Colors.primary,
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.2,
-                                shadowRadius: 8,
-                                elevation: 4
                             }}
                             onPress={() => {
                                 setShowAddressModal(false);
@@ -804,7 +930,7 @@ const styles = StyleSheet.create({
     stepCircle: {
         width: 28,
         height: 28,
-        borderRadius: 14,
+        borderRadius: 5,
         backgroundColor: '#E9ECEF',
         alignItems: 'center',
         justifyContent: 'center',
@@ -854,16 +980,11 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 5,
         padding: 16,
         marginBottom: 16,
         borderWidth: 1,
         borderColor: '#F1F3F5',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -895,7 +1016,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFF9F4',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 5,
         borderWidth: 1,
         borderColor: '#FFE8D6',
     },
@@ -906,7 +1027,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFE8D6',
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 6,
+        borderRadius: 5,
         alignSelf: 'flex-start',
         marginBottom: 6,
     },
@@ -956,7 +1077,7 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: '#F8F9FA',
-        borderRadius: 10,
+        borderRadius: 5,
         padding: 12,
         fontSize: 14,
         color: Colors.textPrimary,
@@ -970,7 +1091,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: '#F8F9FA',
-        borderRadius: 10,
+        borderRadius: 5,
         padding: 12,
         marginBottom: 16,
         borderWidth: 1,
@@ -993,7 +1114,7 @@ const styles = StyleSheet.create({
     typeChip: {
         flex: 1,
         paddingVertical: 10,
-        borderRadius: 10,
+        borderRadius: 5,
         backgroundColor: '#F1F3F5',
         alignItems: 'center',
     },
@@ -1015,7 +1136,7 @@ const styles = StyleSheet.create({
     btnSecondary: {
         flex: 1,
         paddingVertical: 14,
-        borderRadius: 12,
+        borderRadius: 5,
         backgroundColor: '#F8F9FA',
         alignItems: 'center',
         borderWidth: 1,
@@ -1029,14 +1150,9 @@ const styles = StyleSheet.create({
     btnPrimary: {
         flex: 2,
         paddingVertical: 14,
-        borderRadius: 12,
+        borderRadius: 5,
         backgroundColor: Colors.primary,
         alignItems: 'center',
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
     },
     btnPrimaryText: {
         fontSize: 14,
@@ -1130,7 +1246,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 14,
-        borderRadius: 12,
+        borderRadius: 5,
         borderWidth: 1,
         borderColor: '#F1F3F5',
         backgroundColor: '#fff',
@@ -1173,7 +1289,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#F1FBF4',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 5,
         gap: 8,
     },
     safetyText: {
@@ -1194,11 +1310,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         borderTopWidth: 1,
         borderTopColor: '#F1F3F5',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 10,
     },
     totalLabel: {
         fontSize: 10,
@@ -1217,12 +1328,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 24,
         paddingVertical: 14,
-        borderRadius: 14,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 6,
+        borderRadius: 5,
     },
     btnDisabled: {
         backgroundColor: '#DEE2E6',
@@ -1241,8 +1347,8 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderTopLeftRadius: 5,
+        borderTopRightRadius: 5,
         padding: 20,
         maxHeight: '80%',
     },
@@ -1259,7 +1365,7 @@ const styles = StyleSheet.create({
     },
     modalSearch: {
         backgroundColor: '#F1F3F5',
-        borderRadius: 12,
+        borderRadius: 5,
         padding: 14,
         fontSize: 16,
         marginBottom: 16,
@@ -1389,20 +1495,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1.5,
         borderColor: '#E9ECEF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-        elevation: 1,
     },
     premiumDateCardActive: {
         backgroundColor: '#FFF9F4',
         borderColor: Colors.primary,
-        shadowColor: Colors.primary,
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 8,
-        elevation: 3,
     },
     premiumDateDay: {
         fontSize: 11,

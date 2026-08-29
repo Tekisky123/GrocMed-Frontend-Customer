@@ -145,6 +145,7 @@ export interface Order {
   deliveredAt?: string;
   tracking?: OrderTracking[];
   couponCode?: string;
+  discountAmount?: number;
 }
 
 export type OrderStatus =

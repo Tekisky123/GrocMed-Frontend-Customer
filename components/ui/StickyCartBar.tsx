@@ -70,11 +70,6 @@ export function StickyCartBar() {
                 right: 20,
                 transform: [{ translateY: slideAnim }],
                 zIndex: 9999,
-                shadowColor: Colors.primary,
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.25,
-                shadowRadius: 20,
-                elevation: 10,
             }}
         >
             <TouchableOpacity
@@ -91,7 +86,7 @@ export function StickyCartBar() {
                 }}
                 style={{
                     backgroundColor: Colors.primary,
-                    borderRadius: 24,
+                    borderRadius: 5,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -104,7 +99,7 @@ export function StickyCartBar() {
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{
                         backgroundColor: 'rgba(255,255,255,0.2)',
-                        borderRadius: 12,
+                        borderRadius: 5,
                         paddingHorizontal: 12,
                         paddingVertical: 6,
                         marginRight: 12,
@@ -121,7 +116,7 @@ export function StickyCartBar() {
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginRight: 8 }}>View Cart</Text>
-                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 6 }}>
+                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, padding: 6 }}>
                         <Icon name="shopping-bag" size={16} color="#fff" library="material" />
                     </View>
                 </View>

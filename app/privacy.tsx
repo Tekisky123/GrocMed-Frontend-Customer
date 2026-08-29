@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     },
     officerContainer: {
         backgroundColor: Colors.gray100,
-        borderRadius: 12,
+        borderRadius: 5,
         padding: 16,
         marginTop: 8,
         marginBottom: 20,

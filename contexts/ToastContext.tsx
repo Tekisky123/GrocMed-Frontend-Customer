@@ -177,13 +177,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF', // Pure white
-        borderRadius: 12,
+        borderRadius: 5,
         padding: 12,
         width: '100%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
         borderLeftWidth: 6,
         borderWidth: 1, // Add subtle border for definition
         borderColor: '#f0f0f0',
@@ -191,7 +187,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 5,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,

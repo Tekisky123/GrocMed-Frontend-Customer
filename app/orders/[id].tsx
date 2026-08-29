@@ -198,7 +198,7 @@ export default function OrderDetailsScreen() {
                 backgroundColor: 'rgba(255,255,255,0.2)',
                 width: 40,
                 height: 40,
-                borderRadius: 12,
+                borderRadius: 5,
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
@@ -225,7 +225,7 @@ export default function OrderDetailsScreen() {
                   backgroundColor: 'rgba(255,255,255,0.2)', 
                   paddingHorizontal: 12, 
                   paddingVertical: 8, 
-                  borderRadius: 12,
+                  borderRadius: 5,
                   marginBottom: 8,
                   gap: 6,
                   opacity: downloading ? 0.6 : 1
@@ -237,7 +237,7 @@ export default function OrderDetailsScreen() {
                 )}
                 <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>{downloading ? 'WAIT...' : 'INVOICE'}</Text>
               </TouchableOpacity>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 5 }}>
                 <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>#{order.orderNumber}</Text>
               </View>
             </View>
@@ -249,8 +249,8 @@ export default function OrderDetailsScreen() {
       <Animated.View style={{
         flex: 1,
         backgroundColor: Colors.background,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: 5,
+        borderTopRightRadius: 5,
         transform: [{ translateY: slideAnim }],
         opacity: fadeAnim,
         overflow: 'hidden'
@@ -261,13 +261,9 @@ export default function OrderDetailsScreen() {
           {!isCancelled ? (
             <View style={{
               backgroundColor: '#fff',
-              borderRadius: 24,
+              borderRadius: 5,
               padding: 20,
               marginBottom: 24,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
               borderWidth: 1,
               borderColor: 'rgba(0,0,0,0.03)'
             }}>
@@ -275,7 +271,7 @@ export default function OrderDetailsScreen() {
               <View style={{
                 height: 60,
                 backgroundColor: '#F3F4F6',
-                borderRadius: 16,
+                borderRadius: 5,
                 marginBottom: 20,
                 overflow: 'hidden',
                 justifyContent: 'center',
@@ -302,12 +298,10 @@ export default function OrderDetailsScreen() {
                     <View key={step} style={{ alignItems: 'center', width: '20%' }}>
                       {/* Dot */}
                       <View style={{
-                        width: 20, height: 20, borderRadius: 10,
+                        width: 20, height: 20, borderRadius: 5,
                         backgroundColor: isActive ? Colors.primary : Colors.gray200,
                         alignItems: 'center', justifyContent: 'center',
                         borderWidth: 2, borderColor: '#fff',
-                        shadowColor: isActive ? Colors.primary : 'transparent',
-                        shadowOpacity: 0.3, shadowRadius: 4,
                         zIndex: 2
                       }}>
                         {isActive && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />}
@@ -335,7 +329,7 @@ export default function OrderDetailsScreen() {
               </View>
             </View>
           ) : (
-            <View style={{ backgroundColor: '#FFEBEE', padding: 20, borderRadius: 16, marginBottom: 24, alignItems: 'center' }}>
+            <View style={{ backgroundColor: '#FFEBEE', padding: 20, borderRadius: 5, marginBottom: 24, alignItems: 'center' }}>
               <Icon name="error-outline" size={32} color={Colors.error} library="material" />
               <Text style={{ color: Colors.error, fontWeight: '700', fontSize: 16, marginTop: 8 }}>Order Cancelled</Text>
             </View>
@@ -349,15 +343,13 @@ export default function OrderDetailsScreen() {
                 flexDirection: 'row',
                 marginBottom: 12,
                 backgroundColor: '#fff',
-                borderRadius: 16,
+                borderRadius: 5,
                 padding: 12,
                 borderWidth: 1,
                 borderColor: 'rgba(0,0,0,0.03)',
-                shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4,
-                shadowOffset: { width: 0, height: 2 }
               }}>
                 <View style={{
-                  width: 64, height: 64, borderRadius: 12, backgroundColor: '#F8F9FA',
+                  width: 64, height: 64, borderRadius: 5, backgroundColor: '#F8F9FA',
                   justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F3F4F6'
                 }}>
                   <Image
@@ -371,7 +363,7 @@ export default function OrderDetailsScreen() {
                     {item.product?.name}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: Colors.textSecondary, backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' }}>
+                    <Text style={{ fontSize: 13, color: Colors.textSecondary, backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, overflow: 'hidden' }}>
                       Qty: {item.quantity}
                     </Text>
                     <Text style={{ fontSize: 13, color: Colors.textTertiary, marginLeft: 8 }}>
@@ -390,11 +382,11 @@ export default function OrderDetailsScreen() {
 
           {/* Shipping & Payment Details */}
           <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 16 }}>Order Details</Text>
-          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 5, padding: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' }}>
 
             {/* Address */}
             <View style={{ flexDirection: 'row', marginBottom: 20 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E3F2FD', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 5, backgroundColor: '#E3F2FD', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                 <Icon name="location-pin" size={18} color={Colors.primary} library="entypo" />
               </View>
               <View style={{ flex: 1 }}>
@@ -411,7 +403,7 @@ export default function OrderDetailsScreen() {
 
             {/* Payment */}
             <View style={{ flexDirection: 'row' }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF3E0', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 5, backgroundColor: '#FFF3E0', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                 <Icon name="credit-card" size={18} color="#F57C00" library="material" />
               </View>
               <View style={{ flex: 1 }}>
@@ -424,6 +416,25 @@ export default function OrderDetailsScreen() {
                 </Text>
               </View>
             </View>
+
+            {order.couponCode && (
+              <>
+                <View style={{ height: 1, backgroundColor: '#F3F4F6', marginVertical: 20 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 5, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                    <Icon name="local-offer" size={18} color={Colors.success} library="material" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 }}>
+                      Coupon Applied ('{order.couponCode}')
+                    </Text>
+                    <Text style={{ fontSize: 13, color: Colors.success, fontWeight: '700' }}>
+                      Discount Saved: -₹{order.discountAmount || 0}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
 
         </ScrollView>

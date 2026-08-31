@@ -22,7 +22,7 @@ export const ProductCard = React.memo(
 
     const [isAdding, setIsAdding] = React.useState(false);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = React.useCallback(() => {
       if (!product || !product.inStock || isAdding || isStoreClosed) return;
 
       setIsAdding(true);
@@ -47,7 +47,7 @@ export const ProductCard = React.memo(
       }
 
       setTimeout(() => setIsAdding(false), 500);
-    };
+    }, [product, isAdding, isStoreClosed, startAnimation, addToCart, scaleAnim]);
 
     const hasDiscount = product.discount && product.discount > 0;
     const hasOptions = product.packagingOptions && product.packagingOptions.length > 0;
@@ -236,6 +236,18 @@ export const ProductCard = React.memo(
           </View>
         </TouchableOpacity>
       </View>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.variant === nextProps.variant &&
+      prevProps.product.id === nextProps.product.id &&
+      prevProps.product.price === nextProps.product.price &&
+      prevProps.product.originalPrice === nextProps.product.originalPrice &&
+      prevProps.product.inStock === nextProps.product.inStock &&
+      prevProps.product.discount === nextProps.product.discount &&
+      prevProps.product.image === nextProps.product.image &&
+      prevProps.product.name === nextProps.product.name
     );
   }
 );

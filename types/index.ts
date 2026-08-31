@@ -207,10 +207,8 @@ export interface Coupon {
   code: string;
   title: string;
   description: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
+  discountAmount: number;
   minOrderValue: number;
-  maxDiscount?: number;
   validFrom: string;
   validUntil: string;
   isActive: boolean;

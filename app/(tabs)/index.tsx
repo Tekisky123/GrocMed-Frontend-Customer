@@ -277,21 +277,21 @@ export default function HomeScreen() {
         refreshSettings();
     };
 
-    const handleProductPress = (product: Product) => {
+    const handleProductPress = useCallback((product: Product) => {
         if (!product?.id) return;
         router.push({
             pathname: '/products/[id]',
             params: { id: product.id },
         });
-    };
+    }, []);
 
-    const handleCategoryPress = (category: Category) => {
+    const handleCategoryPress = useCallback((category: Category) => {
         if (!category || !category.name) return;
         router.push({
             pathname: '/products/category',
             params: { categoryName: category.name },
         });
-    };
+    }, []);
 
     const renderHeader = useMemo(() => {
         return (
@@ -381,16 +381,22 @@ export default function HomeScreen() {
         </View>
     ), [handleProductPress]);
 
+    const getItemLayout = useCallback((_: any, index: number) => ({
+        length: 252,
+        offset: 252 * Math.floor(index / 2),
+        index,
+    }), []);
+
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             <View className="bg-white px-4 py-2 border-b border-slate-100 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center gap-2.5">
                     <Image
                         source={require('@/assets/images/logo-removebg-preview.png')}
-                        style={{ width: 36, height: 36 }}
+                        style={{ width: 48, height: 48 }}
                         resizeMode="contain"
                     />
-                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 }}>
+                    <Text style={{ fontSize: 22, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 }}>
                         Groc<Text style={{ color: Colors.primary }}>Med</Text>
                     </Text>
                 </View>
@@ -420,11 +426,12 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
-                initialNumToRender={8}
+                initialNumToRender={6}
                 maxToRenderPerBatch={8}
-                windowSize={3}
+                windowSize={5}
                 updateCellsBatchingPeriod={50}
-                removeClippedSubviews={true}
+                getItemLayout={getItemLayout}
+                removeClippedSubviews={Platform.OS === 'android'}
                 columnWrapperStyle={{ paddingHorizontal: 20, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}

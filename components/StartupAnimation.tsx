@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
         width: '100%',
     } as ViewStyle,
     logo: {
-        width: 140,
-        height: 60,
+        width: 180,
+        height: 80,
         marginBottom: 24,
     } as ImageStyle,
     slogan: {

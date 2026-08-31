@@ -3,9 +3,8 @@ import axiosInstance from './axiosInstance';
 export interface Coupon {
   _id: string;
   code: string;
-  discountPercentage: number;
+  discountAmount: number;
   minOrderAmount?: number;
-  maxDiscountAmount?: number;
   validUntil: string;
   perUserLimit?: number;
 }

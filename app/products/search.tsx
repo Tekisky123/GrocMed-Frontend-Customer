@@ -182,7 +182,7 @@ export default function SearchScreen() {
     return (
       <View style={{
         alignItems: 'center',
-        justify.content: 'center',
+        justifyContent: 'center',
         paddingTop: 40,
         opacity: 0.8
       }}>

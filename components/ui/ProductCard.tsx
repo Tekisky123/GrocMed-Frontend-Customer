@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { Product } from '@/types';
 import React from 'react';
 import { Animated, Image, Text, TouchableOpacity, View } from 'react-native';
+import { formatPrice } from '@/utils/productHelper';
 
 interface ProductCardProps {
   product: Product;
@@ -96,10 +97,10 @@ export const ProductCard = React.memo(
 
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-[17px] font-extrabold text-gray-900">₹{product.price}</Text>
+                  <Text className="text-[17px] font-extrabold text-gray-900">₹{formatPrice(product.price)}</Text>
                   {hasDiscount && (
                     <Text className="text-[11px] text-gray-400 line-through">
-                      ₹{product.originalPrice}
+                      ₹{formatPrice(product.originalPrice)}
                     </Text>
                   )}
                 </View>
@@ -191,10 +192,10 @@ export const ProductCard = React.memo(
           {/* Price and Add Button (Pushed to bottom) */}
           <View className="flex-row items-center justify-between mt-1 pt-1 border-t border-transparent">
             <View>
-              <Text className="text-[15px] font-black text-slate-900 leading-none">₹{product.price}</Text>
+              <Text className="text-[15px] font-black text-slate-900 leading-none">₹{formatPrice(product.price)}</Text>
               {hasDiscount && product.originalPrice && product.originalPrice > product.price ? (
                 <Text className="text-[10px] text-slate-400 font-semibold line-through mt-0.5">
-                  ₹{product.originalPrice}
+                  ₹{formatPrice(product.originalPrice)}
                 </Text>
               ) : null}
             </View>

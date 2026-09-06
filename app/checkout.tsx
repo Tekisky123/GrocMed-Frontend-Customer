@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { Address, PaymentMethod } from '@/types';
+import { formatPrice } from '@/utils/productHelper';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
@@ -664,13 +665,13 @@ export default function CheckoutScreen() {
                         <Text style={styles.cardTitleSmall}>Bill Details</Text>
                         <View style={styles.billRow}>
                             <Text style={styles.billLabel}>Item Total</Text>
-                            <Text style={styles.billValue}>₹{cart.items.reduce((sum, i) => sum + i.total, 0)}</Text>
+                            <Text style={styles.billValue}>₹{formatPrice(cart.subtotal)}</Text>
                         </View>
                         {couponDiscount > 0 && (
                             <View style={styles.billRow}>
                                 <Text style={styles.billLabel}>Coupon Discount ({appliedCouponCode})</Text>
                                 <Text style={[styles.billValue, { color: Colors.success, fontWeight: '800' }]}>
-                                    -₹{couponDiscount}
+                                    -₹{formatPrice(couponDiscount)}
                                 </Text>
                             </View>
                         )}
@@ -680,19 +681,19 @@ export default function CheckoutScreen() {
                                 <Icon name="info-outline" size={12} color={Colors.textTertiary} library="material" />
                             </View>
                             <Text style={[styles.billValue, cart.deliveryFee === 0 && { color: Colors.success }]}>
-                                {cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}
+                                {cart.deliveryFee === 0 ? 'FREE' : `₹${formatPrice(cart.deliveryFee)}`}
                             </Text>
                         </View>
                         {totalGST > 0 && (
                             <View style={styles.billRow}>
                                 <Text style={styles.billLabel}>GST (Included)</Text>
-                                <Text style={styles.billValueSub}>₹{totalGST.toFixed(2)}</Text>
+                                <Text style={styles.billValueSub}>₹{formatPrice(totalGST)}</Text>
                             </View>
                         )}
                         <View style={styles.billDivider} />
                         <View style={styles.billRow}>
                             <Text style={styles.billTotalLabel}>Grand Total</Text>
-                            <Text style={styles.billTotalValue}>₹{finalPayableTotal}</Text>
+                            <Text style={styles.billTotalValue}>₹{formatPrice(finalPayableTotal)}</Text>
                         </View>
 
                         {isBelowMinOrder && (
@@ -752,7 +753,7 @@ export default function CheckoutScreen() {
             <View style={styles.bottomBar}>
                 <View>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
-                    <Text style={styles.totalPrice}>₹{finalPayableTotal}</Text>
+                    <Text style={styles.totalPrice}>₹{formatPrice(finalPayableTotal)}</Text>
                 </View>
                 <TouchableOpacity 
                     style={[styles.placeOrderBtn, (loading || isBelowMinOrder || isStoreClosed) && { backgroundColor: '#D1D5DB' }]}

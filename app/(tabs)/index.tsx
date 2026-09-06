@@ -257,7 +257,11 @@ export default function HomeScreen() {
             const res = await productApi.getAllProducts(nextPage, 20);
             if (res.success && Array.isArray(res.data)) {
                 const newProducts = mapApiProductsToUiProducts(res.data);
-                setProducts((prev) => [...prev, ...newProducts]);
+                setProducts((prev) => {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const uniqueNew = newProducts.filter(p => p && p.id && !existingIds.has(p.id));
+                    return [...prev, ...uniqueNew];
+                });
                 setPage(nextPage);
             }
         } catch (err) {
@@ -426,12 +430,11 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
-                initialNumToRender={6}
-                maxToRenderPerBatch={8}
-                windowSize={5}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={11}
                 updateCellsBatchingPeriod={50}
-                getItemLayout={getItemLayout}
-                removeClippedSubviews={Platform.OS === 'android'}
+                removeClippedSubviews={false}
                 columnWrapperStyle={{ paddingHorizontal: 20, gap: 12, marginBottom: 12 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}

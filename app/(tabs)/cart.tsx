@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback } from 'react';
 import { FlatList, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { formatPrice } from '@/utils/productHelper';
 
 export default function CartScreen() {
   const { cart, settings, updateQuantity, removeFromCart, clearCart, refreshSettings } = useCart();
@@ -115,12 +116,12 @@ export default function CartScreen() {
                     </View>
                     <Text className="text-[13px] text-gray-700 mt-1 font-semibold">
                       {item.packagingOptionLabel ? item.packagingOptionLabel : (item.product.unit || 'Unit')}
-                      {item.product.perUnitWeightVolume && item.packagingOptionLabel?.toLowerCase() !== item.product.perUnitWeightVolume.toLowerCase() ? ` (${item.product.perUnitWeightVolume})` : ''} • ₹{item.price}
+                      {item.product.perUnitWeightVolume && item.packagingOptionLabel?.toLowerCase() !== item.product.perUnitWeightVolume.toLowerCase() ? ` (${item.product.perUnitWeightVolume})` : ''} • ₹{formatPrice(item.price)}
                     </Text>
                   </View>
 
                   <View className="flex-row justify-between items-center mt-3">
-                    <Text className="text-[18px] font-black text-gray-900">₹{item.total}</Text>
+                    <Text className="text-[18px] font-black text-gray-900">₹{formatPrice(item.total)}</Text>
 
                     {/* Quantity Control */}
                     <View className="flex-row items-center bg-white rounded-[5px] border border-gray-300 p-1">
@@ -155,28 +156,28 @@ export default function CartScreen() {
                   <View className="bg-white rounded-[5px] p-6 border border-gray-200">
                     <View className="flex-row justify-between mb-3.5">
                       <Text className="text-gray-700 font-medium text-[15px]">Item Total</Text>
-                      <Text className="font-extrabold text-gray-900 text-[15px]">₹{cart.subtotal}</Text>
+                      <Text className="font-extrabold text-gray-900 text-[15px]">₹{formatPrice(cart.subtotal)}</Text>
                     </View>
                     <View className="flex-row justify-between mb-3.5">
                       <Text className="text-gray-700 font-medium text-[15px]">Delivery Fee</Text>
-                      <Text className="font-extrabold text-green-700 text-[15px]">{cart.deliveryFee === 0 ? 'FREE' : `₹${cart.deliveryFee}`}</Text>
+                      <Text className="font-extrabold text-green-700 text-[15px]">{cart.deliveryFee === 0 ? 'FREE' : `₹${formatPrice(cart.deliveryFee)}`}</Text>
                     </View>
                     {cart.discount > 0 && (
                       <View className="flex-row justify-between mb-3.5">
                         <Text className="text-gray-700 font-medium text-[15px]">Discount</Text>
-                        <Text className="font-extrabold text-green-700 text-[15px]">-₹{cart.discount}</Text>
+                        <Text className="font-extrabold text-green-700 text-[15px]">-₹{formatPrice(cart.discount)}</Text>
                       </View>
                     )}
                     {totalGST > 0 && (
                       <View className="flex-row justify-between mb-3.5">
                         <Text className="text-gray-700 font-medium text-[15px]">GST (Incl.)</Text>
-                        <Text className="font-bold text-gray-900 text-[14px]">₹{totalGST.toFixed(2)}</Text>
+                        <Text className="font-bold text-gray-900 text-[14px]">₹{formatPrice(totalGST)}</Text>
                       </View>
                     )}
                     <View className="h-[1px] bg-gray-200 my-4" />
                     <View className="flex-row justify-between items-center">
                       <Text className="text-lg font-black text-gray-900">To Pay</Text>
-                      <Text className="text-[22px] font-black text-orange-500">₹{cart.total}</Text>
+                      <Text className="text-[22px] font-black text-orange-500">₹{formatPrice(cart.total)}</Text>
                     </View>
                   </View>
 
@@ -215,7 +216,7 @@ export default function CartScreen() {
             >
               <View>
                 <Text className="text-white text-[11px] font-bold tracking-wider uppercase">TOTAL</Text>
-                <Text className="text-white text-lg font-black">₹{cart.total}</Text>
+                <Text className="text-white text-lg font-black">₹{formatPrice(cart.total)}</Text>
               </View>
               <View className="flex-row items-center bg-black/25 px-4 py-2.5 rounded-[5px]">
                 <Text className="text-white text-[14px] font-extrabold mr-2">

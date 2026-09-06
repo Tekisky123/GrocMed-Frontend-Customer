@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
-import { mapApiProductToUiProduct } from '@/utils/productHelper';
+import { mapApiProductToUiProduct, roundToTwo } from '@/utils/productHelper';
 
 import { settingApi, SystemSettings } from '@/api/settingApi';
 
@@ -80,12 +80,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Stable helper to build cart from items
   const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string, currentSettings?: SystemSettings): Cart => {
     const activeSettings = currentSettings || settings;
-    const subtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+    const subtotal = roundToTwo(items.reduce((sum, i) => sum + (roundToTwo(i.total) || 0), 0));
     const freeThreshold = activeSettings?.freeDeliveryThreshold ?? 1500;
     const delCharge = activeSettings?.deliveryCharge ?? 30;
     const minOrder = activeSettings?.minOrderValue ?? 1000;
     const deliveryFee = (subtotal >= freeThreshold || subtotal === 0) ? 0 : delCharge;
-    const total = subtotal + deliveryFee - discount;
+    const total = roundToTwo(subtotal + deliveryFee - discount);
     return { items, subtotal, deliveryFee, discount, total, couponCode, minOrderValue: minOrder };
   }, [settings]);
 
@@ -101,13 +101,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           
           if (!uiProd) return null;
 
-          let price = Number(i.price) || uiProd.price || 0;
+          let price = roundToTwo(Number(i.price) || uiProd.price || 0);
           let packagingOptionLabel;
 
           if (i.packagingOptionId && apiProd?.packagingOptions) {
              const packOpt = apiProd.packagingOptions.find((p:any) => String(p._id) === String(i.packagingOptionId) || p.id === i.packagingOptionId);
              if (packOpt) {
-                price = Number(packOpt.salePrice) || Number(packOpt.mrp) || price;
+                price = roundToTwo(Number(packOpt.salePrice) || Number(packOpt.mrp) || price);
                 packagingOptionLabel = packOpt.label;
              }
           }
@@ -121,8 +121,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             packagingOptionLabel,
             product: uiProd,
             quantity: Number(i.quantity || 1),
-            price: Number(price),
-            total: Number(price) * Number(i.quantity || 1),
+            price: roundToTwo(price),
+            total: roundToTwo(price * Number(i.quantity || 1)),
             itemKey
           } as any;
         }).filter((item: any) => item !== null);
@@ -137,7 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             deduplicatedMap.set(key, {
               ...existing,
               quantity: newQty,
-              total: existing.price * newQty
+              total: roundToTwo(existing.price * newQty)
             });
           } else {
             deduplicatedMap.set(key, item);
@@ -186,17 +186,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (existing) {
           updatedItems = prev.items.map(item =>
             (item as any).itemKey === itemKey
-              ? { ...item, quantity: item.quantity + quantity, total: item.price * (item.quantity + quantity) }
+              ? { ...item, quantity: item.quantity + quantity, total: roundToTwo(item.price * (item.quantity + quantity)) }
               : item
           );
         } else {
-          let price = product.price || 0;
+          let price = roundToTwo(product.price || 0);
           let packagingOptionLabel;
           
           if (packagingOptionId && product.packagingOptions) {
              const packOpt = product.packagingOptions.find((p:any) => String(p._id) === String(packagingOptionId) || p.id === packagingOptionId);
              if (packOpt) {
-                price = packOpt.salePrice || packOpt.mrp || price;
+                price = roundToTwo(packOpt.salePrice || packOpt.mrp || price);
                 packagingOptionLabel = packOpt.label;
              }
           }
@@ -208,8 +208,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               productId: product.id,
               product,
               quantity,
-              price,
-              total: price * quantity,
+              price: roundToTwo(price),
+              total: roundToTwo(price * quantity),
               itemKey,
               packagingOptionId,
               packagingOptionLabel
@@ -333,7 +333,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const updatedItems = prev.items.map(i => {
           const matches = i.productId === productId && (!packagingOptionId || i.packagingOptionId === packagingOptionId);
           return matches
-            ? { ...i, quantity, total: i.price * quantity }
+            ? { ...i, quantity, total: roundToTwo(i.price * quantity) }
             : i;
         });
 

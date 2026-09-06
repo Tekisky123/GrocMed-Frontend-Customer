@@ -87,3 +87,20 @@ export const mapApiProductsToUiProducts = (apiProducts: (ApiProduct | null | und
         .map(mapApiProductToUiProduct)
         .filter((p): p is Product => p !== null);
 };
+
+/**
+ * Safely rounds floating point numbers to 2 decimal places to eliminate IEEE 754 precision issues (e.g. .79000000001).
+ */
+export const roundToTwo = (num: number | undefined | null): number => {
+    if (num == null || isNaN(num)) return 0;
+    return Math.round(Number(num) * 100) / 100;
+};
+
+/**
+ * Formats prices cleanly without trailing floating-point decimals.
+ */
+export const formatPrice = (price: number | undefined | null): string => {
+    const rounded = roundToTwo(price);
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2);
+};
+

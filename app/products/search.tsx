@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const SECTION_PADDING = 20;
+const SECTION_PADDING = 16;
 const ITEM_SPACING = 12;
 
 const CARD_WIDTH = Math.floor((width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2);
@@ -284,14 +284,14 @@ export default function SearchScreen() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
-        initialNumToRender={8}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={11}
+        removeClippedSubviews={false}
         columnWrapperStyle={{ 
             gap: ITEM_SPACING,
             paddingHorizontal: SECTION_PADDING,
-            marginBottom: 16 
+            marginBottom: 12 
         }}
         renderItem={({ item }) => (
           <View style={{ width: CARD_WIDTH }}>

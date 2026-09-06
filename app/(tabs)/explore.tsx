@@ -13,9 +13,10 @@ import { Animated, Dimensions, RefreshControl, ScrollView, Text, TouchableOpacit
 import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 
 const { width } = Dimensions.get('window');
-const SECTION_PADDING = 20;
+const SECTION_PADDING = 16;
 const NUM_COLUMNS = 4;
-const TILE_SIZE = Math.floor((width - 40 - (NUM_COLUMNS - 1) * 8) / NUM_COLUMNS);
+const TILE_SIZE = Math.floor((width - (SECTION_PADDING * 2) - (NUM_COLUMNS - 1) * 8) / NUM_COLUMNS);
+const CARD_WIDTH = Math.floor((width - (SECTION_PADDING * 2) - 12) / 2);
 
 export default function ExploreScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,11 +51,6 @@ export default function ExploreScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
     }
   };
 
@@ -121,7 +117,7 @@ export default function ExploreScreen() {
             </View>
           </View>
         ) : (
-          <Animated.View style={{ opacity: fadeAnim }}>
+          <View>
 
             {/* Categories Section */}
             <View style={{ marginTop: 12, paddingHorizontal: SECTION_PADDING }}>
@@ -168,8 +164,8 @@ export default function ExploreScreen() {
                 }}>
                   {products.map((item) => (
                     <View key={item.id} style={{
-                      width: Math.floor((width - (SECTION_PADDING * 2) - 12) / 2),
-                      marginBottom: 16,
+                      width: CARD_WIDTH,
+                      marginBottom: 12,
                     }}>
                       <ProductCard
                         product={item}
@@ -180,7 +176,7 @@ export default function ExploreScreen() {
                 </View>
               </View>
             )}
-          </Animated.View>
+          </View>
         )}
       </ScrollView>
     </View>

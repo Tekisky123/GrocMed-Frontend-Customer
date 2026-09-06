@@ -148,7 +148,7 @@ export const ProductCard = React.memo(
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
-          className="bg-white rounded-[5px] p-2.5 border border-slate-200/60 justify-between h-full min-h-[250px]"
+          className="bg-white rounded-[5px] p-2.5 border border-slate-200/60 justify-between"
         >
           <View>
             {/* Image Section */}

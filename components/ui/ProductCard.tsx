@@ -179,12 +179,12 @@ export const ProductCard = React.memo(
             {/* Product Details */}
             <View className="w-full">
               <Text
-                className="text-[13px] font-bold text-slate-900 mb-1 leading-snug min-h-[34px]"
+                className="text-[13px] font-bold text-slate-900 mb-1 leading-snug min-h-[36px]"
                 numberOfLines={2}
               >
                 {product.name}
               </Text>
-              <Text className="text-[11px] text-slate-500 font-medium mb-1">{product.unit}</Text>
+              <Text className="text-[11px] text-slate-500 font-medium mb-1 min-h-[16px]">{product.unit || ' '}</Text>
             </View>
           </View>
 

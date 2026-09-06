@@ -13,13 +13,13 @@ interface CartContextType {
   cart: Cart;
   settings: SystemSettings;
   addToCart: (product: Product, quantity: number, packagingOptionId?: string) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (productId: string, packagingOptionId?: string) => void;
+  updateQuantity: (productId: string, quantity: number, packagingOptionId?: string) => void;
   clearCart: () => void;
   applyCoupon: (code: string) => boolean;
   removeCoupon: () => void;
   getItemCount: () => number;
-  getItemQuantity: (productId: string) => number;
+  getItemQuantity: (productId: string, packagingOptionId?: string) => number;
   refreshCart: () => Promise<void>;
   refreshSettings: () => Promise<SystemSettings | null>;
 }
@@ -95,7 +95,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await cartApi.getCart();
       if (res.success && res.data?.items && isMounted.current) {
-        const mappedItems: CartItem[] = res.data.items.map((i: any) => {
+        const rawMapped = res.data.items.map((i: any) => {
           const apiProd = i.product;
           const uiProd = mapApiProductToUiProduct(apiProd);
           
@@ -123,10 +123,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             quantity: Number(i.quantity || 1),
             price: Number(price),
             total: Number(price) * Number(i.quantity || 1),
-            itemKey // Store the key for later updates
+            itemKey
           } as any;
         }).filter((item: any) => item !== null);
 
+        // Group & Deduplicate mapped items by itemKey
+        const deduplicatedMap = new Map<string, CartItem>();
+        rawMapped.forEach((item: any) => {
+          const key = item.itemKey || item.productId;
+          if (deduplicatedMap.has(key)) {
+            const existing = deduplicatedMap.get(key)!;
+            const newQty = existing.quantity + item.quantity;
+            deduplicatedMap.set(key, {
+              ...existing,
+              quantity: newQty,
+              total: existing.price * newQty
+            });
+          } else {
+            deduplicatedMap.set(key, item);
+          }
+        });
+
+        const mappedItems = Array.from(deduplicatedMap.values());
         setCart(prev => buildCart(mappedItems, prev.discount, prev.couponCode));
       }
     } catch (e) {
@@ -233,25 +251,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const removeFromCart = useCallback(
-    (productId: string) => {
+    (productId: string, packagingOptionId?: string) => {
       if (!isAuthenticated) return;
 
+      const targetKey = packagingOptionId ? `${productId}_${packagingOptionId}` : productId;
+
       setCart(prev => {
-        const updatedItems = prev.items.filter(i => i.productId !== productId);
+        const updatedItems = prev.items.filter(i => {
+          if (i.productId !== productId) return true;
+          if (packagingOptionId) return i.packagingOptionId !== packagingOptionId;
+          return false;
+        });
         return buildCart(updatedItems, prev.discount, prev.couponCode);
       });
 
       showToast('Item removed from cart', 'info');
 
       // Clear any pending syncs
-      const existingTimer = apiTimers.current.get(productId);
+      const existingTimer = apiTimers.current.get(targetKey);
       if (existingTimer) clearTimeout(existingTimer);
-      apiTimers.current.delete(productId);
-      pendingDiffs.current.delete(productId);
+      apiTimers.current.delete(targetKey);
+      pendingDiffs.current.delete(targetKey);
 
       const timer = setTimeout(async () => {
         try {
-          const res = await cartApi.removeFromCart(productId);
+          const res = await cartApi.removeFromCart(productId, packagingOptionId);
           if (!res.success) fetchServerCart();
         } catch (e) {
           console.error('removeFromCart sync error:', e);
@@ -259,33 +283,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
       }, 100);
 
-      apiTimers.current.set(`remove_${productId}`, timer);
+      apiTimers.current.set(`remove_${targetKey}`, timer);
     },
     [isAuthenticated, showToast, buildCart, fetchServerCart]
   );
 
   const updateQuantity = useCallback(
-    (productId: string, quantity: number) => {
+    (productId: string, quantity: number, packagingOptionId?: string) => {
       if (!isAuthenticated) return;
 
       if (settings?.storeStatus && !settings.storeStatus.isOpen) {
-        const item = cart.items.find(i => i.productId === productId);
+        const item = cart.items.find(i => 
+          i.productId === productId && 
+          (!packagingOptionId || i.packagingOptionId === packagingOptionId)
+        );
         if (item && quantity > item.quantity) {
           showToast(settings.storeStatus.statusMessage || 'Store is currently closed for orders', 'error');
           return;
         }
       }
 
-      let itemKeyToSync = productId;
+      let itemKeyToSync = packagingOptionId ? `${productId}_${packagingOptionId}` : productId;
       let finalDiff = 0;
       let minQty = 1;
       let isRemoval = false;
+      let targetPkgOptId: string | undefined = packagingOptionId;
 
       setCart(prev => {
-        const item = prev.items.find(i => i.productId === productId);
+        const item = prev.items.find(i => 
+          i.productId === productId && 
+          (!packagingOptionId || i.packagingOptionId === packagingOptionId)
+        );
         if (!item) return prev;
 
-        itemKeyToSync = (item as any).itemKey || productId;
+        itemKeyToSync = (item as any).itemKey || (item.packagingOptionId ? `${productId}_${item.packagingOptionId}` : productId);
+        targetPkgOptId = item.packagingOptionId || packagingOptionId;
         minQty = item.product?.minQuantity || 1;
 
         if (quantity <= 0) {
@@ -298,17 +330,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         finalDiff = quantity - item.quantity;
         if (finalDiff === 0) return prev;
 
-        const updatedItems = prev.items.map(i => 
-          i.productId === productId 
-            ? { ...i, quantity, total: i.price * quantity } 
-            : i
-        );
+        const updatedItems = prev.items.map(i => {
+          const matches = i.productId === productId && (!packagingOptionId || i.packagingOptionId === packagingOptionId);
+          return matches
+            ? { ...i, quantity, total: i.price * quantity }
+            : i;
+        });
 
         return buildCart(updatedItems, prev.discount, prev.couponCode);
       });
 
       if (isRemoval) {
-        removeFromCart(productId);
+        removeFromCart(productId, targetPkgOptId);
         return;
       }
 
@@ -335,7 +368,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         if (syncDiff && syncDiff !== 0) {
           try {
-            await cartApi.addToCart(productId, syncDiff);
+            await cartApi.addToCart(productId, syncDiff, targetPkgOptId);
           } catch (e) {
             console.error('updateQuantity sync error:', e);
             fetchServerCart();
@@ -373,10 +406,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [cart.items]);
 
   const getItemQuantity = useCallback(
-    (productId: string) => {
-      const item = cart.items.find(
-        i => i.productId === productId || i.product?.id === productId
-      );
+    (productId: string, packagingOptionId?: string) => {
+      const item = cart.items.find(i => {
+        const matchesProduct = i.productId === productId || i.product?.id === productId;
+        if (!matchesProduct) return false;
+        if (packagingOptionId) return i.packagingOptionId === packagingOptionId;
+        return true;
+      });
       return item ? item.quantity : 0;
     },
     [cart.items]

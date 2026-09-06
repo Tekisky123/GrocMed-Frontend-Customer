@@ -15,26 +15,19 @@ const { width } = Dimensions.get('window');
 const SECTION_PADDING = 20;
 const ITEM_SPACING = 12;
 
+const CARD_WIDTH = Math.floor((width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2);
+
 export default function SearchScreen() {
   const { settings } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   // API State
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
-    // Load categories for filter
     loadCategories();
   }, []);
 
@@ -80,7 +73,7 @@ export default function SearchScreen() {
       } else {
         setProducts([]);
       }
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchQuery, selectedCategory]);
@@ -95,47 +88,45 @@ export default function SearchScreen() {
   const statusBarHeight = Platform.OS === 'ios' ? 44 : 0;
 
   const renderHeader = () => (
-    <Animated.View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 28, opacity: fadeAnim }}>
+    <View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 16 }}>
       {/* Filters Section */}
-      <View style={{ marginBottom: 20 }}>
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 }}>
-            Filter by Category
-          </Text>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={[{ name: 'All' }, ...categories]}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item, index }) => {
-                const isAll = index === 0;
-                const isSelected = isAll ? selectedCategory === null : selectedCategory === item.name;
-                return (
-                  <TouchableOpacity
-                    onPress={() => setSelectedCategory(isAll ? null : item.name)}
-                    activeOpacity={0.7}
-                    style={{
-                      marginRight: 10,
-                      paddingHorizontal: 18,
-                      paddingVertical: 8,
-                      borderRadius: 5,
-                      backgroundColor: isSelected ? Colors.primary : Colors.surface,
-                      borderWidth: 1,
-                      borderColor: isSelected ? Colors.primary : Colors.border,
-                    }}
-                  >
-                    <Text style={{
-                      fontWeight: '600',
-                      fontSize: 13,
-                      color: isSelected ? '#FFF' : Colors.textPrimary,
-                    }}>
-                      {isAll ? 'All' : item.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-            }}
-          />
-        </View>
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.textSecondary, marginBottom: 10 }}>
+          Filter by Category
+        </Text>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[{ name: 'All' }, ...categories]}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item, index }) => {
+              const isAll = index === 0;
+              const isSelected = isAll ? selectedCategory === null : selectedCategory === item.name;
+              return (
+                <TouchableOpacity
+                  onPress={() => setSelectedCategory(isAll ? null : item.name)}
+                  activeOpacity={0.7}
+                  style={{
+                    marginRight: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 7,
+                    borderRadius: 5,
+                    backgroundColor: isSelected ? Colors.primary : Colors.surface,
+                    borderWidth: 1,
+                    borderColor: isSelected ? Colors.primary : Colors.border,
+                  }}
+                >
+                  <Text style={{
+                    fontWeight: '700',
+                    fontSize: 12,
+                    color: isSelected ? '#FFF' : Colors.textPrimary,
+                  }}>
+                    {isAll ? 'All' : item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+          }}
+        />
       </View>
 
       {/* Results Header */}
@@ -143,12 +134,12 @@ export default function SearchScreen() {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'baseline',
-        marginBottom: 20,
+        marginBottom: 16,
       }}>
         <View>
           <Text style={{
-            fontSize: 22,
-            fontWeight: '700',
+            fontSize: 20,
+            fontWeight: '800',
             color: Colors.textPrimary,
             letterSpacing: -0.3,
             marginBottom: 4,
@@ -156,7 +147,7 @@ export default function SearchScreen() {
             Results {products.length > 0 && `(${products.length})`}
           </Text>
           <View style={{
-            width: 50,
+            width: 40,
             height: 3,
             backgroundColor: Colors.primary,
             borderRadius: 2,
@@ -171,13 +162,13 @@ export default function SearchScreen() {
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.error }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.error }}>
               Clear All
             </Text>
           </TouchableOpacity>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 
   const renderEmpty = () => {
@@ -191,25 +182,25 @@ export default function SearchScreen() {
     return (
       <View style={{
         alignItems: 'center',
-        justifyContent: 'center',
+        justify.content: 'center',
         paddingTop: 40,
         opacity: 0.8
       }}>
         <View style={{
-          width: 80,
-          height: 80,
-          borderRadius: 40,
+          width: 72,
+          height: 72,
+          borderRadius: 36,
           backgroundColor: Colors.gray100,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 16,
+          marginBottom: 14,
         }}>
-          <Icon name={Icons.search.name} size={32} color={Colors.textTertiary} library={Icons.search.library} />
+          <Icon name={Icons.search.name} size={30} color={Colors.textTertiary} library={Icons.search.library} />
         </View>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 }}>
           {searchQuery || selectedCategory ? 'No matches found' : 'Start searching...'}
         </Text>
-        <Text style={{ fontSize: 14, color: Colors.textSecondary, textAlign: 'center' }}>
+        <Text style={{ fontSize: 13, color: Colors.textSecondary, textAlign: 'center' }}>
           {searchQuery || selectedCategory ? 'Try checking your spelling or changing filters' : 'Find your favorite products'}
         </Text>
       </View>
@@ -221,42 +212,42 @@ export default function SearchScreen() {
       {/* Search Header */}
       <View style={{
         backgroundColor: Colors.background,
-        paddingTop: statusBarHeight + 16,
-        paddingBottom: 22,
+        paddingTop: statusBarHeight + 12,
+        paddingBottom: 16,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
         zIndex: 1000,
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <TouchableOpacity
             onPress={() => router.back()}
             activeOpacity={0.7}
             style={{
               backgroundColor: Colors.surface,
               borderRadius: 5,
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
               borderColor: Colors.border,
             }}
           >
-            <Icon name={Icons.back.name} size={24} color={Colors.textPrimary} library={Icons.back.library} />
+            <Icon name={Icons.back.name} size={22} color={Colors.textPrimary} library={Icons.back.library} />
           </TouchableOpacity>
           <View style={{
             flex: 1,
             backgroundColor: Colors.surface,
             borderRadius: 5,
-            paddingHorizontal: 14,
-            height: 44,
+            paddingHorizontal: 12,
+            height: 42,
             flexDirection: 'row',
             alignItems: 'center',
             borderWidth: 1,
             borderColor: Colors.border,
           }}>
-            <Icon name={Icons.search.name} size={20} color={Colors.textTertiary} library={Icons.search.library} />
+            <Icon name={Icons.search.name} size={18} color={Colors.textTertiary} library={Icons.search.library} />
             <TextInput
               placeholder="Search products..."
               placeholderTextColor={Colors.textTertiary}
@@ -265,8 +256,8 @@ export default function SearchScreen() {
               style={{
                 flex: 1,
                 color: Colors.textPrimary,
-                fontSize: 15,
-                marginLeft: 10,
+                fontSize: 14,
+                marginLeft: 8,
                 fontWeight: '500',
               }}
               autoFocus
@@ -293,17 +284,17 @@ export default function SearchScreen() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
-        initialNumToRender={6}
-        maxToRenderPerBatch={4}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
         windowSize={5}
         removeClippedSubviews={Platform.OS === 'android'}
         columnWrapperStyle={{ 
-            justifyContent: 'space-between',
+            gap: ITEM_SPACING,
             paddingHorizontal: SECTION_PADDING,
-            marginBottom: 20 
+            marginBottom: 16 
         }}
         renderItem={({ item }) => (
-          <View style={{ width: (width - (SECTION_PADDING * 2) - ITEM_SPACING) / 2 }}>
+          <View style={{ width: CARD_WIDTH }}>
             <ProductCard
               product={item}
               onPress={() => handleProductPress(item)}

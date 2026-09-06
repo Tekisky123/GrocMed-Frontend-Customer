@@ -124,11 +124,11 @@ export default function CategoryScreen() {
             windowSize={5}
             removeClippedSubviews={Platform.OS === 'android'}
             contentContainerStyle={{ padding: SECTION_PADDING, paddingTop: headerHeight + 20, paddingBottom: 24 }}
-            columnWrapperStyle={viewMode === 'grid' ? { justifyContent: 'space-between', gap: 12 } : undefined}
+            columnWrapperStyle={viewMode === 'grid' ? { gap: 12 } : undefined}
             renderItem={({ item }) => (
               <View style={{
-                width: viewMode === 'grid' ? (width - (SECTION_PADDING * 2) - 12) / 2 : '100%',
-                marginBottom: 20
+                width: viewMode === 'grid' ? Math.floor((width - (SECTION_PADDING * 2) - 12) / 2) : '100%',
+                marginBottom: 16
               }}>
                 <ProductCard
                   product={item}

@@ -109,7 +109,7 @@ export default function CartScreen() {
                       <Text className="text-base font-extrabold text-gray-900 flex-1 mr-2 leading-snug" numberOfLines={2}>
                         {item.product.name}
                       </Text>
-                      <TouchableOpacity onPress={() => removeFromCart(item.productId)} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+                      <TouchableOpacity onPress={() => removeFromCart(item.productId, item.packagingOptionId)} hitSlop={{top:10, bottom:10, left:10, right:10}}>
                         <Icon name="close" size={18} color={Colors.textPrimary} library="material" />
                       </TouchableOpacity>
                     </View>
@@ -125,7 +125,7 @@ export default function CartScreen() {
                     {/* Quantity Control */}
                     <View className="flex-row items-center bg-white rounded-[5px] border border-gray-300 p-1">
                       <TouchableOpacity
-                        onPress={item.quantity <= (item.product.minQuantity || 1) ? undefined : () => updateQuantity(item.productId, item.quantity - 1)}
+                        onPress={item.quantity <= (item.product.minQuantity || 1) ? undefined : () => updateQuantity(item.productId, item.quantity - 1, item.packagingOptionId)}
                         disabled={item.quantity <= (item.product.minQuantity || 1)}
                         activeOpacity={item.quantity <= (item.product.minQuantity || 1) ? 1 : 0.7}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -137,7 +137,7 @@ export default function CartScreen() {
                       <Text className="w-8 text-center font-black text-gray-900 text-sm">{item.quantity}</Text>
 
                       <TouchableOpacity
-                        onPress={() => updateQuantity(item.productId, item.quantity + 1)}
+                        onPress={() => updateQuantity(item.productId, item.quantity + 1, item.packagingOptionId)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         className="w-7 h-7 items-center justify-center bg-orange-500 rounded-[5px]"
                       >

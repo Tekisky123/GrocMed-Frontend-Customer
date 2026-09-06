@@ -25,9 +25,10 @@ export const cartApi = {
         }
     },
 
-    removeFromCart: async (productId: string) => {
+    removeFromCart: async (productId: string, packagingOptionId?: string) => {
         try {
-            const response = await axiosInstance.delete(`/cart/remove/${productId}`);
+            const query = packagingOptionId ? `?packagingOptionId=${packagingOptionId}` : '';
+            const response = await axiosInstance.delete(`/cart/remove/${productId}${query}`);
             return response.data;
         } catch (error: any) {
             console.error("Remove Cart Error", error);

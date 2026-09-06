@@ -98,9 +98,9 @@ const HomeBanners = React.memo(({ banners, loading, refreshing, router }: { bann
                 snapToInterval={BANNER_WIDTH}
                 decelerationRate="fast"
             >
-                {items.map((banner: any) => (
+                {items.map((banner: any, index: number) => (
                     <View 
-                        key={banner._id || banner.id} 
+                        key={banner._id || banner.id || `banner_${index}`} 
                         style={{ 
                             width: BANNER_WIDTH,
                             paddingHorizontal: 16,
@@ -360,8 +360,8 @@ export default function HomeScreen() {
                             keyExtractor={(item) => `popular_${item.id}`}
                             initialNumToRender={4}
                             maxToRenderPerBatch={4}
-                            windowSize={3}
-                            removeClippedSubviews={true}
+                            windowSize={5}
+                            removeClippedSubviews={false}
                             renderItem={({ item }) => (
                                 <View style={{ width: width * 0.44 }}>
                                     <ProductCard product={item} onPress={() => handleProductPress(item)} />

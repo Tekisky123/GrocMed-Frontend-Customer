@@ -144,11 +144,11 @@ export const ProductCard = React.memo(
 
     // Vertical variant (default)
     return (
-      <View className="w-full flex-1">
+      <View className="w-full">
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
-          className="bg-white rounded-[5px] p-2.5 border border-slate-200/60 flex-1 justify-between"
+          className="bg-white rounded-[5px] p-2.5 border border-slate-200/60 justify-between h-full min-h-[250px]"
         >
           <View>
             {/* Image Section */}
@@ -237,18 +237,6 @@ export const ProductCard = React.memo(
           </View>
         </TouchableOpacity>
       </View>
-    );
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.variant === nextProps.variant &&
-      prevProps.product.id === nextProps.product.id &&
-      prevProps.product.price === nextProps.product.price &&
-      prevProps.product.originalPrice === nextProps.product.originalPrice &&
-      prevProps.product.inStock === nextProps.product.inStock &&
-      prevProps.product.discount === nextProps.product.discount &&
-      prevProps.product.image === nextProps.product.image &&
-      prevProps.product.name === nextProps.product.name
     );
   }
 );

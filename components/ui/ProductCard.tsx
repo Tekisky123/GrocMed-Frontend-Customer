@@ -129,7 +129,12 @@ export const ProductCard = React.memo(
                       className={`py-1.5 px-3.5 rounded-[5px] ${canAdd ? 'bg-orange-500' : 'bg-gray-300'}`}
                       activeOpacity={0.8}
                     >
-                      <Text className={`font-bold text-xs ${canAdd ? 'text-white' : 'text-gray-500'}`}>
+                      <Text 
+                        numberOfLines={1} 
+                        adjustsFontSizeToFit 
+                        minimumFontScale={0.75} 
+                        className={`font-bold text-xs ${canAdd ? 'text-white' : 'text-gray-500'}`}
+                      >
                         {isStoreClosed ? 'CLOSED' : canAdd ? 'ADD' : 'OUT'}
                       </Text>
                     </TouchableOpacity>
@@ -157,13 +162,13 @@ export const ProductCard = React.memo(
               <View className="absolute top-1 left-1 right-1 flex-row justify-between items-center z-10">
                 {hasDiscount ? (
                   <View className="bg-red-50 border border-red-200/80 px-1.5 py-0.5 rounded-[5px]">
-                    <Text className="text-red-600 text-[9px] font-black">{product.discount}% OFF</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit className="text-red-600 text-[9px] font-black">{product.discount}% OFF</Text>
                   </View>
                 ) : <View />}
 
                 {hasOptions ? (
                   <View className="bg-blue-50 px-1.5 py-0.5 rounded-[5px] border border-blue-600/10 ml-auto">
-                    <Text className="text-[9px] font-extrabold text-blue-700">{product.packagingOptions!.length} OPTIONS</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit className="text-[9px] font-extrabold text-blue-700">{product.packagingOptions!.length} OPTIONS</Text>
                   </View>
                 ) : null}
               </View>
@@ -185,16 +190,18 @@ export const ProductCard = React.memo(
               >
                 {product.name}
               </Text>
-              <Text className="text-[11px] text-slate-500 font-medium mb-1 min-h-[16px]">{product.unit || ' '}</Text>
+              <Text className="text-[11px] text-slate-500 font-medium mb-1 min-h-[16px]" numberOfLines={1}>{product.unit || ' '}</Text>
             </View>
           </View>
 
           {/* Price and Add Button (Pushed to bottom) */}
           <View className="flex-row items-center justify-between mt-1 pt-1 border-t border-transparent">
-            <View>
-              <Text className="text-[15px] font-black text-slate-900 leading-none">₹{formatPrice(product.price)}</Text>
+            <View className="flex-1 mr-1">
+              <Text className="text-[15px] font-black text-slate-900 leading-none" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                ₹{formatPrice(product.price)}
+              </Text>
               {hasDiscount && product.originalPrice && product.originalPrice > product.price ? (
-                <Text className="text-[10px] text-slate-400 font-semibold line-through mt-0.5">
+                <Text className="text-[10px] text-slate-400 font-semibold line-through mt-0.5" numberOfLines={1}>
                   ₹{formatPrice(product.originalPrice)}
                 </Text>
               ) : null}
@@ -221,13 +228,18 @@ export const ProductCard = React.memo(
                 <TouchableOpacity
                   onPress={hasOptions ? onPress : handleAddToCart}
                   disabled={!canAdd}
-                  className={`py-1.5 px-3 rounded-[5px] min-w-[60px] items-center justify-center ${canAdd ? 'bg-orange-500' : 'bg-slate-300'}`}
+                  className={`py-1.5 px-3 rounded-[5px] min-w-[56px] items-center justify-center ${canAdd ? 'bg-orange-500' : 'bg-slate-300'}`}
                   activeOpacity={0.8}
                 >
                   {isAdding ? (
                     <Icon name="more-horiz" size={18} color="#ffffff" library="material" />
                   ) : (
-                    <Text className={`font-extrabold text-[12px] tracking-wide ${canAdd ? 'text-white' : 'text-slate-500'}`}>
+                    <Text 
+                      numberOfLines={1} 
+                      adjustsFontSizeToFit 
+                      minimumFontScale={0.75} 
+                      className={`font-extrabold text-[12px] tracking-wide ${canAdd ? 'text-white' : 'text-slate-500'}`}
+                    >
                       {isStoreClosed ? 'CLOSED' : canAdd ? 'ADD' : 'OUT'}
                     </Text>
                   )}

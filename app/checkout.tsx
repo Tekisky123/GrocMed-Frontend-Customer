@@ -25,6 +25,7 @@ import {
     TouchableOpacity,
     View,
     StatusBar,
+    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -53,6 +54,7 @@ export default function CheckoutScreen() {
     // State
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+    const [showQrModal, setShowQrModal] = useState(false);
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [newStreet, setNewStreet] = useState('');
     const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Other'>('Home');
@@ -263,7 +265,7 @@ export default function CheckoutScreen() {
                     zip: addressObject.zip,
                     addressType: addressObject.type || 'Home',
                 },
-                paymentMethod: paymentMethod.toUpperCase(),
+                paymentMethod: paymentMethod === 'upi' ? 'Online' : paymentMethod.toUpperCase(),
                 deliveryDate: selectedDate,
                 deliverySlot: selectedSlot,
                 couponCode: appliedCouponCode || undefined,
@@ -404,6 +406,79 @@ export default function CheckoutScreen() {
                         )}
                     </View>
 
+                    {/* Payment Method Section (Prominently at the top) */}
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <Icon name="payment" size={20} color={Colors.primary} library="material" />
+                            <Text style={styles.cardTitle}>Choose Payment Method</Text>
+                        </View>
+                        <View style={styles.paymentOptions}>
+                            {[
+                                { id: 'cod', label: 'Cash on Delivery', icon: 'payments' },
+                                { id: 'upi', label: 'UPI / Google Pay / QR Code', icon: 'account-balance-wallet' }
+                            ].map((method) => (
+                                <TouchableOpacity 
+                                    key={method.id}
+                                    onPress={() => setPaymentMethod(method.id as any)}
+                                    style={[styles.paymentOption, paymentMethod === method.id && styles.paymentOptionActive]}
+                                >
+                                    <Icon name={method.icon} size={22} color={paymentMethod === method.id ? Colors.primary : Colors.textSecondary} library="material" />
+                                    <Text style={[styles.paymentText, paymentMethod === method.id && styles.paymentTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                                        {method.label}
+                                    </Text>
+                                    <View style={[styles.radio, paymentMethod === method.id && styles.radioActive]}>
+                                        {paymentMethod === method.id && <View style={styles.radioInner} />}
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Admin-Uploaded UPI / Payment QR Section */}
+                        {paymentMethod === 'upi' && (
+                            <View style={styles.upiContainer}>
+                                <View style={styles.upiHeader}>
+                                    <Icon name="qr-code-scanner" size={20} color={Colors.primary} library="material" />
+                                    <Text style={styles.upiTitle}>UPI Payment & QR Code</Text>
+                                </View>
+
+                                {settings?.paymentQrUrl ? (
+                                    <View style={styles.qrCardContainer}>
+                                        <Text style={styles.qrSubText}>Scan using any UPI App (GPay, PhonePe, Paytm, BHIM)</Text>
+                                        <TouchableOpacity 
+                                            activeOpacity={0.9} 
+                                            onPress={() => setShowQrModal(true)}
+                                            style={styles.qrImageWrapper}
+                                        >
+                                            <Image 
+                                                source={{ uri: settings.paymentQrUrl }}
+                                                style={styles.qrImage}
+                                                resizeMode="contain"
+                                            />
+                                            <View style={styles.enlargeBadge}>
+                                                <Icon name="zoom-in" size={14} color="#fff" library="material" />
+                                                <Text style={styles.enlargeBadgeText}>Tap to Enlarge</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                        <View style={styles.amountNoticeBox}>
+                                            <Text style={styles.amountNoticeLabel}>Payable Amount:</Text>
+                                            <Text style={styles.amountNoticeValue}>₹{formatPrice(finalPayableTotal)}</Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.noQrBox}>
+                                        <Icon name="info" size={20} color={Colors.primary} library="material" />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.noQrTitle}>Pay via UPI App / QR</Text>
+                                            <Text style={styles.noQrDesc}>
+                                                You can make payment of ₹{formatPrice(finalPayableTotal)} via UPI/GPay/PhonePe at doorstep or online verification.
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+                    </View>
+
                     {/* Delivery Schedule Section */}
                     <View style={styles.card}>
                         <View style={styles.cardHeader}>
@@ -506,18 +581,25 @@ export default function CheckoutScreen() {
                                                     </View>
                                                     
                                                     <View style={styles.premiumSlotInfo}>
-                                                        <Text style={[
-                                                            styles.premiumSlotName,
-                                                            isSelected && styles.premiumSlotNameActive,
-                                                            isFull && styles.premiumSlotNameDisabled
-                                                        ]}>
+                                                        <Text 
+                                                            style={[
+                                                                styles.premiumSlotName,
+                                                                isSelected && styles.premiumSlotNameActive,
+                                                                isFull && styles.premiumSlotNameDisabled
+                                                            ]}
+                                                            numberOfLines={1}
+                                                            adjustsFontSizeToFit
+                                                        >
                                                             {slot.name}
                                                         </Text>
-                                                        <Text style={[
-                                                            styles.premiumSlotTime,
-                                                            isSelected && styles.premiumSlotTimeActive,
-                                                            isFull && styles.premiumSlotTimeDisabled
-                                                        ]}>
+                                                        <Text 
+                                                            style={[
+                                                                styles.premiumSlotTime,
+                                                                isSelected && styles.premiumSlotTimeActive,
+                                                                isFull && styles.premiumSlotTimeDisabled
+                                                            ]}
+                                                            numberOfLines={1}
+                                                        >
                                                             {formattedTimeRange}
                                                         </Text>
                                                     </View>
@@ -603,9 +685,9 @@ export default function CheckoutScreen() {
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                             }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                                     <Icon name="check-circle" size={20} color={Colors.success} library="material" />
-                                    <View>
+                                    <View style={{ flex: 1 }}>
                                         <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>
                                             '{appliedCouponCode}' APPLIED
                                         </Text>
@@ -653,7 +735,7 @@ export default function CheckoutScreen() {
                                     {couponApplying ? (
                                         <ActivityIndicator color="#fff" size="small" />
                                     ) : (
-                                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>APPLY</Text>
+                                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }} numberOfLines={1}>APPLY</Text>
                                     )}
                                 </TouchableOpacity>
                             </View>
@@ -718,32 +800,9 @@ export default function CheckoutScreen() {
                         )}
                     </View>
 
-                    {/* Payment Method */}
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitleSmall}>Choose Payment Method</Text>
-                        <View style={styles.paymentOptions}>
-                            {[
-                                { id: 'cod', label: 'Cash on Delivery', icon: 'payments' },
-                                { id: 'upi', label: 'UPI / Google Pay', icon: 'account-balance-wallet' }
-                            ].map((method) => (
-                                <TouchableOpacity 
-                                    key={method.id}
-                                    onPress={() => setPaymentMethod(method.id as any)}
-                                    style={[styles.paymentOption, paymentMethod === method.id && styles.paymentOptionActive]}
-                                >
-                                    <Icon name={method.icon} size={22} color={paymentMethod === method.id ? Colors.primary : Colors.textSecondary} library="material" />
-                                    <Text style={[styles.paymentText, paymentMethod === method.id && styles.paymentTextActive]}>{method.label}</Text>
-                                    <View style={[styles.radio, paymentMethod === method.id && styles.radioActive]}>
-                                        {paymentMethod === method.id && <View style={styles.radioInner} />}
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
                     <View style={styles.safetyCard}>
                         <Icon name="verified-user" size={20} color={Colors.success} library="material" />
-                        <Text style={styles.safetyText}>Secure Checkout | 100% Genuine Products</Text>
+                        <Text style={styles.safetyText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Secure Checkout | 100% Genuine Products</Text>
                     </View>
 
                 </Animated.View>
@@ -751,9 +810,11 @@ export default function CheckoutScreen() {
 
             {/* Bottom Bar */}
             <View style={styles.bottomBar}>
-                <View>
+                <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
-                    <Text style={styles.totalPrice}>₹{formatPrice(finalPayableTotal)}</Text>
+                    <Text style={styles.totalPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        ₹{formatPrice(finalPayableTotal)}
+                    </Text>
                 </View>
                 <TouchableOpacity 
                     style={[styles.placeOrderBtn, (loading || isBelowMinOrder || isStoreClosed) && { backgroundColor: '#D1D5DB' }]}
@@ -763,15 +824,52 @@ export default function CheckoutScreen() {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <>
-                            <Text style={styles.placeOrderText}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text 
+                                style={styles.placeOrderText}
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.75}
+                            >
                                 {isStoreClosed ? 'STORE IS CLOSED' : isBelowMinOrder ? `ADD ₹${minOrderShortfall} MORE` : 'PLACE ORDER'}
                             </Text>
                             <Icon name={isStoreClosed ? 'event-busy' : isBelowMinOrder ? 'add-shopping-cart' : 'chevron-right'} size={20} color="#fff" library="material" />
-                        </>
+                        </View>
                     )}
                 </TouchableOpacity>
             </View>
+
+            {/* QR Code Fullscreen Modal */}
+            <Modal visible={showQrModal} transparent animationType="fade" onRequestClose={() => setShowQrModal(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <TouchableOpacity 
+                        style={{ position: 'absolute', top: Platform.OS === 'ios' ? 50 : 20, right: 20, zIndex: 10, padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}
+                        onPress={() => setShowQrModal(false)}
+                    >
+                        <Icon name="close" size={28} color="#fff" library="material" />
+                    </TouchableOpacity>
+
+                    <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 6 }}>Payment QR Code</Text>
+                    <Text style={{ color: '#E0E0E0', fontSize: 13, marginBottom: 20, textAlign: 'center' }}>
+                        Scan to pay ₹{formatPrice(finalPayableTotal)} via any UPI App
+                    </Text>
+
+                    {settings?.paymentQrUrl ? (
+                        <Image 
+                            source={{ uri: settings.paymentQrUrl }}
+                            style={{ width: width * 0.8, height: width * 0.8, maxHeight: 350, maxWidth: 350, borderRadius: 16, backgroundColor: '#fff' }}
+                            resizeMode="contain"
+                        />
+                    ) : null}
+
+                    <TouchableOpacity 
+                        style={{ marginTop: 24, backgroundColor: Colors.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 8 }}
+                        onPress={() => setShowQrModal(false)}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
 
             {/* Address Selection Modal */}
             <Modal visible={showAddressModal} animationType="slide" transparent>
@@ -1655,5 +1753,118 @@ const styles = StyleSheet.create({
         borderColor: '#E9ECEF',
         borderStyle: 'dashed',
         gap: 8,
+    },
+    upiContainer: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F3F5',
+    },
+    upiHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    upiTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: Colors.textPrimary,
+    },
+    qrCardContainer: {
+        backgroundColor: '#FFF9F4',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFE8D6',
+    },
+    qrSubText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    qrImageWrapper: {
+        position: 'relative',
+        padding: 10,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E9ECEF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    qrImage: {
+        width: 180,
+        height: 180,
+        borderRadius: 8,
+    },
+    enlargeBadge: {
+        position: 'absolute',
+        bottom: 6,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    enlargeBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    amountNoticeBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 14,
+        backgroundColor: '#fff',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FFE8D6',
+    },
+    amountNoticeLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    amountNoticeValue: {
+        fontSize: 15,
+        fontWeight: '900',
+        color: Colors.primary,
+    },
+    noQrBox: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        backgroundColor: '#FFFBEB',
+        padding: 14,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    noQrTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#92400E',
+        marginBottom: 2,
+    },
+    noQrDesc: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#B45309',
+        lineHeight: 16,
     },
 });

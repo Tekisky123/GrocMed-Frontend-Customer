@@ -166,16 +166,16 @@ export default function OrdersScreen() {
                   >
                     {/* ID & Date */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                      <View>
-                        <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600', marginBottom: 4 }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={{ fontSize: 13, color: Colors.textSecondary, fontWeight: '600', marginBottom: 4 }} numberOfLines={1}>
                           ORDER #{item.orderNumber}
                         </Text>
-                        <Text style={{ fontSize: 12, color: Colors.textTertiary, fontWeight: '500' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textTertiary, fontWeight: '500' }} numberOfLines={1}>
                           {new Date(item.placedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {new Date(item.placedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       </View>
                       <View style={{ backgroundColor: statusStyle.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 }}>
-                        <Text style={{ color: statusStyle.text, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <Text style={{ color: statusStyle.text, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }} numberOfLines={1}>
                           {item.status}
                         </Text>
                       </View>

@@ -1,6 +1,9 @@
 import { Colors } from '@/constants/colors';
 import React from 'react';
-import { ActivityIndicator, Animated, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const IS_SMALL_DEVICE = width < 375;
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -61,9 +64,9 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 14 },
-    md: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 16 },
-    lg: { paddingVertical: 20, paddingHorizontal: 36, fontSize: 18 },
+    sm: { paddingVertical: IS_SMALL_DEVICE ? 10 : 12, paddingHorizontal: IS_SMALL_DEVICE ? 14 : 20, fontSize: IS_SMALL_DEVICE ? 13 : 14 },
+    md: { paddingVertical: IS_SMALL_DEVICE ? 14 : 16, paddingHorizontal: IS_SMALL_DEVICE ? 20 : 28, fontSize: IS_SMALL_DEVICE ? 15 : 16 },
+    lg: { paddingVertical: IS_SMALL_DEVICE ? 16 : 20, paddingHorizontal: IS_SMALL_DEVICE ? 24 : 36, fontSize: IS_SMALL_DEVICE ? 16 : 18 },
   };
 
   const textColors = {
@@ -96,12 +99,18 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={textColors[variant]} />
         ) : (
-          <Text style={{
-            color: textColors[variant],
-            fontWeight: '800',
-            fontSize: sizeStyles[size].fontSize,
-            letterSpacing: 0.8,
-          }}>
+          <Text 
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={{
+              color: textColors[variant],
+              fontWeight: '800',
+              fontSize: sizeStyles[size].fontSize,
+              letterSpacing: 0.5,
+              textAlign: 'center',
+            }}
+          >
             {title}
           </Text>
         )}

@@ -96,26 +96,26 @@ export function StickyCartBar() {
                     borderColor: 'rgba(255,255,255,0.2)',
                 }}
             >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                     <View style={{
                         backgroundColor: 'rgba(255,255,255,0.2)',
                         borderRadius: 5,
-                        paddingHorizontal: 12,
+                        paddingHorizontal: 10,
                         paddingVertical: 6,
-                        marginRight: 12,
+                        marginRight: 10,
                     }}>
-                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>
+                        <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>
                             {getItemCount()} ITEM{getItemCount() !== 1 ? 'S' : ''}
                         </Text>
                     </View>
-                    <View>
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', opacity: 0.9 }}>Total</Text>
-                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>₹{cart.total}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text numberOfLines={1} style={{ color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', opacity: 0.9 }}>Total</Text>
+                        <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>₹{cart.total}</Text>
                     </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginRight: 8 }}>View Cart</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginRight: 6 }}>View Cart</Text>
                     <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 5, padding: 6 }}>
                         <Icon name="shopping-bag" size={16} color="#fff" library="material" />
                     </View>

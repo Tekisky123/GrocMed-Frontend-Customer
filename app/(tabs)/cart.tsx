@@ -211,18 +211,18 @@ export default function CartScreen() {
           >
             <TouchableOpacity
               onPress={handleCheckoutPress}
-              className={`${isStoreClosed ? 'bg-amber-800' : isBelowMinOrder ? 'bg-amber-700' : 'bg-orange-500'} flex-row items-center justify-between py-[18px] px-6 rounded-[5px]`}
+              className={`${isStoreClosed ? 'bg-amber-800' : isBelowMinOrder ? 'bg-amber-700' : 'bg-orange-500'} flex-row items-center justify-between py-[16px] px-4 rounded-[5px]`}
               activeOpacity={0.85}
             >
-              <View>
-                <Text className="text-white text-[11px] font-bold tracking-wider uppercase">TOTAL</Text>
-                <Text className="text-white text-lg font-black">₹{formatPrice(cart.total)}</Text>
+              <View className="flex-1 mr-2">
+                <Text className="text-white text-[10px] font-bold tracking-wider uppercase" numberOfLines={1}>TOTAL</Text>
+                <Text className="text-white text-base font-black" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>₹{formatPrice(cart.total)}</Text>
               </View>
-              <View className="flex-row items-center bg-black/25 px-4 py-2.5 rounded-[5px]">
-                <Text className="text-white text-[14px] font-extrabold mr-2">
+              <View className="flex-row items-center bg-black/25 px-3.5 py-2.5 rounded-[5px] shrink-0">
+                <Text className="text-white text-[13px] font-extrabold mr-1.5" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                   {isStoreClosed ? 'Store Closed' : isBelowMinOrder ? `Add ₹${minOrderShortfall} More` : 'Checkout'}
                 </Text>
-                <Icon name={isStoreClosed ? 'time-outline' : isBelowMinOrder ? 'add-shopping-cart' : 'arrow-forward'} size={18} color="#fff" library="material" />
+                <Icon name={isStoreClosed ? 'time-outline' : isBelowMinOrder ? 'add-shopping-cart' : 'arrow-forward'} size={16} color="#fff" library="material" />
               </View>
             </TouchableOpacity>
           </View>

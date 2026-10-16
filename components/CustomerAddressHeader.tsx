@@ -7,7 +7,15 @@ import { useCart } from '@/contexts/CartContext';
 import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { router } from 'expo-router';
 
-export const CustomerAddressHeader: React.FC = () => {
+export interface CustomerAddressHeaderProps {
+  showBackButton?: boolean;
+  onBackPress?: () => void;
+}
+
+export const CustomerAddressHeader: React.FC<CustomerAddressHeaderProps> = ({
+  showBackButton = false,
+  onBackPress,
+}) => {
   const { displayTitle, displaySubtitle, openAddressModal, isLoadingLocation } = useAddress();
   const { getItemCount } = useCart();
   const { setCartIconPosition } = useCartAnimation();
@@ -19,6 +27,16 @@ export const CustomerAddressHeader: React.FC = () => {
       {/* Top Bar: Brand, Express Badge, and Cart */}
       <View style={styles.topRow}>
         <View style={styles.brandContainer}>
+          {showBackButton && (
+            <TouchableOpacity
+              onPress={onBackPress || (() => router.back())}
+              style={styles.backButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <Icon name="arrow-back" size={22} color="#0F172A" library="material" />
+            </TouchableOpacity>
+          )}
           <Image
             source={require('@/assets/images/logo-removebg-preview.png')}
             style={styles.logo}
@@ -112,6 +130,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  backButton: {
+    marginRight: 2,
+    padding: 2,
   },
   logo: {
     width: 36,

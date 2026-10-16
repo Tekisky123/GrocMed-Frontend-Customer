@@ -9,12 +9,13 @@ import {
     ActivityIndicator,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 
 const formatRelativeTime = (dateString: string) => {
     const now = new Date();
@@ -98,7 +99,8 @@ export default function NotificationsScreen() {
 
     if (!isAuthenticated) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+                <CustomerAddressHeader />
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Inbox</Text>
                 </View>
@@ -118,7 +120,8 @@ export default function NotificationsScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+            <CustomerAddressHeader />
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Inbox</Text>
             </View>

@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 
 const SECTION_PADDING = 20;
 
@@ -21,29 +23,32 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <Animated.View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 20, opacity: fadeAnim }}>
-        <View style={{
-          width: 120, height: 120, backgroundColor: Colors.gray100, borderRadius: 60,
-          alignItems: 'center', justifyContent: 'center', marginBottom: 24
-        }}>
-          <Icon name="person" size={48} color={Colors.gray400} library="material" />
-        </View>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>Login Required</Text>
-        <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginBottom: 32, lineHeight: 24, fontSize: 15 }}>
-          Please login to view and manage your profile details.
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push('/auth/login')}
-          style={{
-            backgroundColor: Colors.primary,
-            paddingVertical: 16,
-            paddingHorizontal: 32,
-            borderRadius: 5,
-          }}
-        >
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Go to Login</Text>
-        </TouchableOpacity>
-      </Animated.View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+        <CustomerAddressHeader />
+        <Animated.View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 20, opacity: fadeAnim }}>
+          <View style={{
+            width: 120, height: 120, backgroundColor: Colors.gray100, borderRadius: 60,
+            alignItems: 'center', justifyContent: 'center', marginBottom: 24
+          }}>
+            <Icon name="person" size={48} color={Colors.gray400} library="material" />
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.textPrimary, marginBottom: 12 }}>Login Required</Text>
+          <Text style={{ textAlign: 'center', color: Colors.textSecondary, marginBottom: 32, lineHeight: 24, fontSize: 15 }}>
+            Please login to view and manage your profile details.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/auth/login')}
+            style={{
+              backgroundColor: Colors.primary,
+              paddingVertical: 16,
+              paddingHorizontal: 32,
+              borderRadius: 5,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Go to Login</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </SafeAreaView>
     );
   }
 
@@ -57,13 +62,17 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      <CustomerAddressHeader />
+      <ScrollView
+        style={{ flex: 1, backgroundColor: Colors.background }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Modern Header */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <View style={{
             backgroundColor: Colors.primary,
-            paddingTop: 50,
+            paddingTop: 24,
             paddingBottom: 32,
             paddingHorizontal: SECTION_PADDING,
             borderBottomLeftRadius: 5,
@@ -178,6 +187,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

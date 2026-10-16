@@ -10,6 +10,8 @@ import { Product } from '@/types';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 
 const { width } = Dimensions.get('window');
@@ -71,10 +73,11 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <PageHeader title="Explore" showBackButton={false} variant="primary" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      <CustomerAddressHeader />
 
       <ScrollView
+        style={{ flex: 1, backgroundColor: Colors.background }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
@@ -179,6 +182,6 @@ export default function ExploreScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

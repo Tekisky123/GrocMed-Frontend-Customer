@@ -10,6 +10,8 @@ import { mapApiProductsToUiProducts } from '@/utils/productHelper';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, FlatList, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 
 const { width } = Dimensions.get('window');
 const SECTION_PADDING = 16;
@@ -84,8 +86,6 @@ export default function SearchScreen() {
       params: { id: product.id },
     });
   };
-
-  const statusBarHeight = Platform.OS === 'ios' ? 44 : 0;
 
   const renderHeader = () => (
     <View style={{ paddingHorizontal: SECTION_PADDING, paddingTop: 16 }}>
@@ -208,69 +208,52 @@ export default function SearchScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      {/* Search Header */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      {/* Universal GrocMed Customer Header with Back Button */}
+      <CustomerAddressHeader showBackButton={true} onBackPress={() => router.back()} />
+
+      {/* Search Input Bar */}
       <View style={{
-        backgroundColor: Colors.background,
-        paddingTop: statusBarHeight + 12,
-        paddingBottom: 16,
-        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        zIndex: 1000,
+        borderBottomColor: '#F1F5F9',
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            activeOpacity={0.7}
+        <View style={{
+          backgroundColor: '#F8FAFC',
+          borderRadius: 8,
+          paddingHorizontal: 12,
+          height: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+        }}>
+          <Icon name="search" size={20} color={Colors.textTertiary} library="material" />
+          <TextInput
+            placeholder="Search products, brands and essentials..."
+            placeholderTextColor={Colors.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
             style={{
-              backgroundColor: Colors.surface,
-              borderRadius: 5,
-              width: 42,
-              height: 42,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: Colors.border,
+              flex: 1,
+              color: Colors.textPrimary,
+              fontSize: 14,
+              marginLeft: 8,
+              fontWeight: '500',
             }}
-          >
-            <Icon name={Icons.back.name} size={22} color={Colors.textPrimary} library={Icons.back.library} />
-          </TouchableOpacity>
-          <View style={{
-            flex: 1,
-            backgroundColor: Colors.surface,
-            borderRadius: 5,
-            paddingHorizontal: 12,
-            height: 42,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: Colors.border,
-          }}>
-            <Icon name={Icons.search.name} size={18} color={Colors.textTertiary} library={Icons.search.library} />
-            <TextInput
-              placeholder="Search products..."
-              placeholderTextColor={Colors.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={{
-                flex: 1,
-                color: Colors.textPrimary,
-                fontSize: 14,
-                marginLeft: 8,
-                fontWeight: '500',
-              }}
-              autoFocus
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                activeOpacity={0.7}
-              >
-                <Icon name={Icons.closeCircle.name} size={18} color={Colors.textTertiary} library={Icons.closeCircle.library} />
-              </TouchableOpacity>
-            )}
-          </View>
+            autoFocus
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Icon name="cancel" size={18} color={Colors.textTertiary} library="material" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -302,6 +285,6 @@ export default function SearchScreen() {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }

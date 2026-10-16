@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, Image, Platform, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   placed: { bg: '#E3F2FD', text: '#1976D2' },
@@ -85,31 +86,29 @@ export default function OrdersScreen() {
     fetchOrders();
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }} edges={['top']}>
-      <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      <CustomerAddressHeader />
+
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
         {/* Header */}
         <View style={{
           paddingHorizontal: 16,
-          paddingVertical: 16,
-          backgroundColor: Colors.background,
+          paddingVertical: 14,
+          backgroundColor: '#FFFFFF',
           borderBottomWidth: 1,
-          borderBottomColor: 'rgba(0,0,0,0.05)'
+          borderBottomColor: '#F1F5F9',
         }}>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: Colors.textPrimary }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: Colors.textPrimary }}>
             My Orders
           </Text>
         </View>
 
-        {!loading && orders.length === 0 ? (
+        {loading && !refreshing ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : orders.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 }}>
             <View style={{
               width: 120,

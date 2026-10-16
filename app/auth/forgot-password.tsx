@@ -25,7 +25,7 @@ export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Form State
-  const [identifier, setIdentifier] = useState('');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
 
   const [newPassword, setNewPassword] = useState('');
@@ -57,19 +57,19 @@ export default function ForgotPasswordScreen() {
 
   // Step 1: Send OTP to WhatsApp
   const handleSendOtp = async () => {
-    const trimmed = identifier.trim();
-    if (!trimmed) {
-      showToast('Please enter your registered phone number or email', 'error');
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showToast('Please enter your 10-digit registered WhatsApp mobile number', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await customerApi.sendForgotPasswordOtp(trimmed);
+      const res = await customerApi.sendForgotPasswordOtp(cleanPhone);
       if (res.success) {
         showToast(res.message || 'OTP sent to your WhatsApp', 'success');
-        setMaskedPhone(res.maskedPhone || trimmed);
-        setVerifiedPhone(res.phone || trimmed);
+        setMaskedPhone(res.maskedPhone || cleanPhone);
+        setVerifiedPhone(res.phone || cleanPhone);
         setSendCount(res.sendCount || 1);
         setAttemptsLeft(res.attemptsLeft !== undefined ? res.attemptsLeft : 1);
         setIsLimitReached(res.attemptsLeft === 0);
@@ -96,7 +96,7 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const res = await customerApi.sendForgotPasswordOtp(verifiedPhone || identifier);
+      const res = await customerApi.sendForgotPasswordOtp(verifiedPhone || phone);
       if (res.success) {
         showToast('New OTP sent to your WhatsApp', 'success');
         setSendCount(res.sendCount || 2);
@@ -289,21 +289,26 @@ export default function ForgotPasswordScreen() {
             </View>
             <Text style={styles.title}>Forgot Password?</Text>
             <Text style={styles.subtitle}>
-              Enter your registered mobile number or email. We will send a 6-digit OTP code directly to your WhatsApp.
+              Enter your registered WhatsApp mobile number. We will send a 6-digit OTP code directly to your WhatsApp.
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number or Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 9876543210 or user@example.com"
-                placeholderTextColor={Colors.textTertiary}
-                value={identifier}
-                onChangeText={setIdentifier}
-                autoCapitalize="none"
-                keyboardType="default"
-                editable={!loading}
-              />
+              <Text style={styles.label}>WhatsApp Mobile Number *</Text>
+              <View style={styles.phoneInputRow}>
+                <View style={styles.countryCodeBadge}>
+                  <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                </View>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="10-digit mobile number"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={phone}
+                  onChangeText={(val) => setPhone(val.replace(/[^0-9]/g, '').slice(0, 10))}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  editable={!loading}
+                />
+              </View>
             </View>
 
             <View style={styles.securityNotice}>
@@ -652,6 +657,37 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  countryCodeBadge: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countryCodeText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  phoneInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    letterSpacing: 1,
   },
   singleOtpInput: {
     backgroundColor: Colors.surface,

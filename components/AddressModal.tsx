@@ -16,7 +16,6 @@ import { Colors } from '@/constants/colors';
 import { useAddress } from '@/contexts/AddressContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Address } from '@/types';
-import { searchPlaces, PlaceSuggestion, findNearbyLandmark } from '@/utils/locationHelper';
 
 export const AddressModal: React.FC = () => {
   const {
@@ -34,9 +33,6 @@ export const AddressModal: React.FC = () => {
   const { user } = useAuth();
 
   const [isEditingForm, setIsEditingForm] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   const [street, setStreet] = useState('');
   const [landmark, setLandmark] = useState('');
@@ -47,13 +43,11 @@ export const AddressModal: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const searchTimer = useRef<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Sync form when opening modal or editing
   useEffect(() => {
     if (isAddressModalOpen) {
-      setSearchQuery('');
-      setSuggestions([]);
       if (editingAddress) {
         setStreet(editingAddress.street || '');
         setLandmark(editingAddress.landmark || '');
@@ -71,54 +65,8 @@ export const AddressModal: React.FC = () => {
     }
   }, [isAddressModalOpen, editingAddress, activeAddress, user?.addresses]);
 
-  // Handle Search Input with local viewbox bounding
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-
-    if (text.trim().length < 2) {
-      setSuggestions([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    searchTimer.current = setTimeout(async () => {
-      // Pass user's current coordinates to strictly bound results to user's location/city!
-      const results = await searchPlaces(text, currentCoords);
-      setSuggestions(results);
-      setIsSearching(false);
-    }, 300);
-  };
-
-  const handleSelectSuggestion = async (place: PlaceSuggestion) => {
-    setStreet(place.street || place.title);
-    setCity(place.city || 'Nagpur');
-    setState(place.state || 'Maharashtra');
-    setZip(place.zip || '');
-    setType(user?.shopName ? 'Shop' : 'Home');
-    setSearchQuery('');
-    setSuggestions([]);
-    setIsEditingForm(true);
-
-    if (place.landmark) {
-      setLandmark(place.landmark);
-    } else if (place.latitude && place.longitude) {
-      const detectedLm = await findNearbyLandmark(place.latitude, place.longitude);
-      if (detectedLm) {
-        setLandmark(detectedLm);
-      } else {
-        setLandmark('');
-      }
-    } else {
-      setLandmark('');
-    }
-  };
-
   const handleUseCurrentLocation = async () => {
     setErrorMsg('');
-    setSearchQuery('');
-    setSuggestions([]);
     const detected = await detectCurrentLocation(false);
     if (detected) {
       setStreet(detected.street || '');
@@ -180,7 +128,8 @@ export const AddressModal: React.FC = () => {
     >
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <TouchableOpacity
           style={styles.backdrop}
@@ -208,71 +157,14 @@ export const AddressModal: React.FC = () => {
           </View>
 
           <ScrollView
+            ref={scrollViewRef}
             style={styles.contentScroll}
+            contentContainerStyle={styles.scrollContentContainer}
             showsVerticalScrollIndicator={true}
             keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={true}
             nestedScrollEnabled={true}
           >
-            {/* Blinkit / Instamart Style Search Bar */}
-            <View style={styles.searchBarContainer}>
-              <Icon name="search" size={20} color="#64748B" library="material" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search area, landmark, street in your city..."
-                placeholderTextColor="#94A3B8"
-                value={searchQuery}
-                onChangeText={handleSearchChange}
-                clearButtonMode="while-editing"
-              />
-              {isSearching ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
-              ) : searchQuery.length > 0 ? (
-                <TouchableOpacity onPress={() => { setSearchQuery(''); setSuggestions([]); }}>
-                  <Icon name="cancel" size={18} color="#94A3B8" library="material" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {/* Fully Scrollable Suggestions List (No fixed height trap) */}
-            {suggestions.length > 0 ? (
-              <View style={styles.suggestionsContainer}>
-                <View style={styles.suggestionsHeader}>
-                  <Text style={styles.suggestionsHeaderText}>
-                    📍 PLACES IN YOUR AREA ({suggestions.length})
-                  </Text>
-                  <TouchableOpacity onPress={() => { setSuggestions([]); setSearchQuery(''); }}>
-                    <Text style={styles.suggestionsClearText}>Clear</Text>
-                  </TouchableOpacity>
-                </View>
-                {suggestions.map((item) => (
-                  <TouchableOpacity
-                    key={item.placeId}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSelectSuggestion(item)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.suggestionIcon}>
-                      <Icon name="place" size={18} color={Colors.primary} library="material" />
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 10, marginRight: 6 }}>
-                      <Text style={styles.suggestionTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      {item.landmark ? (
-                        <Text style={styles.landmarkTag} numberOfLines={1}>
-                          📍 {item.landmark}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.suggestionSubtitle} numberOfLines={2}>
-                        {item.subtitle}
-                      </Text>
-                    </View>
-                    <Icon name="chevron-right" size={18} color="#94A3B8" library="material" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : null}
-
             {/* GPS Detect Button */}
             <TouchableOpacity
               style={styles.gpsButton}
@@ -507,6 +399,9 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={street}
                   onChangeText={setStreet}
+                  onFocus={() => {
+                    setTimeout(() => scrollViewRef.current?.scrollTo({ y: 60, animated: true }), 120);
+                  }}
                 />
 
                 {/* Landmark Field */}
@@ -517,6 +412,9 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={landmark}
                   onChangeText={setLandmark}
+                  onFocus={() => {
+                    setTimeout(() => scrollViewRef.current?.scrollTo({ y: 130, animated: true }), 120);
+                  }}
                 />
 
                 {/* City & Pincode in 2 columns */}
@@ -529,6 +427,9 @@ export const AddressModal: React.FC = () => {
                       placeholderTextColor="#94A3B8"
                       value={city}
                       onChangeText={setCity}
+                      onFocus={() => {
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
+                      }}
                     />
                   </View>
                   <View style={{ flex: 1, marginLeft: 8 }}>
@@ -541,6 +442,9 @@ export const AddressModal: React.FC = () => {
                       onChangeText={setZip}
                       keyboardType="number-pad"
                       maxLength={6}
+                      onFocus={() => {
+                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
+                      }}
                     />
                   </View>
                 </View>
@@ -553,6 +457,9 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={state}
                   onChangeText={setState}
+                  onFocus={() => {
+                    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120);
+                  }}
                 />
 
                 {/* Save Button */}
@@ -593,8 +500,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: Platform.OS === 'web' ? '90%' : '88%',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
@@ -638,92 +545,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
   },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    marginBottom: 12,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: '#0F172A',
-    paddingVertical: 2,
-  },
-  suggestionsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    marginBottom: 14,
-    paddingVertical: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  suggestionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  suggestionsHeaderText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.5,
-  },
-  suggestionsClearText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  suggestionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  suggestionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  landmarkTag: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#D97706',
-    marginTop: 2,
-  },
-  suggestionSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-    lineHeight: 15,
+  scrollContentContainer: {
+    paddingBottom: Platform.OS === 'ios' ? 280 : 220,
   },
   gpsButton: {
     flexDirection: 'row',

@@ -47,7 +47,7 @@ export default function CheckoutScreen() {
     const { cart, settings, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
     const { showToast } = useToast();
-    const { activeAddress } = useAddress();
+    const { activeAddress, openAddressModal } = useAddress();
 
     const minOrderValue = cart.minOrderValue ?? settings?.minOrderValue ?? 1000;
     const isBelowMinOrder = cart.subtotal < minOrderValue;
@@ -139,11 +139,23 @@ export default function CheckoutScreen() {
         }, 0);
     }, [cart.items]);
 
+    const currentDeliveryAddress: Address | null = useMemo(() => {
+        if (activeAddress && activeAddress.street) return activeAddress;
+        if (selectedAddressId && user?.addresses) {
+            const found = user.addresses.find(a => a.id === selectedAddressId);
+            if (found) return found;
+        }
+        if (user?.addresses && user.addresses.length > 0) {
+            return user.addresses.find(a => a.isDefault) || user.addresses[0];
+        }
+        return null;
+    }, [activeAddress, selectedAddressId, user?.addresses]);
+
     const activeStep = useMemo(() => {
         if (isAddingAddress) return 1;
-        if (!selectedAddressId) return 1;
+        if (!currentDeliveryAddress) return 1;
         return 2;
-    }, [isAddingAddress, selectedAddressId]);
+    }, [isAddingAddress, currentDeliveryAddress]);
 
     // Effects
     useEffect(() => {
@@ -158,7 +170,7 @@ export default function CheckoutScreen() {
             const def = user.addresses.find(a => a.isDefault);
             setSelectedAddressId(def?.id || user.addresses[0].id);
         }
-    }, [activeAddress?.id, user?.addresses]);
+    }, [activeAddress, user?.addresses]);
 
     useEffect(() => {
         let cancelled = false;
@@ -256,10 +268,7 @@ export default function CheckoutScreen() {
             return showToast(`Minimum order amount is ₹${minOrderValue}. Please add ₹${minOrderShortfall} more to place order.`, 'error');
         }
 
-        let addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
-        if (!addressObject && activeAddress) {
-            addressObject = activeAddress;
-        }
+        const addressObject = currentDeliveryAddress;
         if (!addressObject) return showToast('Please select a delivery address', 'info');
 
         try {
@@ -267,6 +276,7 @@ export default function CheckoutScreen() {
             const orderData = {
                 shippingAddress: {
                     street: addressObject.street,
+                    landmark: addressObject.landmark || '',
                     city: addressObject.city || '',
                     state: addressObject.state || '',
                     zip: addressObject.zip,
@@ -337,8 +347,8 @@ export default function CheckoutScreen() {
                         <View style={styles.cardHeader}>
                             <Icon name="location-on" size={20} color={Colors.primary} library="material" />
                             <Text style={styles.cardTitle}>Delivery Address</Text>
-                            {!isAddingAddress && user?.addresses && user.addresses.length > 0 && (
-                                <TouchableOpacity onPress={() => setShowAddressModal(true)}>
+                            {!isAddingAddress && (
+                                <TouchableOpacity onPress={() => openAddressModal()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                                     <Text style={styles.editLink}>Change</Text>
                                 </TouchableOpacity>
                             )}
@@ -389,37 +399,40 @@ export default function CheckoutScreen() {
                             </View>
                         ) : (
                             <View>
-                                {user?.addresses && user.addresses.length > 0 ? (
+                                {currentDeliveryAddress ? (
                                     <View style={styles.selectedAddress}>
                                         <View style={styles.addressInfo}>
-                                            <View style={styles.badge}>
-                                                <Text style={styles.badgeText}>{(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.type || 'Home'}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                <View style={styles.badge}>
+                                                    <Text style={styles.badgeText}>{currentDeliveryAddress.type || 'Shop'}</Text>
+                                                </View>
+                                                {currentDeliveryAddress.isDefault && (
+                                                    <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#15803D' }}>DEFAULT</Text>
+                                                    </View>
+                                                )}
                                             </View>
-                                            <Text style={styles.addressText} numberOfLines={2}>
-                                                {(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.street}
+                                            <Text style={[styles.addressText, { fontSize: 14, fontWeight: '700', color: Colors.textPrimary }]} numberOfLines={2}>
+                                                {currentDeliveryAddress.street}
                                             </Text>
-                                            <Text style={styles.zipText}>Pincode: {(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.zip}</Text>
-                                        </View>
-                                        <Icon name="check-circle" size={24} color={Colors.success} library="material" />
-                                    </View>
-                                ) : activeAddress ? (
-                                    <View style={styles.selectedAddress}>
-                                        <View style={styles.addressInfo}>
-                                            <View style={styles.badge}>
-                                                <Text style={styles.badgeText}>{activeAddress.type || 'Shop'}</Text>
-                                            </View>
-                                            <Text style={styles.addressText} numberOfLines={2}>
-                                                {activeAddress.street}
+                                            {currentDeliveryAddress.landmark ? (
+                                                <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600', marginTop: 3 }}>
+                                                    📍 {currentDeliveryAddress.landmark}
+                                                </Text>
+                                            ) : null}
+                                            <Text style={[styles.zipText, { marginTop: 3 }]}>
+                                                {currentDeliveryAddress.city}, {currentDeliveryAddress.state || 'Maharashtra'} - {currentDeliveryAddress.zip}
                                             </Text>
-                                            <Text style={styles.zipText}>Pincode: {activeAddress.zip}</Text>
                                         </View>
-                                        <Icon name="check-circle" size={24} color={Colors.success} library="material" />
+                                        <TouchableOpacity onPress={() => openAddressModal()} style={{ padding: 4 }}>
+                                            <Icon name="check-circle" size={24} color={Colors.success} library="material" />
+                                        </TouchableOpacity>
                                     </View>
                                 ) : (
-                                    <TouchableOpacity style={styles.emptyAddress} onPress={() => setIsAddingAddress(true)}>
+                                    <TouchableOpacity style={styles.emptyAddress} onPress={() => openAddressModal()}>
                                         <Icon name="add-location-alt" size={32} color={Colors.gray300} library="material" />
-                                        <Text style={styles.emptyAddressText}>No address added yet</Text>
-                                        <Text style={styles.addLink}>Add New Address</Text>
+                                        <Text style={styles.emptyAddressText}>No address selected yet</Text>
+                                        <Text style={styles.addLink}>Select or Add Delivery Address</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>

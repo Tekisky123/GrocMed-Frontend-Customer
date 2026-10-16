@@ -109,15 +109,10 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (stored) {
           const parsed = JSON.parse(stored);
           const isStale =
-            parsed?.city?.toLowerCase().includes('nanded') ||
-            parsed?.street?.toLowerCase().includes('nanded') ||
-            parsed?.zip === '431600' ||
-            parsed?.zip === '431601' ||
             parsed?.street?.toLowerCase() === 'current location' ||
-            parsed?.landmark?.toLowerCase().includes('manas chowk'); // Manas chowk was 1.5km distant landmark
+            !parsed?.street;
 
           if (isStale) {
-            console.log('Clearing stale location/distant landmark from storage...');
             await AsyncStorage.removeItem(ACTIVE_ADDRESS_KEY);
           } else if (parsed && parsed.street && isMounted) {
             setActiveAddressState(parsed);
@@ -128,13 +123,7 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // If user already has saved addresses in profile, use default or first
         if (user?.addresses && user.addresses.length > 0) {
           const validAddrs = user.addresses.filter(
-            (a) =>
-              !a.city?.toLowerCase().includes('nanded') &&
-              !a.street?.toLowerCase().includes('nanded') &&
-              a.street?.toLowerCase() !== 'current location' &&
-              !a.landmark?.toLowerCase().includes('manas chowk') &&
-              a.zip !== '431600' &&
-              a.zip !== '431601'
+            (a) => a.street && a.street.toLowerCase() !== 'current location'
           );
           if (validAddrs.length > 0) {
             const defaultAddr = validAddrs.find((a) => a.isDefault) || validAddrs[0];
@@ -162,7 +151,7 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [user?.addresses]);
 
-  // Reverse geocode and fetch accurate current location
+  // Reverse geocode, fetch accurate current location, and automatically persist to DB
   const detectCurrentLocation = useCallback(async (isSilent = false): Promise<Address | null> => {
     try {
       setIsLoadingLocation(true);
@@ -186,13 +175,13 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ? geo.street
             : geo.title && !geo.title.toLowerCase().includes('current location')
             ? geo.title
-            : geo.city || 'Nagpur';
+            : geo.city || 'Nanded';
 
         const detectedAddress: Address = {
           id: `gps_${Date.now()}`,
           street: detectedStreet,
           landmark: geo.landmark,
-          city: geo.city || 'Nagpur',
+          city: geo.city || 'Nanded',
           state: geo.state || 'Maharashtra',
           zip: geo.zip || '',
           type: user?.shopName ? 'Shop' : 'Home',
@@ -202,8 +191,38 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveAddressState(detectedAddress);
         await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(detectedAddress));
 
+        // Automatically save to backend database if customer is logged in
+        if (isAuthenticated) {
+          try {
+            const currentAddresses = user?.addresses || [];
+            const existingIndex = currentAddresses.findIndex(
+              (a) =>
+                a.street.trim().toLowerCase() === detectedAddress.street.trim().toLowerCase() &&
+                a.city.trim().toLowerCase() === detectedAddress.city.trim().toLowerCase()
+            );
+
+            let updatedList: Address[];
+            if (existingIndex >= 0) {
+              updatedList = currentAddresses.map((a, i) =>
+                i === existingIndex
+                  ? { ...detectedAddress, id: a.id, isDefault: true }
+                  : { ...a, isDefault: false }
+              );
+            } else {
+              updatedList = [
+                ...currentAddresses.map((a) => ({ ...a, isDefault: false })),
+                detectedAddress,
+              ];
+            }
+
+            await updateProfile({ addresses: updatedList });
+          } catch (dbErr) {
+            console.warn('Auto-save detected address to backend DB failed:', dbErr);
+          }
+        }
+
         if (!isSilent) {
-          showToast('Location updated', 'success');
+          showToast(`Location set: ${detectedAddress.city}`, 'success');
         }
 
         return detectedAddress;
@@ -221,7 +240,7 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsLoadingLocation(false);
     }
     return null;
-  }, [showToast, user?.shopName]);
+  }, [showToast, user?.shopName, user?.addresses, isAuthenticated, updateProfile]);
 
   const selectAddress = useCallback(async (address: Address) => {
     setActiveAddressState(address);

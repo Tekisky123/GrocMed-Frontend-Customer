@@ -42,48 +42,26 @@ export function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: nu
 
 /**
  * Robust cross-platform coordinate acquisition.
- * Eliminates false regional telecom gateway coordinates (like Nanded)
- * and resolves accurate local GPS / ISP city coordinates.
+ * Always prioritizes high-accuracy device GPS / browser Wi-Fi positioning.
  */
 export async function getCoordinates(): Promise<{ latitude: number; longitude: number } | null> {
-  // On Web: Handle browser geolocation and filter out coarse telecom gateway IPs
+  // On Web: Handle browser geolocation with high accuracy
   if (Platform.OS === 'web') {
-    // 1. Fetch verified ISP IP location (which reliably resolves user's true city e.g. Nagpur)
-    let ipCoords: { latitude: number; longitude: number; city: string; zip: string } | null = null;
-    try {
-      const ipRes = await fetch('http://ip-api.com/json/');
-      if (ipRes.ok) {
-        const ipData = await ipRes.json();
-        if (ipData && ipData.status === 'success' && ipData.lat && ipData.lon) {
-          ipCoords = {
-            latitude: Number(ipData.lat),
-            longitude: Number(ipData.lon),
-            city: ipData.city || '',
-            zip: ipData.zip || '',
-          };
-        }
-      }
-    } catch (ipErr) {
-      console.warn('IP location fetch failed:', ipErr);
-    }
-
-    // 2. Query browser geolocation
-    let browserCoords: { latitude: number; longitude: number; accuracy: number } | null = null;
+    // 1. First priority: Real browser device geolocation (accurate to user's physical building/device)
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       try {
         const webPos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 8000,
+            timeout: 10000,
             maximumAge: 0,
           });
         });
 
         if (webPos && webPos.coords) {
-          browserCoords = {
+          return {
             latitude: webPos.coords.latitude,
             longitude: webPos.coords.longitude,
-            accuracy: webPos.coords.accuracy || 10000,
           };
         }
       } catch (err) {
@@ -91,53 +69,24 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
       }
     }
 
-    // 3. Filter out false telecom gateway hubs (e.g. Nanded telecom cellular hub vs Nagpur user)
-    if (browserCoords && ipCoords) {
-      const dist = getDistanceKm(
-        browserCoords.latitude,
-        browserCoords.longitude,
-        ipCoords.latitude,
-        ipCoords.longitude
-      );
-
-      // If browser coords are > 45km away from the verified IP city, browser is routing through a distant telecom proxy (e.g. Nanded)
-      if (dist > 45) {
-        console.warn(`Browser coords are ${dist.toFixed(0)}km away from user IP city (${ipCoords.city}). Discarding telecom gateway proxy.`);
-        return {
-          latitude: ipCoords.latitude,
-          longitude: ipCoords.longitude,
-        };
+    // 2. Second priority fallback only if browser geolocation failed or denied: IP location
+    try {
+      const ipRes = await fetch('http://ip-api.com/json/');
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        if (ipData && ipData.status === 'success' && ipData.lat && ipData.lon) {
+          return {
+            latitude: Number(ipData.lat),
+            longitude: Number(ipData.lon),
+          };
+        }
       }
-
-      return {
-        latitude: browserCoords.latitude,
-        longitude: browserCoords.longitude,
-      };
+    } catch (ipErr) {
+      console.warn('IP location fetch failed:', ipErr);
     }
 
-    if (ipCoords) {
-      return {
-        latitude: ipCoords.latitude,
-        longitude: ipCoords.longitude,
-      };
-    }
-
-    if (browserCoords) {
-      // Explicit safety check: If coordinates fall in Nanded (~19.15, ~77.31), reject and default to Nagpur
-      if (
-        Math.abs(browserCoords.latitude - 19.155) < 0.35 &&
-        Math.abs(browserCoords.longitude - 77.316) < 0.35
-      ) {
-        return { latitude: 21.1463, longitude: 79.0849 };
-      }
-      return {
-        latitude: browserCoords.latitude,
-        longitude: browserCoords.longitude,
-      };
-    }
-
-    // Default fallback to Nagpur city center
-    return { latitude: 21.1463, longitude: 79.0849 };
+    // Default fallback to Nanded city center (19.1557, 77.3160)
+    return { latitude: 19.1557, longitude: 77.3160 };
   }
 
   // Native (Android/iOS): use native Expo hardware GPS with Highest accuracy
@@ -153,12 +102,21 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
           longitude: pos.coords.longitude,
         };
       }
+
+      const lastPos = await Location.getLastKnownPositionAsync();
+      if (lastPos && lastPos.coords) {
+        return {
+          latitude: lastPos.coords.latitude,
+          longitude: lastPos.coords.longitude,
+        };
+      }
     }
   } catch (expoErr) {
     console.warn('Expo Location.getCurrentPositionAsync failed:', expoErr);
   }
 
-  return { latitude: 21.1463, longitude: 79.0849 };
+  // Default fallback to Nanded city center (19.1557, 77.3160)
+  return { latitude: 19.1557, longitude: 77.3160 };
 }
 
 /**
@@ -254,25 +212,36 @@ function buildExactAddress(
     nativeGeo?.subregion ||
     '';
 
-  let city =
+  // Accurately resolve actual city/town without any hardcoded overrides
+  const rawCity =
     a.city ||
     a.town ||
     a.village ||
+    a.municipality ||
     a.city_district ||
     nativeGeo?.city ||
     nativeGeo?.subregion ||
-    'Nagpur';
+    a.county ||
+    a.state_district ||
+    'Nanded';
 
-  if (city.toLowerCase().includes('nagpur') || city.toLowerCase().includes('urban')) {
-    city = 'Nagpur';
-  } else if (city.toLowerCase().includes('nanded')) {
-    city = 'Nagpur';
+  let city = rawCity
+    .replace(/\b(Taluka|District|Division|Urban|Rural)\b/gi, '')
+    .trim();
+  if (!city) {
+    city = 'Nanded';
   }
 
   const state = a.state || nativeGeo?.region || 'Maharashtra';
-  let zip = a.postcode || nativeGeo?.postalCode || '440012';
-  if (zip === '431600' || zip === '431601') {
-    zip = '440012';
+
+  // Accurately resolve real postal code
+  let zip = a.postcode || nativeGeo?.postalCode || '';
+  if (!zip && data?.display_name) {
+    // Match 6-digit Indian PIN code from address string (e.g. 431601, 431602)
+    const pinMatch = data.display_name.match(/\b([1-9][0-9]{5})\b/);
+    if (pinMatch) {
+      zip = pinMatch[1];
+    }
   }
 
   // Landmark: Only use verified landmark within 300m
@@ -304,7 +273,6 @@ function buildExactAddress(
       state.toLowerCase(),
       city.toLowerCase(),
       zip,
-      'nagpur urban taluka',
       (a.county || '').toLowerCase(),
       (a.state_district || '').toLowerCase(),
     ].filter(Boolean);
@@ -397,7 +365,7 @@ export async function searchPlaces(
     const encoded = encodeURIComponent(cleanQuery);
     
     // Prioritize/bound results within ~35km of user location / city
-    const baseCoords = userCoords || { latitude: 21.1463, longitude: 79.0849 };
+    const baseCoords = userCoords || { latitude: 19.1557, longitude: 77.3160 };
     const delta = 0.35;
     const left = (baseCoords.longitude - delta).toFixed(4);
     const top = (baseCoords.latitude + delta).toFixed(4);

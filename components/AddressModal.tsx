@@ -69,13 +69,8 @@ export const AddressModal: React.FC = () => {
     setErrorMsg('');
     const detected = await detectCurrentLocation(false);
     if (detected) {
-      setStreet(detected.street || '');
-      setLandmark(detected.landmark || '');
-      setCity(detected.city || '');
-      setState(detected.state || 'Maharashtra');
-      setZip(detected.zip || '');
-      setType(detected.type || 'Shop');
-      setIsEditingForm(true);
+      // Location detected and automatically saved to DB and active address!
+      closeAddressModal();
     }
   };
 
@@ -251,7 +246,7 @@ export const AddressModal: React.FC = () => {
                       style={styles.editCardBtn}
                     >
                       <Icon name="edit" size={14} color={Colors.primary} library="material" />
-                      <Text style={styles.editCardBtnText}>Edit / Save to Profile</Text>
+                      <Text style={styles.editCardBtnText}>Edit Address</Text>
                     </TouchableOpacity>
                   </TouchableOpacity>
                 ) : null}

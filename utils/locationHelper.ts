@@ -44,7 +44,38 @@ export function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: nu
  * Robust cross-platform coordinate acquisition.
  * Always prioritizes high-accuracy device GPS / browser Wi-Fi positioning.
  */
-export async function getCoordinates(): Promise<{ latitude: number; longitude: number } | null> {
+export const HYDERABAD_FALLBACK_COORDS = { latitude: 17.3850, longitude: 78.4867 };
+
+export function isFallbackCoords(lat: number, lon: number): boolean {
+  return (
+    Math.abs(lat - HYDERABAD_FALLBACK_COORDS.latitude) < 0.005 &&
+    Math.abs(lon - HYDERABAD_FALLBACK_COORDS.longitude) < 0.005
+  );
+}
+
+export async function requestLocationPermission(): Promise<{ granted: boolean; canAskAgain: boolean }> {
+  if (Platform.OS === 'web') {
+    return { granted: true, canAskAgain: true };
+  }
+  try {
+    const existing = await Location.getForegroundPermissionsAsync();
+    if (existing.granted) {
+      return { granted: true, canAskAgain: true };
+    }
+    const requested = await Location.requestForegroundPermissionsAsync();
+    return {
+      granted: requested.granted,
+      canAskAgain: requested.canAskAgain,
+    };
+  } catch (err) {
+    console.warn('requestLocationPermission failed:', err);
+    return { granted: false, canAskAgain: true };
+  }
+}
+
+export async function getCoordinates(
+  allowFallback = true
+): Promise<{ latitude: number; longitude: number; isFallback?: boolean } | null> {
   // On Web: Handle browser geolocation with high accuracy
   if (Platform.OS === 'web') {
     // 1. First priority: Real browser device geolocation (accurate to user's physical building/device)
@@ -62,6 +93,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
           return {
             latitude: webPos.coords.latitude,
             longitude: webPos.coords.longitude,
+            isFallback: false,
           };
         }
       } catch (err) {
@@ -78,6 +110,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
           return {
             latitude: Number(ipData.lat),
             longitude: Number(ipData.lon),
+            isFallback: false,
           };
         }
       }
@@ -85,8 +118,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
       console.warn('IP location fetch failed:', ipErr);
     }
 
-    // Default fallback to Hyderabad city center (17.3850, 78.4867)
-    return { latitude: 17.3850, longitude: 78.4867 };
+    return allowFallback ? { ...HYDERABAD_FALLBACK_COORDS, isFallback: true } : null;
   }
 
   // Native (Android/iOS): use native Expo hardware GPS with Highest accuracy
@@ -100,6 +132,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
         return {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
+          isFallback: false,
         };
       }
 
@@ -108,6 +141,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
         return {
           latitude: lastPos.coords.latitude,
           longitude: lastPos.coords.longitude,
+          isFallback: false,
         };
       }
     }
@@ -115,8 +149,7 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
     console.warn('Expo Location.getCurrentPositionAsync failed:', expoErr);
   }
 
-  // Default fallback to Hyderabad city center (17.3850, 78.4867)
-  return { latitude: 17.3850, longitude: 78.4867 };
+  return allowFallback ? { ...HYDERABAD_FALLBACK_COORDS, isFallback: true } : null;
 }
 
 /**
@@ -306,6 +339,18 @@ function buildExactAddress(
  * Concurrently queries Nominatim (zoom 18) and Native GPS Geocoder to build exact street address.
  */
 export async function reverseGeocode(latitude: number, longitude: number): Promise<GeocodedAddress | null> {
+  // If coordinates are the default fallback, return Hyderabad, Telangana with strictly NO landmark
+  if (isFallbackCoords(latitude, longitude)) {
+    return {
+      street: 'Hyderabad, Telangana',
+      landmark: undefined,
+      city: 'Hyderabad',
+      state: 'Telangana',
+      zip: '500001',
+      title: 'Hyderabad',
+    };
+  }
+
   let nativeGeo: Location.LocationGeocodedAddress | null = null;
 
   // On Native (iOS/Android): run native reverseGeocodeAsync

@@ -37,7 +37,7 @@ export const AddressModal: React.FC = () => {
   const [street, setStreet] = useState('');
   const [landmark, setLandmark] = useState('');
   const [city, setCity] = useState('');
-  const [state, setState] = useState('Maharashtra');
+  const [state, setState] = useState('Telangana');
   const [zip, setZip] = useState('');
   const [type, setType] = useState<'Home' | 'Work' | 'Shop' | 'Other'>('Shop');
   const [saving, setSaving] = useState(false);
@@ -52,7 +52,7 @@ export const AddressModal: React.FC = () => {
         setStreet(editingAddress.street || '');
         setLandmark(editingAddress.landmark || '');
         setCity(editingAddress.city || '');
-        setState(editingAddress.state || 'Maharashtra');
+        setState(editingAddress.state || 'Telangana');
         setZip(editingAddress.zip || '');
         setType(editingAddress.type || 'Shop');
         setIsEditingForm(true);
@@ -96,7 +96,7 @@ export const AddressModal: React.FC = () => {
         street: street.trim(),
         landmark: landmark.trim() || undefined,
         city: city.trim(),
-        state: state.trim() || 'Maharashtra',
+        state: state.trim() || 'Telangana',
         zip: zip.trim(),
         type,
         isDefault: true,
@@ -448,7 +448,7 @@ export const AddressModal: React.FC = () => {
                 <Text style={styles.inputLabel}>STATE</Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="e.g. Maharashtra"
+                  placeholder="e.g. Telangana"
                   placeholderTextColor="#94A3B8"
                   value={state}
                   onChangeText={setState}

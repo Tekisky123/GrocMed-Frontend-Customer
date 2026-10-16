@@ -50,17 +50,40 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const displayTitle = useMemo(() => {
     if (!activeAddress) return 'Select Delivery Location';
     if (activeAddress.type === 'Shop' && user?.shopName) return user.shopName;
-    if (activeAddress.type) return `${activeAddress.type} Location`;
+    if (activeAddress.type === 'Home') return 'Home';
+    if (activeAddress.type === 'Work') return 'Work';
+
+    // Extract area/colony from street (e.g. Ramdaspeth, Sitabuldi)
+    const cleanStreet = (activeAddress.street || '')
+      .replace(/^Current Location,?\s*/i, '')
+      .replace(/,?\s*Current Location$/i, '')
+      .trim();
+
+    if (cleanStreet) {
+      const firstPart = cleanStreet.split(',')[0].trim();
+      if (firstPart && firstPart.length < 28 && !firstPart.toLowerCase().includes('current location')) {
+        return firstPart;
+      }
+    }
     return activeAddress.city || 'Delivery Location';
   }, [activeAddress, user?.shopName]);
 
   const displaySubtitle = useMemo(() => {
     if (!activeAddress) return 'Tap to select delivery address';
     const parts: string[] = [];
-    if (activeAddress.street) parts.push(activeAddress.street);
+
+    // Strip "Current Location" from street text
+    const cleanStreet = (activeAddress.street || '')
+      .replace(/^Current Location,?\s*/i, '')
+      .replace(/,?\s*Current Location$/i, '')
+      .trim();
+
+    if (cleanStreet && !cleanStreet.toLowerCase().includes('current location')) {
+      parts.push(cleanStreet);
+    }
     if (
       activeAddress.landmark &&
-      !activeAddress.street?.toLowerCase().includes(activeAddress.landmark.toLowerCase())
+      !cleanStreet.toLowerCase().includes(activeAddress.landmark.toLowerCase())
     ) {
       parts.push(activeAddress.landmark);
     }
@@ -73,10 +96,10 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (activeAddress.zip) {
       parts.push(activeAddress.zip);
     }
-    return parts.join(', ');
+    return parts.join(', ') || activeAddress.city || 'Delivery Address';
   }, [activeAddress]);
 
-  // Load saved active address on initial mount, purging any stale telecom gateway Nanded entries
+  // Load saved active address on initial mount, purging any stale telecom gateway or distant landmark entries
   useEffect(() => {
     let isMounted = true;
 
@@ -85,14 +108,16 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const stored = await AsyncStorage.getItem(ACTIVE_ADDRESS_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          const isStaleNanded =
+          const isStale =
             parsed?.city?.toLowerCase().includes('nanded') ||
             parsed?.street?.toLowerCase().includes('nanded') ||
             parsed?.zip === '431600' ||
-            parsed?.zip === '431601';
+            parsed?.zip === '431601' ||
+            parsed?.street?.toLowerCase() === 'current location' ||
+            parsed?.landmark?.toLowerCase().includes('manas chowk'); // Manas chowk was 1.5km distant landmark
 
-          if (isStaleNanded) {
-            console.log('Clearing stale Nanded address from storage...');
+          if (isStale) {
+            console.log('Clearing stale location/distant landmark from storage...');
             await AsyncStorage.removeItem(ACTIVE_ADDRESS_KEY);
           } else if (parsed && parsed.street && isMounted) {
             setActiveAddressState(parsed);
@@ -106,6 +131,8 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
             (a) =>
               !a.city?.toLowerCase().includes('nanded') &&
               !a.street?.toLowerCase().includes('nanded') &&
+              a.street?.toLowerCase() !== 'current location' &&
+              !a.landmark?.toLowerCase().includes('manas chowk') &&
               a.zip !== '431600' &&
               a.zip !== '431601'
           );
@@ -154,9 +181,16 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const geo = await reverseGeocode(coords.latitude, coords.longitude);
       if (geo) {
+        const detectedStreet =
+          geo.street && !geo.street.toLowerCase().includes('current location')
+            ? geo.street
+            : geo.title && !geo.title.toLowerCase().includes('current location')
+            ? geo.title
+            : geo.city || 'Nagpur';
+
         const detectedAddress: Address = {
           id: `gps_${Date.now()}`,
-          street: geo.street || 'Current Location',
+          street: detectedStreet,
           landmark: geo.landmark,
           city: geo.city || 'Nagpur',
           state: geo.state || 'Maharashtra',

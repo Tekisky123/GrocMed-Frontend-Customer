@@ -163,30 +163,47 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
 
 /**
  * Automatically discovers the nearest prominent landmark (chowk, square, hospital, temple, bank, market)
- * within ~1.2km of the given coordinates.
+ * STRICTLY within 300 meters of the given coordinates.
+ * Discards any candidate farther than 300 meters to prevent inaccurate 1.5km landmarks!
  */
 export async function findNearbyLandmark(lat: number, lon: number): Promise<string> {
-  const delta = 0.012; // ~1.2km
+  const delta = 0.0035; // Strict ~350m bounding box
   const left = (lon - delta).toFixed(4);
   const top = (lat + delta).toFixed(4);
   const right = (lon + delta).toFixed(4);
   const bottom = (lat - delta).toFixed(4);
 
-  const landmarkQueries = ['chowk', 'square', 'hospital', 'bank', 'temple', 'metro', 'market', 'hotel'];
+  const landmarkQueries = ['hospital', 'bank', 'chowk', 'square', 'temple', 'school', 'market', 'hotel'];
+  const candidates: { name: string; distanceMeters: number }[] = [];
 
   for (const q of landmarkQueries) {
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${q}&viewbox=${left},${top},${right},${bottom}&bounded=1&limit=2&addressdetails=1`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${q}&viewbox=${left},${top},${right},${bottom}&bounded=1&limit=3&addressdetails=1`;
       const res = await fetch(url, {
         headers: { 'User-Agent': 'GrocMed-Customer-App/1.0' },
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const rawName = data[0].name || data[0].display_name?.split(',')[0] || '';
-          const name = rawName.trim();
-          if (name && name.length < 35 && !name.toLowerCase().includes('corridor')) {
-            return name.startsWith('Near') || name.startsWith('Opposite') ? name : `Near ${name}`;
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            const dKm = getDistanceKm(lat, lon, Number(item.lat), Number(item.lon));
+            const dMeters = Math.round(dKm * 1000);
+
+            // STRICT PROXIMITY RULE: Only landmarks within 300 meters are valid!
+            if (dMeters <= 300) {
+              const rawName = item.name || item.display_name?.split(',')[0] || '';
+              const name = rawName.trim();
+              if (
+                name &&
+                name.length < 35 &&
+                !name.toLowerCase().includes('corridor') &&
+                !name.toLowerCase().includes('taluka') &&
+                !candidates.some((c) => c.name.toLowerCase() === name.toLowerCase())
+              ) {
+                const formatted = name.startsWith('Near') || name.startsWith('Opposite') ? name : `Near ${name}`;
+                candidates.push({ name: formatted, distanceMeters: dMeters });
+              }
+            }
           }
         }
       }
@@ -195,58 +212,92 @@ export async function findNearbyLandmark(lat: number, lon: number): Promise<stri
     }
   }
 
+  if (candidates.length > 0) {
+    // Sort strictly by actual physical distance: nearest landmark first!
+    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    return candidates[0].name;
+  }
+
   return '';
 }
 
 /**
- * Helper to build an exact, human-readable Indian street address with landmarks from Nominatim data
+ * Helper to build an exact, human-readable Indian street address with landmarks from Nominatim and Native data
  */
-function buildExactAddress(data: any, autoLandmark = ''): GeocodedAddress {
-  const a = data.address || {};
-  const placeName = a.shop || a.building || a.office || a.leisure || a.tourism || a.commercial || '';
-  const houseNumber = a.house_number || '';
-  const road = a.road || a.pedestrian || a.street || a.highway || '';
-  
-  // Extract specific landmark or amenity from address details
-  let landmark = autoLandmark || a.landmark || '';
-  if (!landmark && a.amenity && a.amenity !== placeName) {
-    landmark = `Near ${a.amenity.replace(/_/g, ' ')}`;
-  } else if (!landmark && a.place_of_worship) {
-    landmark = `Near ${a.place_of_worship}`;
-  }
+function buildExactAddress(
+  data: any,
+  autoLandmark = '',
+  nativeGeo?: Location.LocationGeocodedAddress | null
+): GeocodedAddress {
+  const a = data?.address || {};
 
-  const area = a.suburb || a.neighbourhood || a.residential || a.quarter || '';
-  let city = a.city || a.town || a.village || a.city_district || a.county || 'Nagpur';
+  const placeName =
+    a.shop ||
+    a.building ||
+    a.amenity ||
+    a.office ||
+    a.leisure ||
+    a.commercial ||
+    (nativeGeo?.name && !nativeGeo.name.includes('+') && !nativeGeo.name.toLowerCase().includes('unnamed')
+      ? nativeGeo.name
+      : '') ||
+    '';
+
+  const houseNumber = a.house_number || (nativeGeo?.streetNumber ? nativeGeo.streetNumber : '');
+  const road = a.road || a.pedestrian || a.street || a.highway || nativeGeo?.street || '';
+  const area =
+    a.suburb ||
+    a.neighbourhood ||
+    a.residential ||
+    a.quarter ||
+    nativeGeo?.district ||
+    nativeGeo?.subregion ||
+    '';
+
+  let city =
+    a.city ||
+    a.town ||
+    a.village ||
+    a.city_district ||
+    nativeGeo?.city ||
+    nativeGeo?.subregion ||
+    'Nagpur';
+
   if (city.toLowerCase().includes('nagpur') || city.toLowerCase().includes('urban')) {
     city = 'Nagpur';
   } else if (city.toLowerCase().includes('nanded')) {
     city = 'Nagpur';
   }
 
-  const state = a.state || 'Maharashtra';
-  let zip = a.postcode || '';
+  const state = a.state || nativeGeo?.region || 'Maharashtra';
+  let zip = a.postcode || nativeGeo?.postalCode || '440012';
   if (zip === '431600' || zip === '431601') {
-    zip = '440013';
+    zip = '440012';
+  }
+
+  // Landmark: Only use verified landmark within 300m
+  let landmark = autoLandmark || '';
+  if (!landmark && a.amenity && a.amenity !== placeName) {
+    landmark = `Near ${a.amenity.replace(/_/g, ' ')}`;
+  } else if (!landmark && a.place_of_worship) {
+    landmark = `Near ${a.place_of_worship}`;
   }
 
   const streetParts: string[] = [];
   if (houseNumber || placeName) {
     streetParts.push([houseNumber, placeName].filter(Boolean).join(' '));
   }
-  if (road) {
+  if (road && !streetParts.some((s) => s.toLowerCase().includes(road.toLowerCase()))) {
     streetParts.push(road);
   }
   if (area && !streetParts.some((s) => s.toLowerCase().includes(area.toLowerCase()))) {
     streetParts.push(area);
   }
-  if (landmark && !streetParts.some((s) => s.toLowerCase().includes(landmark.toLowerCase()))) {
-    streetParts.push(landmark);
-  }
 
   let street = streetParts.filter(Boolean).join(', ');
 
   // If specific parts are sparse, extract meaningful components from display_name
-  if (!street && data.display_name) {
+  if (!street && data?.display_name) {
     const rawParts = data.display_name.split(',').map((p: string) => p.trim());
     const excluded = [
       'India',
@@ -262,14 +313,15 @@ function buildExactAddress(data: any, autoLandmark = ''): GeocodedAddress {
       (p: string) => !excluded.some((ex) => p.toLowerCase() === ex || p.toLowerCase().includes(ex))
     );
 
-    street = filtered.length > 0 ? filtered.slice(0, 3).join(', ') : rawParts.slice(0, 2).join(', ');
+    street = filtered.length > 0 ? filtered.slice(0, 2).join(', ') : rawParts.slice(0, 2).join(', ');
   }
 
-  if (!street) {
-    street = [area, landmark, city].filter(Boolean).join(', ') || 'Current Location';
+  // Never fallback to "Current Location" — use area or road or city name
+  if (!street || street.toLowerCase() === 'current location') {
+    street = area || road || (placeName ? `${placeName}, ${city}` : city);
   }
 
-  const title = area || placeName || road || city || 'Current Location';
+  const title = area || placeName || road || city;
 
   return {
     street,
@@ -283,57 +335,48 @@ function buildExactAddress(data: any, autoLandmark = ''): GeocodedAddress {
 
 /**
  * Cross-platform reverse geocode supporting Web, Android, and iOS.
- * Resolves exact street, automatically finds nearest landmark, area, city, and pincode.
+ * Concurrently queries Nominatim (zoom 18) and Native GPS Geocoder to build exact street address.
  */
 export async function reverseGeocode(latitude: number, longitude: number): Promise<GeocodedAddress | null> {
-  // On Native (iOS/Android): try native geocoder first
+  let nativeGeo: Location.LocationGeocodedAddress | null = null;
+
+  // On Native (iOS/Android): run native reverseGeocodeAsync
   if (Platform.OS !== 'web') {
     try {
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (results && results.length > 0) {
-        const geo = results[0];
-        const num = geo.streetNumber ? `${geo.streetNumber}, ` : '';
-        const streetName = geo.street || geo.name || '';
-        const area = geo.district || geo.subregion || '';
-        
-        // Find nearby landmark concurrently
-        const landmark = await findNearbyLandmark(latitude, longitude);
-
-        const parts = [num + streetName, area, landmark].map((s) => s.trim()).filter(Boolean);
-        let street = parts.join(', ');
-        if (!street) street = geo.district || 'Current Location';
-
-        return {
-          street,
-          landmark: landmark || undefined,
-          city: geo.city || geo.subregion || 'Nagpur',
-          state: geo.region || 'Maharashtra',
-          zip: geo.postalCode || '',
-          title: area || geo.district || geo.name || geo.city || 'Current Location',
-        };
+        nativeGeo = results[0];
       }
     } catch (nativeErr) {
-      console.warn('Native reverseGeocodeAsync failed, using HTTP fallback:', nativeErr);
+      console.warn('Native reverseGeocodeAsync failed:', nativeErr);
     }
   }
 
-  // Universal Web & Native Fallback: OpenStreetMap Nominatim with zoom 18 + automatic landmark detection
+  // Concurrently fetch high-precision Nominatim reverse geocode and strictly verified nearby landmark (<= 300m)
   try {
     const [revRes, landmark] = await Promise.all([
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'GrocMed-Customer-App/1.0' },
-      }),
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: { Accept: 'application/json', 'User-Agent': 'GrocMed-Customer-App/1.0' },
+        }
+      ),
       findNearbyLandmark(latitude, longitude),
     ]);
 
+    let osmData: any = null;
     if (revRes.ok) {
-      const data = await revRes.json();
-      if (data && data.address) {
-        return buildExactAddress(data, landmark);
-      }
+      osmData = await revRes.json();
+    }
+
+    if (osmData || nativeGeo) {
+      return buildExactAddress(osmData, landmark, nativeGeo);
     }
   } catch (httpErr) {
     console.error('HTTP reverse geocode fallback error:', httpErr);
+    if (nativeGeo) {
+      return buildExactAddress(null, '', nativeGeo);
+    }
   }
 
   return null;

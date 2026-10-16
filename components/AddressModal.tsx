@@ -333,7 +333,7 @@ export const AddressModal: React.FC = () => {
                     <View style={styles.addressCardHeader}>
                       <View style={styles.typeBadge}>
                         <Icon name="location-on" size={13} color="#2563EB" library="material" />
-                        <Text style={styles.typeBadgeText}>Current Location</Text>
+                        <Text style={styles.typeBadgeText}>Detected GPS</Text>
                       </View>
                       <View style={styles.activePill}>
                         <Text style={styles.activePillText}>SELECTED</Text>

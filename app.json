@@ -2,7 +2,7 @@
   "expo": {
     "name": "GrocMed",
     "slug": "grocmed-hu7gc6cggntrepcpb-se",
-    "version": "2.1.7",
+    "version": "2.1.8",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "reactnative",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.grocmed.app",
-      "versionCode": 20,
+      "versionCode": 21,
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -32,7 +32,7 @@
         "android.permission.WRITE_CONTACTS"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/logo.png"
       },
       "intentFilters": [

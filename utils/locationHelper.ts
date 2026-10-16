@@ -85,8 +85,8 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
       console.warn('IP location fetch failed:', ipErr);
     }
 
-    // Default fallback to Nanded city center (19.1557, 77.3160)
-    return { latitude: 19.1557, longitude: 77.3160 };
+    // Default fallback to Hyderabad city center (17.3850, 78.4867)
+    return { latitude: 17.3850, longitude: 78.4867 };
   }
 
   // Native (Android/iOS): use native Expo hardware GPS with Highest accuracy
@@ -115,8 +115,8 @@ export async function getCoordinates(): Promise<{ latitude: number; longitude: n
     console.warn('Expo Location.getCurrentPositionAsync failed:', expoErr);
   }
 
-  // Default fallback to Nanded city center (19.1557, 77.3160)
-  return { latitude: 19.1557, longitude: 77.3160 };
+  // Default fallback to Hyderabad city center (17.3850, 78.4867)
+  return { latitude: 17.3850, longitude: 78.4867 };
 }
 
 /**
@@ -223,16 +223,16 @@ function buildExactAddress(
     nativeGeo?.subregion ||
     a.county ||
     a.state_district ||
-    'Nanded';
+    'Hyderabad';
 
   let city = rawCity
     .replace(/\b(Taluka|District|Division|Urban|Rural)\b/gi, '')
     .trim();
   if (!city) {
-    city = 'Nanded';
+    city = 'Hyderabad';
   }
 
-  const state = a.state || nativeGeo?.region || 'Maharashtra';
+  const state = a.state || nativeGeo?.region || 'Telangana';
 
   // Accurately resolve real postal code
   let zip = a.postcode || nativeGeo?.postalCode || '';
@@ -365,7 +365,7 @@ export async function searchPlaces(
     const encoded = encodeURIComponent(cleanQuery);
     
     // Prioritize/bound results within ~35km of user location / city
-    const baseCoords = userCoords || { latitude: 19.1557, longitude: 77.3160 };
+    const baseCoords = userCoords || { latitude: 17.3850, longitude: 78.4867 };
     const delta = 0.35;
     const left = (baseCoords.longitude - delta).toFixed(4);
     const top = (baseCoords.latitude + delta).toFixed(4);

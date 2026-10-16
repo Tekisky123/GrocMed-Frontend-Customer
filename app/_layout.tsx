@@ -20,6 +20,7 @@ import { StickyCartBar } from '@/components/ui/StickyCartBar';
 import { AddressProvider } from '@/contexts/AddressContext';
 import { AddressModal } from '@/components/AddressModal';
 import { StoreStatusModal } from '@/components/StoreStatusModal';
+import { InAppUpdateBanner } from '@/components/InAppUpdateBanner';
 import { useCart } from '@/contexts/CartContext';
 
 function GlobalStoreStatusModal() {
@@ -84,6 +85,7 @@ export default function RootLayout() {
                   <StickyCartBar />
                   <GlobalStoreStatusModal />
                   <AddressModal />
+                  <InAppUpdateBanner />
                 </ThemeProvider>
               </CartProvider>
             </CartAnimationProvider>

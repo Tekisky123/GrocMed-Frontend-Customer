@@ -175,14 +175,14 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ? geo.street
             : geo.title && !geo.title.toLowerCase().includes('current location')
             ? geo.title
-            : geo.city || 'Nanded';
+            : geo.city || 'Hyderabad';
 
         const detectedAddress: Address = {
           id: `gps_${Date.now()}`,
           street: detectedStreet,
           landmark: geo.landmark,
-          city: geo.city || 'Nanded',
-          state: geo.state || 'Maharashtra',
+          city: geo.city || 'Hyderabad',
+          state: geo.state || 'Telangana',
           zip: geo.zip || '',
           type: user?.shopName ? 'Shop' : 'Home',
           isDefault: true,

@@ -2,7 +2,7 @@ import { cartApi } from '@/api/cartApi';
 import { Cart, CartItem, Product } from '@/types';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { mapApiProductToUiProduct, roundToTwo } from '@/utils/productHelper';
@@ -46,23 +46,31 @@ const emptyCart: Cart = {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart>(emptyCart);
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef<SystemSettings>(DEFAULT_SETTINGS);
 
   const apiTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingDiffs = useRef<Map<string, number>>(new Map());
   const isMounted = useRef(true);
+  const isFetchingCart = useRef(false);
+  const isFetchingSettings = useRef(false);
 
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
 
   const fetchSystemSettings = useCallback(async () => {
+    if (isFetchingSettings.current) return settingsRef.current;
+    isFetchingSettings.current = true;
     try {
       const res = await settingApi.getSettings();
       if (res.success && res.data && isMounted.current) {
+        settingsRef.current = res.data;
         setSettings(res.data);
         return res.data;
       }
     } catch (e) {
       console.error('fetchSystemSettings error:', e);
+    } finally {
+      isFetchingSettings.current = false;
     }
     return null;
   }, []);
@@ -77,9 +85,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchSystemSettings]);
 
-  // Stable helper to build cart from items
+  // Stable helper to build cart from items (reads from settingsRef to keep callback completely stable)
   const buildCart = useCallback((items: CartItem[], discount = 0, couponCode?: string, currentSettings?: SystemSettings): Cart => {
-    const activeSettings = currentSettings || settings;
+    const activeSettings = currentSettings || settingsRef.current;
     const subtotal = roundToTwo(items.reduce((sum, i) => sum + (roundToTwo(i.total) || 0), 0));
     const freeThreshold = activeSettings?.freeDeliveryThreshold ?? 1500;
     const delCharge = activeSettings?.deliveryCharge ?? 30;
@@ -87,11 +95,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const deliveryFee = (subtotal >= freeThreshold || subtotal === 0) ? 0 : delCharge;
     const total = roundToTwo(subtotal + deliveryFee - discount);
     return { items, subtotal, deliveryFee, discount, total, couponCode, minOrderValue: minOrder };
-  }, [settings]);
+  }, []);
 
-  // Stable fetchServerCart
+  // Stable fetchServerCart with in-flight guard
   const fetchServerCart = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isFetchingCart.current) return;
+    isFetchingCart.current = true;
     try {
       const res = await cartApi.getCart();
       if (res.success && res.data?.items && isMounted.current) {
@@ -149,17 +158,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       console.error('fetchServerCart error:', e);
+    } finally {
+      isFetchingCart.current = false;
     }
   }, [isAuthenticated, buildCart]);
 
-  // Load cart when user authenticates
+  // Load cart ONLY when user authentication status changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchServerCart();
     } else {
       setCart(emptyCart);
     }
-  }, [isAuthenticated, fetchServerCart]);
+  }, [isAuthenticated]);
 
   const addToCart = useCallback(
     (product: Product, quantity: number, packagingOptionId?: string) => {
@@ -418,23 +429,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [cart.items]
   );
 
+  const contextValue = useMemo(() => ({
+    cart,
+    settings,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    applyCoupon,
+    removeCoupon,
+    getItemCount,
+    getItemQuantity,
+    refreshCart: fetchServerCart,
+    refreshSettings: fetchSystemSettings,
+  }), [
+    cart,
+    settings,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    applyCoupon,
+    removeCoupon,
+    getItemCount,
+    getItemQuantity,
+    fetchServerCart,
+    fetchSystemSettings,
+  ]);
+
   return (
-    <CartContext.Provider
-      value={{
-        cart,
-        settings,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        applyCoupon,
-        removeCoupon,
-        getItemCount,
-        getItemQuantity,
-        refreshCart: fetchServerCart,
-        refreshSettings: fetchSystemSettings,
-      }}
-    >
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

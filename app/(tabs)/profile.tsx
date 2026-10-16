@@ -81,9 +81,14 @@ export default function ProfileScreen() {
               }}>
                 <Icon name={Icons.profile.name} size={50} color={Colors.primary} library={Icons.profile.library} />
               </View>
-              <Text style={{ fontSize: 24, fontWeight: '700', color: Colors.textWhite, marginBottom: 6 }}>
-                {user?.name || 'Guest User'}
+              <Text style={{ fontSize: 22, fontWeight: '700', color: Colors.textWhite, marginBottom: 4, textAlign: 'center' }}>
+                {user?.shopName || user?.name || 'Guest User'}
               </Text>
+              {user?.shopName && user?.name && (
+                <Text style={{ color: 'rgba(255, 255, 255, 0.95)', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                  Contact: {user.name}
+                </Text>
+              )}
               <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 15, marginBottom: 12, fontWeight: '400' }}>
                 {user?.phone || user?.email || 'Not logged in'}
               </Text>

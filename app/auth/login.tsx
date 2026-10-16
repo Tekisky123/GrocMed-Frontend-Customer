@@ -24,6 +24,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState(''); // Using email/phone generically
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -113,18 +114,37 @@ export default function LoginScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="••••••••"
+                placeholderTextColor={Colors.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Icon
+                  name={showPassword ? 'visibility-off' : 'visibility'}
+                  size={22}
+                  color={showPassword ? Colors.primary : Colors.textTertiary}
+                  library="material"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Remember Me Checkbox */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          {/* Remember Me Checkbox & Forgot Password */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <TouchableOpacity
               onPress={() => setRememberMe(!rememberMe)}
               activeOpacity={0.7}
@@ -144,6 +164,14 @@ export default function LoginScreen() {
                 {rememberMe && <Icon name="check" size={14} color="#fff" library="material" />}
               </View>
               <Text style={{ color: Colors.textSecondary, fontSize: 14 }}>Remember me</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/auth/forgot-password')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={{ color: Colors.primary, fontSize: 14, fontWeight: '600' }}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
@@ -218,6 +246,26 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderRadius: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
     backgroundColor: Colors.primary,

@@ -17,6 +17,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { setupNotificationListeners } from '@/utils/notificationHelper';
 import { StickyCartBar } from '@/components/ui/StickyCartBar';
+import { AddressProvider } from '@/contexts/AddressContext';
+import { AddressModal } from '@/components/AddressModal';
 import { StoreStatusModal } from '@/components/StoreStatusModal';
 import { useCart } from '@/contexts/CartContext';
 
@@ -73,16 +75,19 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <CartAnimationProvider>
-            <CartProvider>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: true }} />
-                <StatusBar hidden />
-                <StickyCartBar />
-                <GlobalStoreStatusModal />
-              </ThemeProvider>
-            </CartProvider>
-          </CartAnimationProvider>
+          <AddressProvider>
+            <CartAnimationProvider>
+              <CartProvider>
+                <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                  <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', freezeOnBlur: true }} />
+                  <StatusBar hidden />
+                  <StickyCartBar />
+                  <GlobalStoreStatusModal />
+                  <AddressModal />
+                </ThemeProvider>
+              </CartProvider>
+            </CartAnimationProvider>
+          </AddressProvider>
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>

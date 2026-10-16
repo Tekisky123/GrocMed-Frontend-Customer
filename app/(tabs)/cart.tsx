@@ -6,7 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { FlatList, Image, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatPrice } from '@/utils/productHelper';
@@ -16,10 +16,15 @@ export default function CartScreen() {
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
 
+  const refreshSettingsRef = useRef(refreshSettings);
+  useEffect(() => {
+    refreshSettingsRef.current = refreshSettings;
+  });
+
   useFocusEffect(
     useCallback(() => {
-      refreshSettings();
-    }, [refreshSettings])
+      refreshSettingsRef.current?.();
+    }, [])
   );
 
   const isStoreClosed = !!(settings?.storeStatus && !settings.storeStatus.isOpen);

@@ -108,10 +108,11 @@ export interface Cart {
 export interface Address {
   id: string;
   street: string;
+  landmark?: string;
   city: string;
   state: string;
   zip: string;
-  type: 'Home' | 'Work' | 'Other';
+  type: 'Home' | 'Work' | 'Shop' | 'Other';
   isDefault: boolean;
   // Optional UI-only fields if needed, but keeping strict to schema for core data
   name?: string;
@@ -172,12 +173,14 @@ export interface OrderTracking {
 export interface User {
   id: string;
   name: string;
+  shopName?: string;
   email?: string;
   phone: string;
   avatar?: string;
   addresses: Address[];
   pan?: string;
   adhaar?: string;
+  licenseNumber?: string;
   isVerified: boolean;
   createdAt: string;
 }

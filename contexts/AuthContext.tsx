@@ -2,7 +2,7 @@ import { tokenManager } from '@/api/axiosInstance'; // Use tokenManager
 import { customerApi } from '@/api/customerApi';
 import { User } from '@/types';
 import { getFCMToken, requestUserPermission } from '@/utils/notificationHelper';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 // ... (keep types)
 
@@ -48,6 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             })),
             pan: res.data.pan,
             adhaar: res.data.adhaar,
+            shopName: res.data.shopName,
+            licenseNumber: res.data.licenseNumber,
             createdAt: res.data.createdAt,
             isVerified: true
           };
@@ -98,6 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })),
           pan: profileRes.data.pan,
           adhaar: profileRes.data.adhaar,
+          shopName: profileRes.data.shopName,
+          licenseNumber: profileRes.data.licenseNumber,
           createdAt: profileRes.data.createdAt,
           isVerified: true
         };
@@ -137,6 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             })),
             pan: profileRes.data.pan,
             adhaar: profileRes.data.adhaar,
+            shopName: profileRes.data.shopName,
+            licenseNumber: profileRes.data.licenseNumber,
             createdAt: profileRes.data.createdAt,
             isVerified: true
           };
@@ -180,6 +186,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...addr,
           id: addr._id || addr.id
         })),
+        pan: res.data.pan,
+        adhaar: res.data.adhaar,
+        shopName: res.data.shopName,
+        licenseNumber: res.data.licenseNumber,
         createdAt: res.data.createdAt,
         isVerified: true
       };
@@ -189,19 +199,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, message: res.message || 'Failed to update profile' };
   }, []);
 
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUser,
+    updateProfile,
+  }), [
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUser,
+    updateProfile,
+  ]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        login,
-        register,
-        logout,
-        updateUser,
-        updateProfile,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

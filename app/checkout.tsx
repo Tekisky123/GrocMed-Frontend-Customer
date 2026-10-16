@@ -7,6 +7,7 @@ import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useAddress } from '@/contexts/AddressContext';
 import { Address, PaymentMethod } from '@/types';
 import { formatPrice } from '@/utils/productHelper';
 import { router } from 'expo-router';
@@ -46,6 +47,7 @@ export default function CheckoutScreen() {
     const { cart, settings, clearCart } = useCart();
     const { user, updateProfile } = useAuth();
     const { showToast } = useToast();
+    const { activeAddress } = useAddress();
 
     const minOrderValue = cart.minOrderValue ?? settings?.minOrderValue ?? 1000;
     const isBelowMinOrder = cart.subtotal < minOrderValue;
@@ -57,7 +59,7 @@ export default function CheckoutScreen() {
     const [showQrModal, setShowQrModal] = useState(false);
     const [isAddingAddress, setIsAddingAddress] = useState(false);
     const [newStreet, setNewStreet] = useState('');
-    const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Other'>('Home');
+    const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Shop' | 'Other'>('Shop');
     const [pincodes, setPincodes] = useState<PincodeOption[]>([]);
     const [pincodeLoading, setPincodeLoading] = useState(false);
     const [selectedPincode, setSelectedPincode] = useState<PincodeOption | null>(null);
@@ -150,11 +152,13 @@ export default function CheckoutScreen() {
     }, []);
 
     useEffect(() => {
-        if (user?.addresses && user.addresses.length > 0 && !selectedAddressId) {
+        if (activeAddress?.id) {
+            setSelectedAddressId(activeAddress.id);
+        } else if (user?.addresses && user.addresses.length > 0 && !selectedAddressId) {
             const def = user.addresses.find(a => a.isDefault);
             setSelectedAddressId(def?.id || user.addresses[0].id);
         }
-    }, [user?.addresses]);
+    }, [activeAddress?.id, user?.addresses]);
 
     useEffect(() => {
         let cancelled = false;
@@ -252,7 +256,10 @@ export default function CheckoutScreen() {
             return showToast(`Minimum order amount is ₹${minOrderValue}. Please add ₹${minOrderShortfall} more to place order.`, 'error');
         }
 
-        const addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
+        let addressObject = user?.addresses?.find(a => a.id === selectedAddressId);
+        if (!addressObject && activeAddress) {
+            addressObject = activeAddress;
+        }
         if (!addressObject) return showToast('Please select a delivery address', 'info');
 
         try {
@@ -386,12 +393,25 @@ export default function CheckoutScreen() {
                                     <View style={styles.selectedAddress}>
                                         <View style={styles.addressInfo}>
                                             <View style={styles.badge}>
-                                                <Text style={styles.badgeText}>{user?.addresses?.find(a => a.id === selectedAddressId)?.type || 'Home'}</Text>
+                                                <Text style={styles.badgeText}>{(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.type || 'Home'}</Text>
                                             </View>
                                             <Text style={styles.addressText} numberOfLines={2}>
-                                                {user?.addresses?.find(a => a.id === selectedAddressId)?.street}
+                                                {(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.street}
                                             </Text>
-                                            <Text style={styles.zipText}>Pincode: {user?.addresses?.find(a => a.id === selectedAddressId)?.zip}</Text>
+                                            <Text style={styles.zipText}>Pincode: {(user?.addresses?.find(a => a.id === selectedAddressId) || activeAddress)?.zip}</Text>
+                                        </View>
+                                        <Icon name="check-circle" size={24} color={Colors.success} library="material" />
+                                    </View>
+                                ) : activeAddress ? (
+                                    <View style={styles.selectedAddress}>
+                                        <View style={styles.addressInfo}>
+                                            <View style={styles.badge}>
+                                                <Text style={styles.badgeText}>{activeAddress.type || 'Shop'}</Text>
+                                            </View>
+                                            <Text style={styles.addressText} numberOfLines={2}>
+                                                {activeAddress.street}
+                                            </Text>
+                                            <Text style={styles.zipText}>Pincode: {activeAddress.zip}</Text>
                                         </View>
                                         <Icon name="check-circle" size={24} color={Colors.success} library="material" />
                                     </View>

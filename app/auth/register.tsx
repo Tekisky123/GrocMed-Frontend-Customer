@@ -27,6 +27,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // B2B Fields
   const [shopName, setShopName] = useState('');
@@ -65,12 +66,12 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     // Robust granular validations
-    if (!name.trim()) {
-      showToast('Please enter your Full Name', 'error');
-      return;
-    }
     if (!shopName.trim()) {
       showToast('Please enter your Shop Name', 'error');
+      return;
+    }
+    if (!name.trim()) {
+      showToast('Please enter your Full / Owner Name', 'error');
       return;
     }
     if (!email.trim()) {
@@ -108,11 +109,8 @@ export default function RegisterScreen() {
     try {
       console.log('[Register] Preparing FormData...');
       const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('phone', phone);
-      formData.append('password', password);
-      formData.append('shopName', shopName);
+      formData.append('shopName', shopName.trim());
+      formData.append('name', name.trim());
       if (adhaar.trim()) formData.append('adhaar', adhaar.trim());
       
       // Optional fields
@@ -204,24 +202,24 @@ export default function RegisterScreen() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name *</Text>
+            <Text style={styles.label}>Shop Name *</Text>
             <TextInput
               style={styles.input}
-              placeholder="John Doe"
+              placeholder="e.g. Balaji Medical & General Store"
               placeholderTextColor={Colors.textTertiary}
-              value={name}
-              onChangeText={setName}
+              value={shopName}
+              onChangeText={setShopName}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Shop Name *</Text>
+            <Text style={styles.label}>Full Name / Owner Name *</Text>
             <TextInput
               style={styles.input}
-              placeholder="GrocMed Store"
+              placeholder="e.g. Rajesh Sharma"
               placeholderTextColor={Colors.textTertiary}
-              value={shopName}
-              onChangeText={setShopName}
+              value={name}
+              onChangeText={setName}
             />
           </View>
 
@@ -295,14 +293,33 @@ export default function RegisterScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Create a strong password"
-              placeholderTextColor={Colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Create a strong password"
+                placeholderTextColor={Colors.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Icon
+                  name={showPassword ? 'visibility-off' : 'visibility'}
+                  size={22}
+                  color={showPassword ? Colors.primary : Colors.textTertiary}
+                  library="material"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -396,6 +413,26 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.gray200,
+    borderRadius: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   button: {
     backgroundColor: Colors.primary,

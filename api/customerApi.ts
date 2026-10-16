@@ -120,4 +120,41 @@ export const customerApi = {
             };
         }
     },
+
+    sendForgotPasswordOtp: async (identifier: string): Promise<{ success: boolean; message: string; phone?: string; maskedPhone?: string; sendCount?: number; maxAttempts?: number; attemptsLeft?: number }> => {
+        try {
+            const response = await axiosInstance.post('/customer/forgot-password/send-otp', { identifier });
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to send WhatsApp OTP. Please try again.',
+            };
+        }
+    },
+
+    verifyForgotPasswordOtp: async (phone: string, otp: string): Promise<{ success: boolean; message: string; resetToken?: string; phone?: string }> => {
+        try {
+            const response = await axiosInstance.post('/customer/forgot-password/verify-otp', { phone, otp });
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Invalid or expired OTP. Please try again.',
+            };
+        }
+    },
+
+    resetPasswordWithToken: async (phone: string, resetToken: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            const response = await axiosInstance.post('/customer/forgot-password/reset-password', { phone, resetToken, newPassword });
+            return response.data;
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to reset password. Please try again.',
+            };
+        }
+    },
 };
+

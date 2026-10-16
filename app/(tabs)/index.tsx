@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { StoreStatusBanner } from '@/components/StoreStatusBanner';
+import { CustomerAddressHeader } from '@/components/CustomerAddressHeader';
 
 
 const { width } = Dimensions.get('window');
@@ -183,11 +184,20 @@ export default function HomeScreen() {
     const { isAuthenticated, user } = useAuth();
 
 
+    const isFetchingNotifications = useRef(false);
+    const lastNotificationFetch = useRef(0);
+
     const loadUnreadCount = useCallback(async () => {
         if (!isAuthenticated) {
             setUnreadCount(0);
             return;
         }
+        const now = Date.now();
+        if (isFetchingNotifications.current || now - lastNotificationFetch.current < 10000) {
+            return;
+        }
+        isFetchingNotifications.current = true;
+        lastNotificationFetch.current = now;
         try {
             const res = await customerApi.getNotifications();
             if (res.success && res.notifications) {
@@ -203,15 +213,27 @@ export default function HomeScreen() {
             }
         } catch (error) {
             console.error('Error loading unread notification count:', error);
+        } finally {
+            isFetchingNotifications.current = false;
         }
     }, [isAuthenticated, user?.id]);
 
+    const refreshCartRef = useRef(refreshCart);
+    const refreshSettingsRef = useRef(refreshSettings);
+    const loadUnreadCountRef = useRef(loadUnreadCount);
+
+    useEffect(() => {
+        refreshCartRef.current = refreshCart;
+        refreshSettingsRef.current = refreshSettings;
+        loadUnreadCountRef.current = loadUnreadCount;
+    });
+
     useFocusEffect(
         useCallback(() => {
-            loadUnreadCount();
-            refreshCart();
-            refreshSettings();
-        }, [loadUnreadCount, refreshCart, refreshSettings])
+            loadUnreadCountRef.current?.();
+            refreshCartRef.current?.();
+            refreshSettingsRef.current?.();
+        }, [])
     );
 
     const loadData = useCallback(async () => {
@@ -393,37 +415,7 @@ export default function HomeScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-            <View className="bg-white px-4 py-2 border-b border-slate-100 flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2.5">
-                    <Image
-                        source={require('@/assets/images/logo-removebg-preview.png')}
-                        style={{ width: 48, height: 48 }}
-                        resizeMode="contain"
-                    />
-                    <Text style={{ fontSize: 22, fontWeight: '900', color: '#1E293B', letterSpacing: -0.5 }}>
-                        Groc<Text style={{ color: Colors.primary }}>Med</Text>
-                    </Text>
-                </View>
-
-                <TouchableOpacity
-                    onLayout={(e) => {
-                        const { x, y, width: w, height: h } = e.nativeEvent.layout;
-                        setCartIconPosition({ x, y, width: w, height: h });
-                    }}
-                    onPress={() => router.push('/(tabs)/cart')}
-                    className="relative p-2"
-                    activeOpacity={0.8}
-                >
-                    <Icon name="shopping-cart" size={24} color={Colors.textPrimary} library="material" />
-                    {getItemCount() > 0 && (
-                        <View className="absolute top-0 right-0 bg-red-500 rounded-[5px] min-w-[18px] h-[18px] items-center justify-center px-1 border-2 border-white">
-                            <Text className="text-white text-[9px] font-extrabold">
-                                {getItemCount() > 99 ? '99+' : getItemCount()}
-                            </Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
-            </View>
+            <CustomerAddressHeader />
 
             <FlatList
                 data={loading || error ? [] : products}

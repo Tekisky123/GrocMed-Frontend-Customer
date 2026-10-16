@@ -21,6 +21,10 @@ export default function EditProfileScreen() {
     const [adhaar, setAdhaar] = useState(user?.adhaar || '');
     const [adhaarImage, setAdhaarImage] = useState<string | null>(null);
     const [licenseImage, setLicenseImage] = useState<string | null>(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const pickImage = async (type: 'adhaar' | 'license') => {
@@ -50,7 +54,7 @@ export default function EditProfileScreen() {
     const [addrCity, setAddrCity] = useState('');
     const [addrState, setAddrState] = useState('');
     const [addrZip, setAddrZip] = useState('');
-    const [addrType, setAddrType] = useState<'Home' | 'Work' | 'Other'>('Home');
+    const [addrType, setAddrType] = useState<'Home' | 'Work' | 'Shop' | 'Other'>('Shop');
 
     const openAddressModal = (address?: Address) => {
         if (address) {
@@ -145,15 +149,31 @@ export default function EditProfileScreen() {
             return;
         }
 
+        if (newPassword.trim()) {
+            if (newPassword.trim().length < 6) {
+                showToast('New password must be at least 6 characters long', 'error');
+                return;
+            }
+            if (newPassword.trim() !== confirmPassword.trim()) {
+                showToast('Passwords do not match', 'error');
+                return;
+            }
+        }
+
         setLoading(true);
         try {
-            const res = await updateProfile({
+            const payload: any = {
                 name,
                 email,
                 phone,
                 pan: pan.toUpperCase(),
                 adhaar
-            });
+            };
+            if (newPassword.trim()) {
+                payload.password = newPassword.trim();
+            }
+
+            const res = await updateProfile(payload);
 
             if (res.success) {
                 showToast('Profile updated successfully', 'success');
@@ -273,6 +293,66 @@ export default function EditProfileScreen() {
                                     {licenseImage ? "License Added" : "Upload GST/License"}
                                 </Text>
                             </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Change Password Section */}
+                    <View style={styles.formSection}>
+                        <Text style={styles.sectionTitle}>Change Password</Text>
+                        <Text style={{ fontSize: 13, color: Colors.textSecondary, marginBottom: 12 }}>
+                            Leave blank if you do not want to change your password.
+                        </Text>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>New Password</Text>
+                            <View style={styles.passwordContainer}>
+                                <TextInput
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    style={styles.passwordInput}
+                                    placeholder="Enter new password (min. 6 chars)"
+                                    placeholderTextColor={Colors.textTertiary}
+                                    secureTextEntry={!showPassword}
+                                    autoCapitalize="none"
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeButton}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
+                                    <Icon
+                                        name={showPassword ? "visibility" : "visibility-off"}
+                                        size={20}
+                                        color={Colors.textSecondary}
+                                        library="material"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Confirm New Password</Text>
+                            <View style={styles.passwordContainer}>
+                                <TextInput
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    style={styles.passwordInput}
+                                    placeholder="Confirm new password"
+                                    placeholderTextColor={Colors.textTertiary}
+                                    secureTextEntry={!showConfirmPassword}
+                                    autoCapitalize="none"
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeButton}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                    <Icon
+                                        name={showConfirmPassword ? "visibility" : "visibility-off"}
+                                        size={20}
+                                        color={Colors.textSecondary}
+                                        library="material"
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
 
@@ -471,6 +551,32 @@ const styles = StyleSheet.create({
         padding: 16,
         fontSize: 16,
         color: Colors.textPrimary,
+    },
+    sectionSubtitle: {
+        fontSize: 12,
+        color: Colors.textTertiary,
+        marginTop: -10,
+        marginBottom: 16,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: Colors.gray200,
+        borderRadius: 5,
+    },
+    passwordInput: {
+        flex: 1,
+        padding: 16,
+        fontSize: 16,
+        color: Colors.textPrimary,
+    },
+    eyeButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     footer: {
         padding: 20,

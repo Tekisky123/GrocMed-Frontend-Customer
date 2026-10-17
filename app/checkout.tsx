@@ -227,11 +227,18 @@ export default function CheckoutScreen() {
         if (!newStreet.trim()) return showToast('Please enter your street address', 'info');
         if (!selectedPincode) return showToast('Please select a delivery pincode', 'info');
 
+        const cleanCity = (selectedPincode.city && !selectedPincode.city.toLowerCase().includes('default')) 
+            ? selectedPincode.city 
+            : 'Hyderabad';
+        const cleanState = (selectedPincode.state && !selectedPincode.state.toLowerCase().includes('default')) 
+            ? selectedPincode.state 
+            : 'Telangana';
+
         const addressToSave: Address = {
             id: Math.random().toString(36).substr(2, 9),
             street: newStreet.trim(),
-            city: selectedPincode.city || 'Default City',
-            state: selectedPincode.state || 'Default State',
+            city: cleanCity,
+            state: cleanState,
             zip: selectedPincode.pincode,
             type: addressType,
             isDefault: (user?.addresses?.length || 0) === 0,
@@ -271,14 +278,21 @@ export default function CheckoutScreen() {
         const addressObject = currentDeliveryAddress;
         if (!addressObject) return showToast('Please select a delivery address', 'info');
 
+        const cleanOrderCity = (addressObject.city && !addressObject.city.toLowerCase().includes('default'))
+            ? addressObject.city
+            : 'Hyderabad';
+        const cleanOrderState = (addressObject.state && !addressObject.state.toLowerCase().includes('default'))
+            ? addressObject.state
+            : 'Telangana';
+
         try {
             setLoading(true);
             const orderData = {
                 shippingAddress: {
                     street: addressObject.street,
                     landmark: addressObject.landmark || '',
-                    city: addressObject.city || '',
-                    state: addressObject.state || '',
+                    city: cleanOrderCity,
+                    state: cleanOrderState,
                     zip: addressObject.zip,
                     addressType: addressObject.type || 'Home',
                 },

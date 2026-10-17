@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { Colors } from '@/constants/colors';
@@ -26,6 +27,7 @@ export const AddressModal: React.FC = () => {
     editingAddress,
     saveAddress,
     selectAddress,
+    deleteAddress,
     detectCurrentLocation,
     isLoadingLocation,
   } = useAddress();
@@ -72,6 +74,23 @@ export const AddressModal: React.FC = () => {
       // Location detected and automatically saved to DB and active address!
       closeAddressModal();
     }
+  };
+
+  const handleDeleteAddress = (addr: Address) => {
+    Alert.alert(
+      'Delete Address',
+      `Are you sure you want to delete this address?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteAddress(addr.id);
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -123,8 +142,7 @@ export const AddressModal: React.FC = () => {
     >
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <TouchableOpacity
           style={styles.backdrop}
@@ -157,7 +175,7 @@ export const AddressModal: React.FC = () => {
             contentContainerStyle={styles.scrollContentContainer}
             showsVerticalScrollIndicator={true}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets={true}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             nestedScrollEnabled={true}
           >
             {/* GPS Detect Button */}
@@ -295,21 +313,33 @@ export const AddressModal: React.FC = () => {
                       </Text>
 
                       <View style={styles.cardActionsRow}>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setStreet(addr.street);
-                            setLandmark(addr.landmark || '');
-                            setCity(addr.city);
-                            setState(addr.state);
-                            setZip(addr.zip);
-                            setType(addr.type || 'Shop');
-                            setIsEditingForm(true);
-                          }}
-                          style={styles.editIconBtn}
-                        >
-                          <Icon name="edit" size={14} color="#64748B" library="material" />
-                          <Text style={styles.editIconText}>Edit</Text>
-                        </TouchableOpacity>
+                        <View style={styles.leftActions}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setStreet(addr.street);
+                              setLandmark(addr.landmark || '');
+                              setCity(addr.city);
+                              setState(addr.state);
+                              setZip(addr.zip);
+                              setType(addr.type || 'Shop');
+                              setIsEditingForm(true);
+                            }}
+                            style={styles.editIconBtn}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Icon name="edit" size={14} color="#64748B" library="material" />
+                            <Text style={styles.editIconText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleDeleteAddress(addr)}
+                            style={styles.deleteIconBtn}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Icon name="delete-outline" size={14} color="#EF4444" library="material" />
+                            <Text style={styles.deleteIconText}>Delete</Text>
+                          </TouchableOpacity>
+                        </View>
 
                         <TouchableOpacity
                           onPress={() => selectAddress(addr)}
@@ -394,9 +424,6 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={street}
                   onChangeText={setStreet}
-                  onFocus={() => {
-                    setTimeout(() => scrollViewRef.current?.scrollTo({ y: 60, animated: true }), 120);
-                  }}
                 />
 
                 {/* Landmark Field */}
@@ -407,9 +434,6 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={landmark}
                   onChangeText={setLandmark}
-                  onFocus={() => {
-                    setTimeout(() => scrollViewRef.current?.scrollTo({ y: 130, animated: true }), 120);
-                  }}
                 />
 
                 {/* City & Pincode in 2 columns */}
@@ -418,28 +442,22 @@ export const AddressModal: React.FC = () => {
                     <Text style={styles.inputLabel}>CITY *</Text>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="e.g. Nagpur"
+                      placeholder="e.g. Hyderabad"
                       placeholderTextColor="#94A3B8"
                       value={city}
                       onChangeText={setCity}
-                      onFocus={() => {
-                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
-                      }}
                     />
                   </View>
                   <View style={{ flex: 1, marginLeft: 8 }}>
                     <Text style={styles.inputLabel}>PINCODE *</Text>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="e.g. 440001"
+                      placeholder="e.g. 500001"
                       placeholderTextColor="#94A3B8"
                       value={zip}
                       onChangeText={setZip}
                       keyboardType="number-pad"
                       maxLength={6}
-                      onFocus={() => {
-                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 200, animated: true }), 120);
-                      }}
                     />
                   </View>
                 </View>
@@ -452,9 +470,6 @@ export const AddressModal: React.FC = () => {
                   placeholderTextColor="#94A3B8"
                   value={state}
                   onChangeText={setState}
-                  onFocus={() => {
-                    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120);
-                  }}
                 />
 
                 {/* Save Button */}
@@ -684,16 +699,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   editIconBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: '#F8FAFC',
   },
   editIconText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
+  },
+  deleteIconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: '#FEF2F2',
+  },
+  deleteIconText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   selectBtn: {
     paddingHorizontal: 14,

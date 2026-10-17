@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Platform, Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,6 +50,7 @@ interface AddressContextType {
     name?: string;
     phone?: string;
   }) => Promise<Address>;
+  deleteAddress: (addressId: string) => Promise<boolean>;
 }
 
 const AddressContext = createContext<AddressContextType | undefined>(undefined);
@@ -63,6 +64,9 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+
+  const hasInitRef = useRef(false);
+  const isDetectingRef = useRef(false);
 
   // Helper to extract clean display titles like Blinkit/Instamart
   const displayTitle = useMemo(() => {
@@ -120,52 +124,35 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load saved active address on initial mount, purging any stale telecom gateway or distant landmark entries
   useEffect(() => {
     let isMounted = true;
+    if (hasInitRef.current) return;
+    hasInitRef.current = true;
 
     const initAddress = async () => {
       try {
-        // 1. Explicitly request location permission on app open (crucial for existing & updated customers!)
-        let permissionGranted = false;
-        if (Platform.OS === 'android' || Platform.OS === 'ios') {
-          try {
-            const currentPerm = await Location.getForegroundPermissionsAsync();
-            if (!currentPerm.granted) {
-              const req = await Location.requestForegroundPermissionsAsync();
-              permissionGranted = req.granted;
-            } else {
-              permissionGranted = true;
-            }
-          } catch (permErr) {
-            console.warn('Initial location permission request failed:', permErr);
-          }
-        }
-
-        // 2. If permission is granted on startup, detect real GPS location immediately!
-        if (permissionGranted && isMounted) {
-          const detected = await detectCurrentLocation(true);
-          if (detected) {
-            return;
-          }
-        }
-
-        // 3. Check stored active address, purging any stale Nanded/empty data
+        // Step 1: Immediately restore cached or profile address so UI is never stuck on blank/loading!
+        let hasInitialAddress = false;
         const stored = await AsyncStorage.getItem(ACTIVE_ADDRESS_KEY);
         if (stored) {
-          const parsed = JSON.parse(stored);
-          const isStale =
-            !parsed?.street ||
-            parsed.street.toLowerCase() === 'current location' ||
-            parsed.street.toLowerCase().includes('nanded');
+          try {
+            const parsed = JSON.parse(stored);
+            const isStale =
+              !parsed?.street ||
+              parsed.street.toLowerCase() === 'current location' ||
+              parsed.street.toLowerCase().includes('nanded');
 
-          if (isStale) {
+            if (isStale) {
+              await AsyncStorage.removeItem(ACTIVE_ADDRESS_KEY);
+            } else if (parsed && parsed.street && isMounted) {
+              setActiveAddressState(parsed);
+              hasInitialAddress = true;
+            }
+          } catch {
             await AsyncStorage.removeItem(ACTIVE_ADDRESS_KEY);
-          } else if (parsed && parsed.street && isMounted) {
-            setActiveAddressState(parsed);
-            return;
           }
         }
 
-        // 4. Check user profile saved addresses
-        if (user?.addresses && user.addresses.length > 0) {
+        // Check user profile addresses if no stored address yet
+        if (!hasInitialAddress && user?.addresses && user.addresses.length > 0) {
           const validAddrs = user.addresses.filter(
             (a) =>
               a.street &&
@@ -177,15 +164,36 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (defaultAddr && isMounted) {
               setActiveAddressState(defaultAddr);
               await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(defaultAddr));
-              return;
+              hasInitialAddress = true;
             }
           }
         }
 
-        // 5. Default fallback to Hyderabad, Telangana with strictly NO landmark
-        if (isMounted) {
+        // If still no address, set clean Hyderabad, Telangana default fallback
+        if (!hasInitialAddress && isMounted) {
           setActiveAddressState(DEFAULT_FALLBACK_ADDRESS);
           await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(DEFAULT_FALLBACK_ADDRESS));
+        }
+
+        // Step 2: Explicitly request location permission on app open (crucial for existing & updated customers!)
+        let permissionGranted = false;
+        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+          try {
+            const currentPerm = await Location.getForegroundPermissionsAsync();
+            if (!currentPerm.granted) {
+              const req = await Location.requestForegroundPermissionsAsync();
+              permissionGranted = req.granted;
+            } else {
+              permissionGranted = true;
+            }
+          } catch (permErr) {
+            console.warn('Initial location permission request error:', permErr);
+          }
+        }
+
+        // Step 3: Only auto-detect GPS if user had no existing saved/selected address
+        if (permissionGranted && isMounted && !hasInitialAddress) {
+          await detectCurrentLocation(true);
         }
       } catch (err) {
         console.error('Error initializing address:', err);
@@ -197,10 +205,22 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => {
       isMounted = false;
     };
-  }, [user?.addresses]);
+  }, [user?.id]);
 
   // Reverse geocode, fetch accurate current location, and automatically persist to DB
   const detectCurrentLocation = useCallback(async (isSilent = false): Promise<Address | null> => {
+    // Prevent overlapping duplicate location fetches
+    if (isDetectingRef.current) {
+      return null;
+    }
+    isDetectingRef.current = true;
+
+    // Safety watchdog: under no circumstance can loading state get stuck!
+    const watchdog = setTimeout(() => {
+      setIsLoadingLocation(false);
+      isDetectingRef.current = false;
+    }, 6000);
+
     try {
       setIsLoadingLocation(true);
 
@@ -210,7 +230,6 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (!perm.granted) {
           const req = await Location.requestForegroundPermissionsAsync();
           if (!req.granted) {
-            setIsLoadingLocation(false);
             if (!isSilent) {
               if (!req.canAskAgain) {
                 Alert.alert(
@@ -237,14 +256,13 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // Fetch accurate GPS coordinates
+      // Fetch accurate GPS coordinates with quick fallback
       const coords = await getCoordinates(false);
       if (!coords || coords.isFallback) {
         // Fallback coordinates: set clean Hyderabad, Telangana fallback without landmark
         const fallbackAddress = DEFAULT_FALLBACK_ADDRESS;
         setActiveAddressState(fallbackAddress);
         await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(fallbackAddress));
-        setIsLoadingLocation(false);
         if (!isSilent) {
           showToast('GPS fix timed out. Defaulted to Hyderabad, Telangana.', 'info');
         }
@@ -287,27 +305,31 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 a.city.trim().toLowerCase() === detectedAddress.city.trim().toLowerCase()
             );
 
-            let updatedList: Address[];
-            if (existingIndex >= 0) {
-              updatedList = currentAddresses.map((a, i) =>
-                i === existingIndex
-                  ? { ...detectedAddress, id: a.id, isDefault: true }
-                  : { ...a, isDefault: false }
-              );
-            } else {
-              updatedList = [
-                ...currentAddresses.map((a) => ({ ...a, isDefault: false })),
-                detectedAddress,
-              ];
-            }
+            // Only update backend profile if address is actually new or not currently default
+            const needsUpdate = existingIndex === -1 || !currentAddresses[existingIndex]?.isDefault;
 
-            await updateProfile({ addresses: updatedList });
+            if (needsUpdate) {
+              let updatedList: Address[];
+              if (existingIndex >= 0) {
+                updatedList = currentAddresses.map((a, i) =>
+                  i === existingIndex
+                    ? { ...detectedAddress, id: a.id, isDefault: true }
+                    : { ...a, isDefault: false }
+                );
+              } else {
+                updatedList = [
+                  ...currentAddresses.map((a) => ({ ...a, isDefault: false })),
+                  detectedAddress,
+                ];
+              }
+
+              await updateProfile({ addresses: updatedList });
+            }
           } catch (dbErr) {
             console.warn('Auto-save detected address to backend DB failed:', dbErr);
           }
         }
 
-        setIsLoadingLocation(false);
         return detectedAddress;
       }
 
@@ -315,14 +337,16 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const fallbackAddress = DEFAULT_FALLBACK_ADDRESS;
       setActiveAddressState(fallbackAddress);
       await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(fallbackAddress));
-      setIsLoadingLocation(false);
       return fallbackAddress;
     } catch (err) {
       console.error('detectCurrentLocation error:', err);
-      setIsLoadingLocation(false);
       return null;
+    } finally {
+      isDetectingRef.current = false;
+      clearTimeout(watchdog);
+      setIsLoadingLocation(false);
     }
-  }, [user?.addresses, user?.shopName, isAuthenticated, updateProfile, showToast]);
+  }, [user?.id, user?.shopName, isAuthenticated, updateProfile, showToast]);
 
   const selectAddress = useCallback(async (address: Address) => {
     setActiveAddressState(address);
@@ -391,6 +415,34 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return finalAddress;
   }, [isAuthenticated, user?.addresses, updateProfile, showToast]);
 
+  const deleteAddress = useCallback(
+    async (addressId: string): Promise<boolean> => {
+      try {
+        // 1. Remove from backend user profile if authenticated
+        if (isAuthenticated && user?.addresses) {
+          const updatedList = user.addresses.filter((a) => a.id !== addressId);
+          await updateProfile({ addresses: updatedList });
+        }
+
+        // 2. If the deleted address was currently active, switch to next address or fallback
+        if (activeAddress?.id === addressId) {
+          const remaining = (user?.addresses || []).filter((a) => a.id !== addressId);
+          const nextAddress = remaining.length > 0 ? remaining[0] : DEFAULT_FALLBACK_ADDRESS;
+          setActiveAddressState(nextAddress);
+          await AsyncStorage.setItem(ACTIVE_ADDRESS_KEY, JSON.stringify(nextAddress));
+        }
+
+        showToast('Address removed successfully', 'success');
+        return true;
+      } catch (err) {
+        console.error('deleteAddress error:', err);
+        showToast('Failed to delete address', 'error');
+        return false;
+      }
+    },
+    [isAuthenticated, user?.addresses, activeAddress, updateProfile, showToast]
+  );
+
   const openAddressModal = useCallback((addressToEdit: Address | null = null) => {
     setEditingAddress(addressToEdit);
     setIsAddressModalOpen(true);
@@ -414,6 +466,7 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     detectCurrentLocation,
     selectAddress,
     saveAddress,
+    deleteAddress,
   }), [
     activeAddress,
     currentCoords,
@@ -427,6 +480,7 @@ export const AddressProvider: React.FC<{ children: React.ReactNode }> = ({ child
     detectCurrentLocation,
     selectAddress,
     saveAddress,
+    deleteAddress,
   ]);
 
   return (

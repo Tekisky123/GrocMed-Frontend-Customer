@@ -84,15 +84,20 @@ export default function RegisterScreen() {
       showToast('Please enter a valid Email Address', 'error');
       return;
     }
-    if (!phone.trim()) {
-      showToast('Please enter your Phone Number', 'error');
-      return;
+    let cleanPhone = phone.trim().replace(/\D/g, '');
+    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.slice(2);
     }
-    if (phone.trim().length !== 10) {
+    if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.slice(1);
+    }
+    if (!cleanPhone || cleanPhone.length !== 10) {
       showToast('Phone Number must be exactly 10 digits', 'error');
       return;
     }
-    if (adhaar.trim() && adhaar.trim().length !== 12) {
+
+    const cleanAdhaar = adhaar.trim().replace(/\D/g, '');
+    if (cleanAdhaar && cleanAdhaar.length !== 12) {
       showToast('Aadhaar Number must be exactly 12 digits', 'error');
       return;
     }
@@ -111,10 +116,18 @@ export default function RegisterScreen() {
       const formData = new FormData();
       formData.append('shopName', shopName.trim());
       formData.append('name', name.trim());
-      if (adhaar.trim()) formData.append('adhaar', adhaar.trim());
+      formData.append('email', email.trim().toLowerCase());
+      formData.append('phone', cleanPhone);
+      formData.append('password', password);
+      
+      if (cleanAdhaar) {
+        formData.append('adhaar', cleanAdhaar);
+      }
       
       // Optional fields
-      if (licenseNumber) formData.append('licenseNumber', licenseNumber);
+      if (licenseNumber.trim()) {
+        formData.append('licenseNumber', licenseNumber.trim());
+      }
 
       // Helper to append file correctly for Web vs Mobile
       const appendFile = async (fieldName: string, uri: string | null, defaultName: string) => {

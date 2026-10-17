@@ -48,10 +48,10 @@ export const CustomerAddressHeader: React.FC<CustomerAddressHeaderProps> = ({
         </View>
 
         <View style={styles.topRightActions}>
-          {/* Blinkit / Instamart style Express Delivery Pill */}
+          {/* Delivery Time Pill */}
           <View style={styles.expressBadge}>
             <Icon name="bolt" size={13} color="#D97706" library="material" />
-            <Text style={styles.expressBadgeText}>10-15 MINS</Text>
+            <Text style={styles.expressBadgeText}>90 MINS</Text>
           </View>
 
           {/* Cart Icon */}
